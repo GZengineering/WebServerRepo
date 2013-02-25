@@ -1,0 +1,558 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>EE Tasks</title>
+
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojo/resources/dojo.css">
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/claro.css">
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojox/grid/resources/claroGrid.css">
+
+		</head>
+
+		<script>
+
+		var TaskHome = 'EETasks';
+		
+		var test;
+		
+		var TaskList;
+		var ConsoleLog;
+		var Refresh;
+		var RefreshRate = 120000; //in milliseconds
+
+		var CompleteToggle;
+		var UnfinishedToggle;
+		var MemberFilter;
+		var TagFilter;
+		var CurTagFilter=[' None Specific'];
+		var CurMemberFilter = [' All'];
+		var ResetFilter;
+
+		var MembersStore;
+		var TagsStore;
+
+		var AddDialog;
+		var TaskTitleAdd;
+		var MembersAdd;
+		var Members = new Array();
+		var TagsAdd;
+		var Tags = new Array();
+		var TaskNotesAdd;
+		var AddSubmit
+
+		var UpdatePrDialog;
+		var UpdateBox;
+		var UpdateSubmit
+
+		var PrintDialog;
+		var FieldSelect;
+		var DisplayMember;
+		var DisplayTags;
+		var DisplayStatus;
+		var DisplayNotes;
+		var DisplayLastUpdate;
+		var DisplayCreationDate;
+		var SubmitPrint;
+
+		var UpdateStore;
+		var UpdateTaskList;
+
+		var CurrentTask;
+		var Complete;
+		var UpdatePr;
+		var Display;
+		var Add;
+
+		require(['dijit/form/MultiSelect',
+				'dijit/form/FilteringSelect', 
+				'dijit/form/Button',
+				'dijit/form/TextBox', 
+				'dijit/form/SimpleTextarea', 
+				'dijit/Dialog', 
+				'dijit/form/ToggleButton',
+				'dijit/form/CheckBox', 
+				'dijit/form/ComboBox', 
+				'dojo/_base/xhr', 
+				'dojo/io/iframe', 
+				'dojo/store/Memory', 
+				'dojo/dom',
+				'dojo/domReady!'],
+		function(MultiSelect, FilteringSelect, Button, TextBox, SimpleTextarea, Dialog, ToggleButton, CheckBox, ComboBox, xhr, iframe, Memory,  dom)
+		{
+			
+//---------------------------------------------Functions----------------------------------------------------------------------------//
+			GetStoreData = function(Store, Filter, String)
+			{
+				return xhr.get(
+				{
+					url:TaskHome+'?Event=GetStore&StoreName='+Store.StoreName+'&input='+String,
+					load:function(res)
+					{
+						var A = res.split('<DATASPLIT>');
+						var StoreData = new Array();
+						A.pop();
+										
+						for(i=0;i<A.length;i++)
+						StoreData[i] = {name:A[i]};
+
+						Store.setData(StoreData);
+						Filter.set('displayedValue',String);											
+					}
+				})							
+			}
+
+			UpdateTaskList = function(CompletedFilter,UnfinishedFilter,Members,Tags)
+			{
+				xhr.get(
+				{
+					url:TaskHome+'?Event=GetTaskList&Completed='+CompletedFilter+'&Unfinished='+UnfinishedFilter+'&Members='+Members+'&Tags='+Tags,
+					load:function(res)
+					{										
+						var Data = res.split('<ENDDATA>');
+
+						dojo.empty('EETasksTaskList');
+						for(i=0;i<Data.length-1;i++)
+						{
+							var x = dojo.doc.createElement('option');
+							x.innerHTML=Data[i];
+							x.value = Data[i];
+							TaskList.domNode.appendChild(x);												
+						}
+
+					}
+				});
+			}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------//
+
+			MembersStore = new Memory({StoreName:'Task Members'});
+
+			TagsStore = new Memory({StoreName:'Task Tags'});
+
+										
+			FieldStore = new Memory({data:[{name:'Date Created'},
+										{name:'Task Members'},
+										{name:'Task Tags'}], 
+										StoreName:'FieldStore'});										
+
+//-------------------------------------------------Filter Interface--------------------------------------------------------------//
+										
+			
+			CompleteToggle = new ToggleButton({name:'CompleteToggle',label:'Completed Tasks', iconClass: 'dijitCheckBoxIcon',
+			onChange:function()
+				{
+					if(CompleteToggle.get('checked'))
+					UnfinishedToggle.set('checked',!CompleteToggle.get('checked'));
+					clearInterval(Refresh);
+					UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString());
+													
+					Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+					CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);												
+				}
+			
+			},'EETasksCompleteToggle');
+											
+			UnfinishedToggle = new ToggleButton({name:'UnfinishedToggle', checked:true, label:'Unfinished Tasks', iconClass: 'dijitCheckBoxIcon',
+			onChange:function()
+				{
+					if(UnfinishedToggle.get('checked'))
+					CompleteToggle.set('checked',!UnfinishedToggle.get('checked'));
+					clearInterval(Refresh);
+					UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString());
+												
+					Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+					CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+					
+				}},'EETasksUnfinishedToggle');
+				
+			MemberFilter = new FilteringSelect({name:'MemberFilter', store:MembersStore, style:'width:12em'},'EETasksMemberFilter');
+							
+			MemberFilter.watch('displayedValue',function()
+				{								
+					if(CurMemberFilter[0]==' All')
+					CurMemberFilter.pop();
+								
+					if(CurMemberFilter.indexOf(' '+MemberFilter.get('displayedValue'))==-1)
+					CurMemberFilter.push(' ' +MemberFilter.get('displayedValue'));
+
+					dom.byId('EETasksCurrentFilterMembers').innerHTML='Current Tags: '+ CurMemberFilter.toString();																		
+								
+					clearInterval(Refresh);
+					UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString())
+								
+					Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+					CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+				});
+								
+			TagFilter = new FilteringSelect({name:'TagFilter', store:TagsStore, style:'width:12em'},'EETasksTagFilter');
+					
+					
+			GetStoreData(MembersStore, MemberFilter, 'All').then(function()
+				{
+				GetStoreData(TagsStore, TagFilter, 'None Specific');
+				});
+								
+			TagFilter.watch('displayedValue',function()
+			{								
+				if(CurTagFilter[0]==' None Specific')
+				CurTagFilter.pop();
+								
+				if(CurTagFilter.indexOf(' '+TagFilter.get('displayedValue'))==-1)
+				CurTagFilter.push(' ' +TagFilter.get('displayedValue'));
+				
+				dom.byId('EETasksCurrentFilterTags').innerHTML='Current Tags: '+ CurTagFilter.toString();
+							
+				clearInterval(Refresh);
+				UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString())
+								
+				Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+				CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+			});
+								
+			ResetFilter = new Button({name:'ResetFilter', label:'Reset Filters' , onClick:function()
+			{							
+				CurTagFilter = [' None Specific'];
+				TagFilter.set('displayedValue', 'None Specific');
+				CurMemberFilter = [' All'];
+				dom.byId('EETasksCurrentFilterTags').innerHTML='Current Tags: '+ CurTagFilter.toString();
+				MemberFilter.set('displayedValue','All');
+				CompleteToggle.set('checked',false);
+				UnfinishedToggle.set('checked',false);
+
+				clearInterval(Refresh);
+				UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString())
+								
+				Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+				CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);								
+			}},'EETasksResetFilter');
+						
+			ConsoleLog = dom.byId('EETasksConsole');
+			
+			TaskList = new MultiSelect({name:'testerSelect', style:'width:60em; height:550px', 
+			onDblClick:function()
+			{
+				clearInterval(Refresh);
+				xhr.get(
+				{
+					url:TaskHome+'?Event=GetTask&TaskTitle='+TaskList.get('value'),
+					load:function(res)
+					{									
+						Complete.set('disabled',false);
+						UpdatePr.set('disabled',false);
+									
+						CurrentTask = TaskList.get('value');
+						ConsoleLog.innerHTML=res;
+										
+						Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+						CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+										
+
+					}
+				});
+				
+			}},'EETasksTaskList');
+//---------------------------------------------------------------------------------------------------------------------------------------//
+
+			UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString());
+
+			Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+
+			
+//-----------------------------------------------------Complete Task Interface----------------------------------------------------------------			
+			
+			Complete = new Button({name:'Done', disabled:true, style:'float:right;margin-right:185px', label:'Mark this Task as \'Complete\' or \'Unfinished\'',
+			onClick:function()
+			{
+				clearInterval(Refresh);
+									
+				xhr.get(
+				{									
+					url:TaskHome+'?Event=CompleteTask&TaskTitle='+CurrentTask,
+					load:function(res)
+					{												
+						ConsoleLog.innerHTML=res;
+												
+						UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+						CurMemberFilter.toString(),CurTagFilter.toString())
+												
+						Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+						CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);												
+					}									
+				})
+								
+								
+			}},'EETasksComplete');
+			
+		
+//------------------------------------------------------------------------------------------------------------------------------------------			
+					
+			
+			
+//------------------------------------------------------------Update Interface-------------------------------------------------------------------
+			
+			UpdatePrDialog = new Dialog({title:'Progress Update'},'EETasksUpdateDialog');
+			UpdateBox = new SimpleTextarea({name:'UpdateNotes', placeHolder:'Enter Update to Progress...',
+			onKeyDown:function(e)
+				{
+					if(e.keyCode==13)
+					{
+						UpdateBox.set('readOnly',true);
+						UpdateSubmit.onClick();
+					}
+											
+				}},'EETasksUpdateNotes');
+									
+			UpdateSubmit = new Button({name:'SubmitUpdate', label:'Submit Progress Update',
+			onClick:function()
+			{							
+				clearInterval(Refresh);
+
+				iframe.send(
+				{
+					url:TaskHome+'?Event=UpdateTask&TaskTitle='+CurrentTask,
+					form:dom.byId('EETasksUpdateForm'),
+					handleAs:'html',
+					load:function(res,ioArgs)
+					{	
+						ConsoleLog.innerHTML=res.body.innerHTML;
+						UpdatePrDialog.hide();
+						UpdateBox.set('value','').set('readOnly',false);
+										
+						UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+						CurMemberFilter.toString(),CurTagFilter.toString())
+
+						Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+						CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);										
+					}
+				});	
+				
+			}},'EETasksSubmitUpdate');
+			
+			UpdatePr = new Button({name:'Update', disabled:true, style:'float:right; margin-right:245px', label:'Update This Task',
+			onClick:function()
+			{									
+				UpdatePrDialog.show();
+				
+			}},'EETasksUpdate')
+									
+//-------------------------------------------------------------------------------------------------------------------------------------									
+
+
+
+
+
+
+
+
+//---------------------------------------------Adding Interface------------------------------------------------------------------------							
+									
+			Add = new Button({name:'Add', label:'Add a new Task', style:'padding-top:5px',
+			onClick:function()
+				{
+					MembersAdd.set('value','All');
+					TagsAdd.set('value','None Specific');		
+							
+					AddDialog.show();
+							
+					Members= [' All'];
+					dom.byId('EETasksCurrentMembers').innerHTML='Current Members:'+ Members.toString();
+
+					Tags= [' None Specific'];
+					dom.byId('EETasksCurrentTags').innerHTML='Current Tags:'+ Tags.toString();
+							
+				}},'EETasksAdd');
+
+			AddDialog = new Dialog({title:'Add a new Task'},'EETasksAddWindow');
+			TaskTitleAdd = new TextBox({name:'TaskTitleAdd'},'EETasksTaskTitleAdd');
+			MembersAdd = new ComboBox({name:'MembersAdd', value:'All', store:MembersStore, 
+			onChange:function()
+				{
+					if(Members[0]==' All')
+					Members.pop();
+
+					if(!MembersStore.query({name:MembersAdd.get('value')}).length&&MembersAdd.get('value')!='')
+					MembersStore.put({name:MembersAdd.get('value')});
+
+					if(Members.indexOf(' ' + MembersAdd.get('value'))==-1)
+					Members.push(' ' + MembersAdd.get('value'));
+		
+					dom.byId('EETasksCurrentMembers').innerHTML='Current Members:'+ Members.toString();
+
+				}},'EETasksMembersAdd');
+							
+			TagsAdd = new ComboBox({name:'TagsAdd', value:'None Specific', store:TagsStore, 
+			onChange:function()
+				{
+					if(Tags[0]==' None Specific')
+					Tags.pop();
+
+					if(!TagsStore.query({name:TagsAdd.get('value')}).length&&TagsAdd.get('value')!='')
+					TagsStore.put({name:TagsAdd.get('value')});
+
+					if(Tags.indexOf(' ' + TagsAdd.get('value'))==-1)
+					Tags.push(' ' + TagsAdd.get('value'));
+			
+					dom.byId('EETasksCurrentTags').innerHTML='Current Tags:'+ Tags.toString();
+
+				}},'EETasksTagsAdd');
+
+			TaskNotesAdd = new SimpleTextarea({name:'Notes',placeHolder:'Notes'},'EETasksTaskNotesAdd');
+
+			AddSubmit = new Button({name:'SubmitAdd',label:'Submit', 
+			onClick:function()
+				{
+					clearInterval(Refresh);
+
+					xhr.get(
+					{
+						url:TaskHome+'?Event=AddNewTask&TaskTitle='+TaskTitleAdd.get('value')+'&Members='+Members.toString()+'&Tags='+Tags.toString()+'&Notes='+TaskNotesAdd.get('value'),
+						load:function(res)
+						{
+							TaskTitleAdd.set('value','');
+							TaskNotesAdd.set('value','');
+							Tags = [' None Specific'];
+							TagsAdd.set('value','');
+							console.log(res);
+							UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),CurMemberFilter.toString(),CurTagFilter.toString());
+							AddDialog.hide();
+														
+							Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+							CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+						}
+					})
+					
+				}},'EETasksSubmitAdd');
+								
+//--------------------------------------------------------------------------------------------------------------------------------------								
+								
+								
+
+
+//---------------------------------------------------------Print Interface--------------------------------------------------------------
+
+
+			Display = new Button({name:'Display', label:'Print Task List...', style:'padding-top:1px', 
+			onClick:function()
+			{					
+				PrintDialog.show();
+					
+			}},'EETasksDisplay');
+
+			PrintDialog = new Dialog({title:'Print Current Task List...'},'EETasksPrintDialog');
+			FieldSelect = new FilteringSelect({name:'FieldSelect', displayedValue:'Date Created', store:FieldStore},'EETasksFieldSelect');
+			DisplayMember = new CheckBox({checked:true},'EETasksDisplayMembers');
+			DisplayTags = new CheckBox({checked:false},'EETasksDisplayTags');
+			DisplayStatus = new CheckBox({checked:false},'EETasksDisplayStatus');
+			DisplayNotes = new CheckBox({checked:false},'EETasksDisplayNotes');
+			DisplayLastUpdate = new CheckBox({checked:false},'EETasksDisplayLastUpdate');
+			DisplayCreationDate = new CheckBox({checked:false},'EETasksDisplayCreationDate')
+			SubmitPrint = new Button({name:'SubmitPrint', label:'Print List', 
+			onClick:function()
+			{						
+				clearInterval(Refresh);
+						
+				window.open(TaskHome+'?Event=PrintList&Completed='+CompleteToggle.get('checked')+'&Unfinished='+UnfinishedToggle.get('checked')+'&Members='+
+							CurMemberFilter.toString()+'&Tags='+CurTagFilter.toString()+'&SortField='+FieldSelect.get('displayedValue')+
+							'&DisplayMember='+DisplayMember.get('checked')+'&DisplayTags='+DisplayTags.get('checked')+'&DisplayStatus='+
+							DisplayStatus.get('checked')+'&DisplayNotes='+DisplayNotes.get('checked')+'&DisplayLastUpdate='+DisplayLastUpdate.get('checked')+
+							'&DisplayCreationDate='+DisplayCreationDate.get('checked'))
+											
+				Refresh = setInterval(function(){UpdateTaskList(CompleteToggle.get('checked'),UnfinishedToggle.get('checked'),
+				CurMemberFilter.toString(),CurTagFilter.toString())},RefreshRate);
+	
+			}},'EETasksSubmitPrint')
+
+//--------------------------------------------------------------------------------------------------------------------------------------
+
+		})
+
+		</script>
+
+		<body class='claro'>
+		<table border='0' cellpadding='0' cellspacing='2'>
+			<tbody>
+				<tr>
+					<th></th>
+					<th></th>
+					<th></th>				
+					<th>Filter by Member</th>
+					<th>Filter by Tags</th>
+				</tr>
+				<tr>
+					<td style='color:white'>Filter Tasks: </td>
+					<td><input id='EETasksCompleteToggle'></input></td>
+					<td><input id='EETasksUnfinishedToggle'></input></td>			
+					<td><select id='EETasksMemberFilter'></select></td>
+					<td><select id='EETasksTagFilter'></select></td>
+				</tr>
+				<tr>
+					<td id='EETasksResetFilter'></td>
+					<td></td>
+					<td></td>
+					<td id='EETasksCurrentFilterMembers'>Current Members: All</td>
+					<td id='EETasksCurrentFilterTags'>Current Tags: None Specific</td>
+					
+				</tr>
+				
+			</tbody>
+		</table>
+		
+		<input id='EETasksTaskList'></input>
+		<div id='EETasksConsole' style="border: 1px solid green ;background-color:black; color:#00FF00; width: 400px; height: 550px; float:right;margin-right:100px"></div>
+		<p>
+		<button id='EETasksDisplay'></button>
+		<button id='EETasksComplete'></button>
+		<br>
+		<button id='EETasksAdd'></button>
+		<button id='EETasksUpdate'></button>
+
+		</body>
+
+			<div id='EETasksAddWindow'>
+
+				<label for='EETasksTaskTitleAdd'>Task Title</label>
+				<input id='EETasksTaskTitleAdd'></input><p>
+				<label for='EETasksMembersAdd'>Attached Employees</label>
+				<input id='EETasksMembersAdd'></input><p>
+				<div id='EETasksCurrentMembers'>Current Members:</div><p>
+				<label for='EETasksTagsAdd'>Task Tags</label>
+				<input id='EETasksTagsAdd'></input><p>
+				<div id='EETasksCurrentTags'>Current Tags:</div><p>
+				<div id='EETasksNotesLabel'>Notes:</div>
+				<textarea id='EETasksTaskNotesAdd'></textarea>
+				<button id='EETasksSubmitAdd'></button>
+
+			</div>
+
+			<div id='EETasksUpdateDialog'>
+			<form id='EETasksUpdateForm'
+			enctype= 'multipart/form-data'>
+			
+				<label for='EETasksUpdateNotes' style='position:top'>Enter Update to Progress</label>
+				<input id='EETasksUpdateNotes' type=text name='UpdateData'></input>
+				<p>	
+				<div>Upload a Screen Shot (optional)</div>
+				<input name='UploadedPhoto' id='EETasksPhotoUpload' type=file accept='image/*'></input>
+				
+				<button id='EETasksSubmitUpdate'></button>
+			</form>	
+
+			</div>
+			
+			<div id='EETasksPrintDialog'>
+				<label for='EETasksFieldSelect'>Sort By </label>
+				<input id='EETasksFieldSelect'></input>
+				<div>Display...</div>
+
+				
+				<input id='EETasksDisplayMembers'></input><label for='EETasksDisplayMembers'>Members</label><br>				
+				<input id='EETasksDisplayTags'></input><label for='EETasksDisplayTags'>Tags</label><br>
+				<input id='EETasksDisplayStatus'></input><label for='EETasksDisplayStat'>Status</label><br>
+				<input id='EETasksDisplayNotes'></input><label for='EETasksDisplayNotes'>Notes</label><br>
+				<input id='EETasksDisplayLastUpdate'></input><label for='EETasksDisplayLastUpdate'>Last Update</label><br>
+				<input id='EETasksDisplayCreationDate'></input><label for='EETasksDisplayCreationDate'>Date Created</label><p>
+				<button id='EETasksSubmitPrint'></button>
+			</div>
+</html>
