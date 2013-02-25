@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>GZ Accessory Charge Times</title>
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojo/resources/dojo.css">
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/claro.css">
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojox/grid/resources/claroGrid.css">
+
+		<script>
+		
+			var UnitForm_AccessoryChargeHome = '/GZgrid';
+		
+			var Bgrid, Fgrid, BdataStore, Bstore, FdataStore, Fstore, AccessoryChargeRefreshButton; //This Assumes that Every Accessory can be displayed in one of two grids: A grid for Battery Accessories, and a grid for Battery Free Accessories.
+			
+			var test1, test2;
+			
+			require([
+				"dojox/grid/DataGrid",
+				"dojo/store/Memory",
+				"dojo/data/ObjectStore",
+				"dijit/form/Button",
+				"dojo/_base/xhr",
+				"dojo/domReady!"
+					], 
+			function(DataGrid, Memory, ObjectStore, Button, xhr)
+			{		
+				Bgrid = new DataGrid({height:'300px'}, "BatteryGrid");
+				Fgrid = new DataGrid({height:'300px'}, "FreeGrid");	
+				
+				Bgrid.startup();
+				Fgrid.startup();
+				
+				//This Function downloads all the information from the server and makes a call to ProcessData. The result from this function is put in the stores and used to build the structure of the grids.
+				function AccessoryChargeRefresh()
+				{
+					xhr.get(
+					{
+						url:UnitForm_AccessoryChargeHome+'?Event=GetSpecs',
+						handleAs:'json',
+						load:function(resp)
+						{
+							var StoreData = ProcessAccessoryData(resp);
+							
+							Bstore = new Memory({name:'device store', data:StoreData.BatteryStore});
+									
+							BdataStore = new ObjectStore({ objectStore: Bstore });
+							
+							Fstore = new Memory({name:'device store', data:StoreData.FreeStore});
+									
+							FdataStore = new ObjectStore({ objectStore: Fstore });
+							
+							Bgrid.set('Structure',StoreData.BatteryStructure);
+							Fgrid.set('Structure',StoreData.FreeStructure);	
+
+							Bgrid.setStore(BdataStore);
+							Fgrid.setStore(FdataStore);
+							
+						}							
+					}) 
+				}
+				
+				AccessoryChargeRefresh();
+				
+				AccessoryChargeRefreshButton = new Button({name:'Refresh',label:'Refresh', onClick:function(){AccessoryChargeRefresh()}},'AccessoryChargeRefresh');
+				
+			});
+			
+			function ProcessAccessoryData(data)//This function returns an object called 'StoreData'. This object has two main parts. Data for the Store and a Structure used to display that data in a grid.
+			{
+				
+				var Packs = data['Packs'];
+				var Accessories = data['Accessories'];
+				var Panels = data['Panels'];
+				var StoreData = 
+				{
+					BatteryStructure: [{ name: 'Accessory', field: 'UnitName', width: "84px" }],
+					BatteryStore: new Array(),
+								
+					FreeStructure:[{ name: 'Accessory', field: 'UnitName', width: "84px" }], 
+					FreeStore:new Array()
+				};
+				
+				//Build up the structure part of the 'StoreData'.
+				for(i=0; i<Packs.length; i++)
+				{
+					var UnitName = Packs[i].UnitName;					
+
+					StoreData.BatteryStructure.push({ name: UnitName.bold() +'<p># of charges' , field: UnitName +'<p># of charges' , width: "84px", styles: 'text-align:center;' });
+					StoreData.BatteryStructure.push({ name:'<p>time for single charge (hr)', field: UnitName +'<p>time for single charge (hr)', width: "84px", styles: 'text-align:center;' });
+					StoreData.BatteryStructure.push({ name:'<p>total charging hours' , field: UnitName +'<p>total charging hours', width: "84px", styles: 'text-align:center;' });
+					
+					StoreData.FreeStructure.push({ name: UnitName.bold() +'<p>total charging hours' , field: UnitName +'<p>total charging hours', width: "84px" , colSpan:1})
+					
+				}				
+				
+				//First Cycle through all the Accessories
+				for(i=0; i<Accessories.length; i++)
+				{
+					var Entry = {UnitName:Accessories[i]['UnitName']}; //This variable will be assigned to the data portion of 'StoreData'
+					var CurAccSpecs = Accessories[i]['General Specifications'][0];
+					
+					//For Each Accessory, Cycle through each Pack to check for compatibility and calculate charge times.
+					for(j=0;j<Packs.length;j++)
+					{
+						var Ports = Packs[j]['Port Specifications'];
+						var UnitName = Packs[j].UnitName;
+						
+						//For Each Pack, check the Packs current Ports to check for campatibility to calculate charge times.
+						for(p=0; p<Ports.length;p++)
+						{
+							if(Ports[p]['Port Direction']=='Output' && Ports[p]['Connector Type']==CurAccSpecs['Input Connector'])// The Accessory is Compatible
+							{						
+								var CurPort = Ports[p];
+								var ChargeCapacity = Packs[j]['Battery Specifications'][0]['Charge Capacity (Whr)'];
+
+								Entry[UnitName +'<p>total charging hours'] = Math.round(ChargeCapacity*CurPort['Efficiency (0-1)']/CurAccSpecs['Charge Rate or Power Consumption (W)']);
+			
+								if(CurAccSpecs['Internal Battery'] =='Yes')// the Accesory can be charged
+								{
+									var Charges = (ChargeCapacity*CurPort['Efficiency (0-1)'])/(CurAccSpecs['Battery Capacity (Whr)']);
+								
+									Entry[UnitName +'<p># of charges'] = Math.round(Charges)
+									if(Charges>1)//The Accessory can be fully charges from this Pack.
+									{
+										if(CurPort['Maximum Current (A)']*CurPort['Nominal Voltage (V)']>CurAccSpecs['Charge Rate or Power Consumption (W)'])
+										Entry[UnitName +'<p>time for single charge (hr)'] = Math.round(CurAccSpecs['Battery Capacity (Whr)']/(CurAccSpecs['Charge Rate or Power Consumption (W)']*CurAccSpecs['Charge Efficiency (0-1)']));
+										else
+										Entry[UnitName +'<p>time for single charge (hr)'] = Math.round(CurAccSpecs['Battery Capacity (Whr)']/(CurPort['Maximum Current (A)']*CurPort['Nominal Voltage (V)']*CurPort['Efficiency (0-1)']));
+									}								
+								}													
+							}							
+						}				
+					}
+					
+					if(CurAccSpecs['Internal Battery'] =='Yes')	
+					StoreData.BatteryStore.push(Entry);	
+					else
+					StoreData.FreeStore.push(Entry);
+				}
+
+				return StoreData;			
+			}
+
+	
+		</script>
+	</head>
+	<body class="claro">
+		<h1>Charge Times</h1>
+
+		<br/>
+		<font id='BatteryLabel' size=4>Battery Accessories</font>
+		<div id="BatteryGrid"></div>
+		<p>
+		<font id='FreeLabel' size=4>Non Battery Accessories</font>
+		<div id="FreeGrid"></div>
+		<button id='AccessoryChargeRefresh'></button>
+	</body>
+</html>

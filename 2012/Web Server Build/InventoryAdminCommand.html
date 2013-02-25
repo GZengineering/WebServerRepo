@@ -1,0 +1,102 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>GZ Inventory</title>
+		
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/claro.css">	
+		
+		<!-- load dojo and provide config via data attribute -->
+		<script src="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojo/dojo.js"
+				data-dojo-config="async: true, isDebug: true">
+		</script>
+		
+	
+
+	
+		<script>
+		
+		var consolbox;
+		
+		var Log = 'Log:<p>';
+		var LogLength= 0;
+		
+	
+
+		require(['dijit/form/TextBox', 'dojo/_base/xhr', 'dojo/dom', 'dojo/domReady!'],
+				function(TextBox, xhr, dom)
+				{
+
+				consolebox = dom.byId('Console');
+				consolebox.innerHTML = Log;
+				
+				CommandLine = new TextBox({name:'Command', placeHolder:'Command...', onKeyPress:function(e)
+									{
+										if(e.keyCode==13)
+											{
+
+												xhr.get({
+														url: '/InventoryAction?Command='+CommandLine.get('value').replace(' ','+'),
+														load:function(result,ioargs)
+															{
+															
+																if(ioargs.xhr.status==202)
+																{
+
+														window.open('/InventoryAction?Command='+CommandLine.get('value').replace(' ','+'));																
+																
+																}	
+																else
+																{
+																	Log = Log + result + '<br>';															
+																	LogLength++;															
+																	if(LogLength>25||ioargs.xhr.status==201)
+																	{
+																		Log = 'Log:<p>' + result + '<br>';
+																		LogLength = 0;
+																	}
+																	consolebox.innerHTML=Log;
+																	
+																	if(ioargs.xhr.status==201)
+																	Log = 'Log:<p>';
+																	
+																}
+															}
+			
+														});						
+											}
+									}
+									
+					},'CommandLine');			
+				})
+	
+		</script>
+		
+		
+	</head>
+	
+	<h1 style="color:black; text-align:center">Inventory Admin Center</h1>	
+	
+<style type="text/css">
+body
+{
+background-color:#000000;
+background-image:url(https://dl.dropbox.com/u/31555525/solar_energy.jpg);
+background-position:top right;
+}
+</style>
+
+		
+		
+	
+	
+	
+		<body class='claro'>
+			<label for='CommandLine'>Please Type in Command</label>
+			<input id='CommandLine'></input>
+			<div id='Console' style="border: 1px solid green ;background-color:black; color:#00FF00; width: 500px; height: 550px; float:right;margin-right:100px"></div>
+			
+		</body>
+	
+</html>

@@ -1,0 +1,72 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>GZ Web Portal</title>
+		
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/claro.css">	
+		
+		<!-- load dojo and provide config via data attribute -->
+		<script src="http://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojo/dojo.js"
+				data-dojo-config="async: true, isDebug: true">
+		</script>
+		
+	</head>
+	
+		<script>
+		
+		var Submit;
+		var Name;
+		var Country;
+		var TestTitle;
+		var Unit;
+		var Serial;
+		var Date;
+		
+		
+		require(['dijit/form/TextBox', 'dojo/domReady!'], function(TextBox)
+			{
+			
+			Name = new TextBox({name:'NameBox', placeHolder:'Full Name'},'NameBox');
+			Country = new TextBox({name:'CountryBox', placeHolder:'Your Country'},'CountryBox');
+			TestTitle = new TextBox({name:'TitleBox', placeHolder:'Title (ex.\'Test1\')'},'TitleBox');			
+			Unit = new TextBox({name:'UnitBox', placeHolder:'Pack,Panel(optional)'},'UnitBox');
+			Serial = new TextBox({name:'SerialBox', placeHolder:'Pack SN, Panel SN(optional)'},'SerialBox');
+			Date = new TextBox({name:'DateBox', placeHolder:'Date of Test'},'DateBox');			
+			
+			
+			})
+		
+		
+		
+		</script>
+	
+	
+	
+	  <body class="claro">
+
+	  
+			<form method="post" action="/upload" id="myForm"
+			enctype="multipart/form-data" class="claro" >
+				<fieldset>
+					<legend>Tester Upload</legend>
+					<input id='NameBox' type="text" name="Name" />
+					<input id='CountryBox' type="text" name="Country"/>
+					<input id= 'TitleBox' type="text" name="DataTitle"/>
+					<input class="claro" name="uploadedfile" multiple="true"
+						type="file" data-dojo-type="dojox.form.Uploader"
+						data-dojo-props='label:"Select Some Files"' id="uploader" />
+
+					<input type="submit" label="Submit" data-dojo-type="dijit/form/Button"></input>
+					<br/>
+					<input id='UnitBox' type="text" name="Unit"/>
+					<input id='SerialBox' type="text" name="SN"/>
+					<input id='DateBox' type="text" name="Date"/>	
+					
+				</fieldset>
+			</form>
+
+  </body>
+	
+</html>
