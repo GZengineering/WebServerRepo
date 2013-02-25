@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF'>
+    <head>
+        <h1 style="color:black; text-align:center">Inventory Manager</h1>
+        <title>Inventory Manager</title>
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+         <style type="text/css">.dijitButtonNode { width:90px; } </style>
+    	
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+        <script>
+
+            require(["dojo/ready", 
+                "dijit/form/Button", 
+                "dojo/dom",
+                'dijit/form/Select',
+                'dijit/form/TextBox',
+                'dijit/registry',
+                'dijit/Dialog', 
+                'dijit/form/ToggleButton', 
+                'dojo/dom-style',
+                'dojo/_base/xhr', 
+                'dojo/_base/Deferred', 
+                'dojo/domReady!'], 
+                function(ready, Button, dom, Select, TextBox, registry, Dialog,
+                    ToggleButton, domStyle, xhr, Deferred)
+                {
+                    ready(function()
+                    {
+
+                        var txtBox_sku = registry.byId(
+                        {
+                            onKeyPress: function(e)
+                            {
+                                if(e.keyCode==13)
+                                {
+                                    insertButton.onClick();
+                                }
+                            },
+
+                        }, "txtBox_sku");
+
+                        var txtBox_desc = registry.byId(
+                        {
+                            onKeyPress: function(e)
+                            {
+                                if(e.keyCode==13)
+                                {
+                                    insertButton.onClick();
+                                }
+                            },
+
+                        }, "txtBox_desc");
+
+
+
+                        // The insert button:
+                        var insertButton = new Button(
+                        {
+                            label: "Insert",
+                            onClick: function()
+                            {
+                                // dom.byId("result1").innerHTML += "You entered: " +
+                                // dom.byId("txtBox_sku").value;
+                                if(dom.byId("txtBox_sku").value=="" || dom.byId("txtBox_desc").value =="")
+                                {
+                                     dom.byId("result1").innerHTML = "You must have both a SKU# and Description enetered";
+                                }
+                                else
+                                {
+                                    xhr.post(
+                                    {
+                                        url:"/form?Event=Insert&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
+                                        load:function(response)
+                                        {
+                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                        },
+
+                                        error: function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                        }
+                                    });
+                                }
+                                console.log ("Insert button pressed.");
+                                refreshList();
+                              
+                            }
+                        }, "insertButton");
+    
+                        //The remove button
+                        var removeButton = new Button(
+                        {
+                            label: "Remove",
+                            onClick: function()
+                            {
+                                // dom.byId("result1").innerHTML += "You entered: " +
+                                // dom.byId("txtBox_sku").value;
+                                if(dom.byId("txtBox_sku").value=="" || dom.byId("txtBox_desc").value =="")
+                                {
+                                     dom.byId("result1").innerHTML = "Try entering something into both text boxes";
+                                }
+                                else
+                                {
+                                    xhr.get(
+                                    {
+                                        url:"/form?Event=Remove&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
+                                        load:function(response)
+                                        {
+                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                        },
+
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                        }
+                                    });
+                                }
+                                console.log ("Remove button pressed.");
+                                refreshList();
+                            }
+                        }, "removeButton");
+
+                        function refreshList()
+                        {
+                            xhr.get(
+                            {
+                                url:"/form?Event=List",
+                                load:function(response)
+                                {
+                                    console.log("inside refreshList load response: " + response);
+                                    dom.byId("list").innerHTML = response;
+                                },
+                                error:function(error)
+                                {
+                                    console.log("Error getting list: " + error);
+                                    dom.byId("list").innerHTML = "Error: " + response;
+                                }
+                            });
+                            console.log("List refreshed");
+                        }
+
+                        refreshList();
+                    });
+                    
+                });
+
+
+
+        </script>
+    </head>
+    <body class="claro">
+        <br>
+        <table width = "400px" border = "0" ALIGN = center>
+            <tr>
+                <td style="text-align:left;">
+                    <label for="txtBox_sku">SKU#:</label><br>  
+                    <input id="txtBox_sku" data-dojo-type="dijit/form/TextBox" style ="width: 80px;"></input>
+                </td>
+                <td style="text-align:left;">
+                    <label for="txtBox_desc">Product Description:</label><br>  
+                    <input id="txtBox_desc" data-dojo-type="dijit/form/TextBox" style ="width: 300px;"></input>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align:center;">
+                    <button id="insertButton" data-dojo-type="dijit/form/button"></button>
+                    <button id="removeButton" data-dojo-type="dijit/form/button"></button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align:center;">
+                <div id="result1"></div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align:center;">
+                <h2> Current Inventory </h2>
+                </td>
+            </tr>
+        </table>
+        <div id = "list"><!--This is where the items get listed in the table--></div>
+    </body>
+</html>
