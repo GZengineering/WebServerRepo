@@ -1,0 +1,200 @@
+<!-- Spec Manager -->
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+    <head>
+        <!-- Title Bar Start -->
+        <h1 style="padding-bottom:20px" ALIGN = center><i>GZ Database</i> </h1>
+        <table border ="1" ALIGN = "center" >
+            </tr>
+            <tr>
+                <td style ="padding: 5px 10px"><a href = "/Home">Home<a></td>
+                <td style ="padding: 5px 10px"><a href = "/Inventory">Inventory Manager</a></td>
+                <td style ="padding: 5px 10px"><a>Spec Manager<a></td>
+            </tr>
+        </table>
+        <!-- Title Bar End -->
+        
+        <h1 style="color:black; text-align:center">Spec Manager</h1>
+        <title>Spec Manager</title>
+        <br>
+        <p>Response: <div id = "status">this is the status</div></p>
+        <br>
+        
+
+        <!-- Load Dojo API -->
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+
+        <!-- Define Styles -->
+        <style type="text/css">
+            div.dijitButtonNode { width:90px; } 
+        </style>
+        <style type="text/css">
+            div.border {border-bottom: 1px dotted #ff9900; border-top: 1px dotted #ff9900;}
+        </style>
+
+        <!-- Dojo Configuration -->
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+
+        <!-- Spec Manager Functionality and Utilities -->
+        <script>
+
+        // var UnitClasses = require(./requestHandlers).UnitClassArray;
+
+        require(["dojo/ready", 
+                "dijit/form/Button", 
+                "dojo/dom",
+                'dijit/form/Select',
+                'dijit/form/TextBox',
+                'dijit/registry',
+                'dijit/Dialog', 
+                'dijit/form/ToggleButton', 
+                'dojo/dom-style',
+                'dojo/_base/xhr', 
+                'dojo/_base/Deferred',
+                'dijit/form/Select', 
+                'dojo/domReady!'], 
+                function(ready, Button, dom, Select, TextBox, registry, Dialog,
+                    ToggleButton, domStyle, xhr, Deferred)
+                {
+                    ready(function()
+                    {
+                        var select_UnitClass = new Select(
+                        {
+                            name: select_UnitClass,
+                            // for(i=0;i<UnitClasses.length;i++)
+                            // {
+                                options:
+                                [
+                                    {label: 'Panel', value: 'Panel'},
+                                ]
+                            //}
+                        }, "select_UnitClass");
+
+                        var txtbox_UnitClass = registry.byId("txtbox_UnitClass");
+
+                        var button_addUnitClass = new Button(
+                        {
+                            label: "Add",
+                            onClick: function()
+                            {
+                                if(dom.byId("txtbox_UnitClass").value == "")
+                                {
+                                    dom.byId("status").innerHTML = "Name the class type";
+                                }
+                                else
+                                {
+                                    xhr.post(
+                                    {
+                                        url:"/SpecManager?Event=InsertUnitClass&UnitClass_id="+dom.byId("txtbox_UnitClass").value,
+                                        load:function(response)
+                                        {
+                                            dom.byId("status").innerHTML = response;
+                                        },
+
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n" + error);
+                                            dom.byId("status").innerHTML = "Error: " + error;
+                                        },
+                                    });
+
+                                }
+                                console.log ("Add new Unit Class button pressed.");
+                                loadUnitClassOptions();
+
+                            }
+                        }, "button_addUnitClass");
+
+
+                    });
+
+                    //The remove button
+                    var button_removeUnitClass = new Button(
+                    {
+                        label: "Remove",
+                        onClick: function()
+                        {
+                            if(dom.byId("txtbox_UnitClass").value=="")
+                            {
+                                 dom.byId("status").innerHTML = "Name the unit class type you wish to remove";
+                            }
+                            else
+                            {
+                                xhr.get(
+                                {
+                                    url:"/SpecManager?Event=RemoveUnitClass&UnitClass_id="+dom.byId("txtbox_UnitClass").value,
+                                    load:function(response)
+                                    {
+                                        dom.byId("status").innerHTML = response;
+                                    },
+
+                                    error:function(error)
+                                    {
+                                        console.log("There was an error: \n"+error);
+                                        dom.byId("status").innerHTML = response;
+                                    }
+                                });
+                            }
+                            console.log ("Remove button pressed.");
+                            loadUnitClassOptions();
+                        }
+                    }, "button_removeUnitClass");
+
+                    function loadUnitClassOptions()
+                    {
+                        xhr.get(
+                        {
+                            url:"/SpecManager?Event=LoadUnitClassOptions",
+                            load:function(response)
+                                {
+                                    console.log("loadUnitClassOptions load response: " + response);
+                                    dom.byId("List").innerHTML = response;
+                                },
+                                error:function(error)
+                                {
+                                    console.log("Error getting Unit list: " + error);
+                                    dom.byId("List").innerHTML = "Error: " + response;
+                                }
+
+                        });
+                        console.log("Unit Class options refreshed");
+                    }
+
+
+                    //on load do these
+                    loadUnitClassOptions();
+                });
+
+        </script>
+
+    </head>
+
+    <!-- Page Layout -->
+    <body class ="claro" ALIGN = center>
+        
+        <table width = "300px" ALIGN = center style="padding: 15px 15px">
+                <tr style = "padding:5px 10px">
+                    <td>
+                        <label for="select_UnitClass">Select Unit Class:</label>
+                        <input id="select_UnitClass"></input>
+                    </td>
+                    <td>
+                        <label for = "txtbox_UnitClass">New Unit Name</label>
+                        <input id = "txtbox_UnitClass" data-dojo-type="dijit/form/TextBox" style ="width: 80px;"></input>
+                    </td>
+                    <td>
+                        <button id="button_addUnitClass" data-dojo-type="dijit/form/button"></button>
+                    </td>
+                    <td>
+                        <button id="button_removeUnitClass" data-dojo-type="dijit/form/button"></button>
+                    </td>
+                </tr>
+        </table>
+        <!--This is where the List of Unit Classes goes-->
+        <div id = "List"></div>
+    </body>
+</html>

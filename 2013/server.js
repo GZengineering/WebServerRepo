@@ -22,11 +22,13 @@ var OpenDB,
  */
 var requestHandlers = require("./requestHandlers");
 var handle = {};
-handle["/"] = requestHandlers.start;
+handle["/"] = requestHandlers.Home;
 handle["/start"] = requestHandlers.start;
 handle["/upload"] = requestHandlers.upload;
 handle["/show"] = requestHandlers.show;
-handle["/form"] = requestHandlers.form;
+handle["/Inventory"] = requestHandlers.Inventory;
+handle["/Home"] = requestHandlers.Home;
+handle["/SpecManager"] = requestHandlers.SpecManager;
 
 db.open(function(error, db)
 	{

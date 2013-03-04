@@ -1,0 +1,33 @@
+Schema:
+{
+	type: "...", //inventory, spec
+
+}
+
+Spec Schema:
+{
+	unit_id: "..." //unique unit identifier
+	unit_class: "..." //panel, pack, accessory
+	name: "..." //sherpa 50, nomad 7
+	manufacturer: "..." //LG, etc
+	fastening_type: "..." //hangwire_steel, etc
+	indicator: "..." //LED, LCD
+	structure: "..." //ABS, mesh, etc
+	weight: double 
+	weight_metric: double
+	packaging_dims: {l: .., w: .., h: ..}
+	unit_dims: {l: .., w: .., h: ..}
+	certifications: [CE, FCC, ..]
+
+	ports: [{GZ_PPS_USB_1.5}, io: "input"; {GZ_PPS_DC8_3A}, io: "input"]
+
+
+
+}
+
+ 
+
+
+unit_id schema from XCEL Tech Specs "Serial Number":
+	i.e.: Sherpa 50: S5020A, Guide 10: G1015B
+

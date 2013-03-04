@@ -1,22 +1,33 @@
+<!-- Inventory Manager -->
 <!DOCTYPE html>
-
-<!--This is the Inventory Form-->
-
-<!--Setup the page.  Load the dojo API-->
-<html lang='en' style= 'background-color:#00FFFF'>
+<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
     <head>
+        <!-- Title Bar Start -->
+        <h1 style="padding-bottom:20px" ALIGN = center><i>GZ Database</i> </h1>
+        <table border ="1" ALIGN = "center" >
+            </tr>
+            <tr>
+                <td style ="padding: 5px 10px"><a href = "/Home">Home<a></td>
+                <td style ="padding: 5px 10px"><a>Inventory Manager</a></td>
+                <td style ="padding: 5px 10px"><a href = "/SpecManager">Spec Manager<a></td>
+            </tr>
+        </table>
+        <!-- Title Bar End -->
+
         <h1 style="color:black; text-align:center">Inventory Manager</h1>
         <title>Inventory Manager</title>
+
+        <!-- Load Dojo API -->
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
-         <style type="text/css">.dijitButtonNode { width:90px; } </style>
-    	
+        <!-- Standardize Dojo Buttons -->
+        <style type="text/css">.dijitButtonNode { width:90px; } </style>
         <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
                         data-dojo-config="async: true, isDebug: true">
         </script>
 
-        <!-- These are the form objects used in this page -->
+        <!-- Inventory Manager functionality and Utilities -->
         <script>
 
             require(["dojo/ready", 
@@ -36,9 +47,8 @@
                 {
                     ready(function()
                     {
-                        //The SKU textbox
+                        //Textboxes
                         var txtBox_sku = registry.byId("txtBox_sku");
-
                         var txtBox_desc = registry.byId("txtBox_desc");
 
                         // The insert button:
@@ -55,7 +65,7 @@
                                 {
                                     xhr.post(
                                     {
-                                        url:"/form?Event=Insert&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
+                                        url:"/Inventory?Event=Insert&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
                                         load:function(response)
                                         {
                                             dom.byId("result1").innerHTML = "Response from server: " + response;
@@ -80,8 +90,6 @@
                             label: "Remove",
                             onClick: function()
                             {
-                                // dom.byId("result1").innerHTML += "You entered: " +
-                                // dom.byId("txtBox_sku").value;
                                 if(dom.byId("txtBox_sku").value=="" || dom.byId("txtBox_desc").value =="")
                                 {
                                      dom.byId("result1").innerHTML = "Try entering something into both text boxes";
@@ -90,7 +98,7 @@
                                 {
                                     xhr.get(
                                     {
-                                        url:"/form?Event=Remove&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
+                                        url:"/Inventory?Event=Remove&sku="+dom.byId("txtBox_sku").value+"&desc="+dom.byId("txtBox_desc").value,
                                         load:function(response)
                                         {
                                             dom.byId("result1").innerHTML = "Response from server: " + response;
@@ -108,14 +116,14 @@
                             }
                         }, "removeButton");
 
-                        //This will refresh the inventory list
-                        //It's set to refresh on page load
-                        //and when changes are made to the inventory
+                        //This refreshes the inventory list
+                        //the list is refreshed upon changes
+                        //and on page loads.
                         function refreshList()
                         {
                             xhr.get(
                             {
-                                url:"/form?Event=List",
+                                url:"/Inventory?Event=List",
                                 load:function(response)
                                 {
                                     console.log("inside refreshList load response: " + response);
@@ -130,20 +138,17 @@
                             console.log("List refreshed");
                         }
 
-                        //This call is to refresh the list on page
-                        //load
+                        //refresh list on page load
                         refreshList();
                     });
                     
                 });
-
         </script>
     </head>
+    <!-- Layout -->
     <body class="claro">
         <br>
-        <!--This table is to handle page layout-->
         <table width = "400px" border = "0" ALIGN = center>
-            <!--Text Boxes-->
             <tr>
                 <td style="text-align:left;">
                     <label for="txtBox_sku">SKU#:</label><br>  
@@ -154,7 +159,6 @@
                     <input id="txtBox_desc" data-dojo-type="dijit/form/TextBox" style ="width: 300px;"></input>
                 </td>
             </tr>
-            <!--Buttons-->
             <tr>
                 <td colspan="2" style="text-align:center;">
                     <button id="insertButton" data-dojo-type="dijit/form/button"></button>
