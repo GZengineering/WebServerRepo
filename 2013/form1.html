@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+
+<!--This is the Inventory Form-->
+
+<!--Setup the page.  Load the dojo API-->
 <html lang='en' style= 'background-color:#00FFFF'>
     <head>
         <h1 style="color:black; text-align:center">Inventory Manager</h1>
@@ -11,6 +15,8 @@
         <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
                         data-dojo-config="async: true, isDebug: true">
         </script>
+
+        <!-- These are the form objects used in this page -->
         <script>
 
             require(["dojo/ready", 
@@ -30,32 +36,10 @@
                 {
                     ready(function()
                     {
+                        //The SKU textbox
+                        var txtBox_sku = registry.byId("txtBox_sku");
 
-                        var txtBox_sku = registry.byId(
-                        {
-                            onKeyPress: function(e)
-                            {
-                                if(e.keyCode==13)
-                                {
-                                    insertButton.onClick();
-                                }
-                            },
-
-                        }, "txtBox_sku");
-
-                        var txtBox_desc = registry.byId(
-                        {
-                            onKeyPress: function(e)
-                            {
-                                if(e.keyCode==13)
-                                {
-                                    insertButton.onClick();
-                                }
-                            },
-
-                        }, "txtBox_desc");
-
-
+                        var txtBox_desc = registry.byId("txtBox_desc");
 
                         // The insert button:
                         var insertButton = new Button(
@@ -63,8 +47,6 @@
                             label: "Insert",
                             onClick: function()
                             {
-                                // dom.byId("result1").innerHTML += "You entered: " +
-                                // dom.byId("txtBox_sku").value;
                                 if(dom.byId("txtBox_sku").value=="" || dom.byId("txtBox_desc").value =="")
                                 {
                                      dom.byId("result1").innerHTML = "You must have both a SKU# and Description enetered";
@@ -126,6 +108,9 @@
                             }
                         }, "removeButton");
 
+                        //This will refresh the inventory list
+                        //It's set to refresh on page load
+                        //and when changes are made to the inventory
                         function refreshList()
                         {
                             xhr.get(
@@ -145,18 +130,20 @@
                             console.log("List refreshed");
                         }
 
+                        //This call is to refresh the list on page
+                        //load
                         refreshList();
                     });
                     
                 });
 
-
-
         </script>
     </head>
     <body class="claro">
         <br>
+        <!--This table is to handle page layout-->
         <table width = "400px" border = "0" ALIGN = center>
+            <!--Text Boxes-->
             <tr>
                 <td style="text-align:left;">
                     <label for="txtBox_sku">SKU#:</label><br>  
@@ -167,6 +154,7 @@
                     <input id="txtBox_desc" data-dojo-type="dijit/form/TextBox" style ="width: 300px;"></input>
                 </td>
             </tr>
+            <!--Buttons-->
             <tr>
                 <td colspan="2" style="text-align:center;">
                     <button id="insertButton" data-dojo-type="dijit/form/button"></button>

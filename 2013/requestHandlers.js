@@ -1,9 +1,14 @@
 //requestHandlers.js
 
+//import modules
 var querystring = require("querystring"),
     fs = require("fs"),
     formidable = require("formidable");
 
+/**
+* Start page request.  The page is constructed programmatically.
+* This page won't exist 
+*/
 function start(response) {
   console.log("Request handler 'start' was called.");
 
