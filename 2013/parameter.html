@@ -1,0 +1,149 @@
+<!-- parameter creator -->
+<!DOCTYPE html>
+
+<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+	<head>
+		 <!-- Load Dojo API -->
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+    	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+
+    	<script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+
+        <!-- parameter creator functions -->
+        <script>
+
+        var has_loaded = false;
+
+        	require(["dojo/ready",
+                "dojo/dom",
+                'dijit/registry',
+                'dijit/form/Button',
+                'dojo/_base/xhr', 
+                'dijit/form/TextBox',
+                'dojo/domReady!'], 
+                function(ready, dom, registry, Button, xhr, TextBox)
+                {
+                    ready(function()
+                    {
+                    	 var txtBox = registry.byId("txtBox");
+
+                    	 var button_enter = new Button(
+                    	 {
+                    	 	label: 'Enter',
+                    	 	onClick: function()
+                    	 	{
+                    	 		if(dom.byId("txtBox").value=="")
+                                {
+                                     dom.byId("result1").innerHTML = "Enter something into the TextBox";
+                                }
+                                else
+                                {
+                                	xhr.get(
+                                	{
+                                		url:"/parameter",
+                                		content: 
+                                        {
+                                            action: 'newField',
+                                            value: dom.byId('txtBox').value,
+                                            loaded: has_loaded=true,
+                                        },
+                                		load:function(response)
+                                		{
+                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                		},
+                                		error:function(error)
+                                		{
+                                			console.log("There was an error: \n"+error);
+                                            dom.byId("result1").innerHTML = "Response from server: " + error;
+                                		}
+
+                                	});
+                                	console.log('xhr sent');
+                                }
+                                getFields();
+                                console.log ("Insert button pressed.");
+                    	 	}
+                    	 }, 'button_enter');
+
+                        function getFields()
+                        {
+                            var fields = new Array();
+                            xhr.get(
+                            {
+                                url:'/parameter',
+                                handleAs: 'json',
+                                content:
+                                {
+                                    action: 'getFields',
+                                    loaded: has_loaded = true,
+                                },
+                                load:function(response)
+                                {
+                                    fields = response;
+                                    buildTable(fields);
+                                },
+                                error:function(error)
+                                {
+                                    console.log("There was an error: " + error);
+                                    dom.byId("result1").innerHTML = 'Response: ' + error;
+                                }
+                            });
+                        }
+
+                        function buildTable(fields)
+                        {
+                            console.log(fields.length);
+                            var table_html_string;
+                            if(fields.length > 0)
+                            {
+                                table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
+                                '<tr>' +
+                                '<td style = "background-color:#E0E0E0; text-align:center"> <b>Available Fields</b>' +
+                                '</td>' +
+                                '</tr>';
+
+                                for(i = 0; i < fields.length; i++)
+                                {
+                                    table_html_string += '<tr>' +
+                                    '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
+                                    fields[i].field_name +
+                                    '</td></tr>';
+                                }
+                                table_html_string += '</table>';
+
+                            }
+                            else
+                            {
+                                table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
+                                '<tr>' +
+                                '<td style = "background-color:#E0E0E0; text-align:center"> <b>Available Fields</b>' +
+                                '</td>' +
+                                '</tr>' +
+                                '<tr>' +
+                                '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
+                                '<b> There Are No Fields Available </b>' +
+                                '</td></tr>' +
+                                '</table>';
+
+                            }
+                            dom.byId('fieldList').innerHTML = table_html_string;
+                            console.log ("List refreshed");
+                        }
+
+                        getFields();
+                    });
+                });
+        </script>
+    </head>
+
+    <!-- Layout -->	
+    <body class="claro">
+        <div id = 'fieldList'></div>
+    	<input id ='txtBox' data-dojo-type="dijit/form/TextBox"> </input>
+        <button id="button_enter"></button>
+    	<div id = 'result1'></div>
+    </body>	
+</html>

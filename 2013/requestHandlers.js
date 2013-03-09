@@ -2,7 +2,9 @@
 
 var querystring = require("querystring"),
     fs = require("fs"),
-    formidable = require("formidable");
+    formidable = require("formidable"),
+    requestHelpers = require('./requestHelpers');
+
 
 function Home(response, request, collection, url) {
   console.log("Request handler for 'Home' called.");
@@ -201,6 +203,57 @@ function SpecManager(response, request, collection, url) {
   }
 }
 
+function parameter (response, request, collection, url, content) {
+  //parse url
+  console.log("Request handler 'parameter' was called");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./parameter.html', response);
+    console.log(FieldQuery.loaded);
+  }
+  // if(FieldQuery.value)
+  // {
+  //   console.log(FieldQuery.value);
+  //   response.writeHead(200, {"Content-Type": "text/html"});       
+  //   response.write('Congratulations! You entered: ' + FieldQuery.value);
+  //   response.end();
+  // }
+  if(FieldQuery.action == 'newField')
+  {
+    collection.save({'type': 'field', 'field_name': FieldQuery.value});
+    collection.ensureIndex({'field_name':1},{unique: true, sparse: true, dropDups: true});
+    response.writeHead(200, {"Content-Type": "text/plain"});
+    response.write('New Field — \'' + FieldQuery.value + '\' successfully added');
+    response.end();
+  }
+
+  if(FieldQuery.action == 'getFields')
+  {
+    collection.find({'type':'field'}).toArray(
+      function(error, doc)
+      {
+        if(doc.length)
+        {
+          var string = JSON.stringify(doc);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('empty');
+          response.end();
+        }
+
+      });
+  }
+  
+}
+
 function Inventory(response, request, collection, url) {
 
   console.log("Request handler 'Inventory' was called");
@@ -306,6 +359,7 @@ function Inventory(response, request, collection, url) {
 }
 
 // exports.UnitClassArray = UnitClassArray; 
+exports.parameter = parameter;
 exports.start = start;
 exports.upload = upload;
 exports.show = show;

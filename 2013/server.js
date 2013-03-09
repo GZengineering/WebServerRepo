@@ -29,6 +29,7 @@ handle["/show"] = requestHandlers.show;
 handle["/Inventory"] = requestHandlers.Inventory;
 handle["/Home"] = requestHandlers.Home;
 handle["/SpecManager"] = requestHandlers.SpecManager;
+handle["/parameter"] = requestHandlers.parameter;
 
 db.open(function(error, db)
 	{
