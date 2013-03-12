@@ -15,7 +15,8 @@
         <!-- parameter creator functions -->
         <script>
 
-        var has_loaded = false;
+        var has_loaded = false; // tells the request handler if this page has already been loaded
+        var fields = new Array(); //array to contain content returned
 
         	require(["dojo/ready",
                 "dojo/dom",
@@ -23,58 +24,101 @@
                 'dijit/form/Button',
                 'dojo/_base/xhr', 
                 'dijit/form/TextBox',
+                'dojox/grid/DataGrid',
+                'dojo/data/ItemFileWriteStore',
                 'dojo/domReady!'], 
-                function(ready, dom, registry, Button, xhr, TextBox)
+                function(ready, dom, registry, Button, xhr, TextBox, DataGrid)
                 {
+                    //do this
                     ready(function()
                     {
+                         //input text box
                     	 var txtBox = registry.byId("txtBox");
 
-                    	 var button_enter = new Button(
+                         //Button to Insert new parameter
+                    	 var button_insertNewField = new Button(
                     	 {
                     	 	label: 'Enter',
                     	 	onClick: function()
                     	 	{
+                                //require the textbox to have something
                     	 		if(dom.byId("txtBox").value=="")
                                 {
-                                     dom.byId("result1").innerHTML = "Enter something into the TextBox";
+                                     dom.byId("serverResponse").innerHTML = "Enter something into the TextBox";
                                 }
                                 else
                                 {
+                                    //send request to create a new parameter
                                 	xhr.get(
                                 	{
                                 		url:"/parameter",
                                 		content: 
                                         {
                                             action: 'newField',
-                                            value: dom.byId('txtBox').value,
+                                            field_name: dom.byId('txtBox').value,
                                             loaded: has_loaded=true,
                                         },
                                 		load:function(response)
                                 		{
-                                            dom.byId("result1").innerHTML = "Response from server: " + response;
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
                                 		},
                                 		error:function(error)
                                 		{
                                 			console.log("There was an error: \n"+error);
-                                            dom.byId("result1").innerHTML = "Response from server: " + error;
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
                                 		}
 
                                 	});
-                                	console.log('xhr sent');
                                 }
-                                getFields();
+                                getFields(); //refresh the contents of the table
                                 console.log ("Insert button pressed.");
                     	 	}
-                    	 }, 'button_enter');
+                    	 }, 'button_insertNewField');
 
+                        var button_removeField = new Button(
+                         {
+                            label: 'Remove',
+                            onClick: function()
+                            {
+                                if(dom.byId("txtBox").value=="")
+                                {
+                                     dom.byId("serverResponse").innerHTML = "Enter something into the TextBox";
+                                }
+                                else
+                                {
+                                //send request to remove a parameter
+                                    xhr.get(
+                                    {
+                                        url:"/parameter",
+                                        content: 
+                                        {
+                                            action: 'removeField',
+                                            field_name: dom.byId('txtBox').value,
+                                            loaded: has_loaded=true,
+                                        },
+                                        load:function(response)
+                                        {
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                        },
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                        }
+                                    });
+                                getFields(); //refresh the contents of the table
+                                }
+                            console.log ("remove button pressed.");
+                            }
+                         }, 'button_removeField');
+
+                        //requests an update on the contents of the table 
                         function getFields()
                         {
-                            var fields = new Array();
                             xhr.get(
                             {
                                 url:'/parameter',
-                                handleAs: 'json',
+                                handleAs: 'json', //grabs the xhr string and turns it into an object
                                 content:
                                 {
                                     action: 'getFields',
@@ -83,20 +127,22 @@
                                 load:function(response)
                                 {
                                     fields = response;
-                                    buildTable(fields);
+                                    buildTable(fields); //rebuild the html table
                                 },
                                 error:function(error)
                                 {
                                     console.log("There was an error: " + error);
-                                    dom.byId("result1").innerHTML = 'Response: ' + error;
+                                    dom.byId("serverResponse").innerHTML = 'Response: ' + error;
                                 }
                             });
                         }
 
+                        // Build the table based on the contents returned from the handler
                         function buildTable(fields)
                         {
-                            console.log(fields.length);
+                            fields = fields.sort();
                             var table_html_string;
+                            //If there are some existing fields, build a table of them
                             if(fields.length > 0)
                             {
                                 table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
@@ -108,13 +154,14 @@
                                 for(i = 0; i < fields.length; i++)
                                 {
                                     table_html_string += '<tr>' +
-                                    '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
+                                    '<div id = "field"'+i+'><td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
                                     fields[i].field_name +
-                                    '</td></tr>';
+                                    '</td></div>' + 
+                                    '</tr>';
                                 }
                                 table_html_string += '</table>';
-
                             }
+                            //otherwise build a table and clarify there are no fields available
                             else
                             {
                                 table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
@@ -123,16 +170,15 @@
                                 '</td>' +
                                 '</tr>' +
                                 '<tr>' +
-                                '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
+                                '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;" ALIGN = center>' +
                                 '<b> There Are No Fields Available </b>' +
                                 '</td></tr>' +
                                 '</table>';
-
                             }
                             dom.byId('fieldList').innerHTML = table_html_string;
                             console.log ("List refreshed");
                         }
-
+                        //refreshes the contents on page load
                         getFields();
                     });
                 });
@@ -141,9 +187,10 @@
 
     <!-- Layout -->	
     <body class="claro">
-        <div id = 'fieldList'></div>
+        <div id = 'fieldList'></div> <!-- The table that displays the available fields -->
     	<input id ='txtBox' data-dojo-type="dijit/form/TextBox"> </input>
-        <button id="button_enter"></button>
-    	<div id = 'result1'></div>
+        <button id="button_insertNewField"></button>
+        <button id="button_removeField"></button>
+    	<div id = 'serverResponse'></div> <!-- The server response string string -->
     </body>	
 </html>

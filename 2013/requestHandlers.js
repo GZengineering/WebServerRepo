@@ -1,13 +1,15 @@
 //requestHandlers.js
 
+//get modules
 var querystring = require("querystring"),
     fs = require("fs"),
     formidable = require("formidable"),
     requestHelpers = require('./requestHelpers');
 
 
+//
 function Home(response, request, collection, url) {
-  console.log("Request handler for 'Home' called.");
+  console.log("\nRequest handler for 'Home' called.");
   var FieldQuery = url.parse(request.url,true).query;
 
   if(!FieldQuery.hasOwnProperty('Event'))
@@ -29,11 +31,21 @@ function Home(response, request, collection, url) {
       }
     });
   }
-
 }    
 
+function favicon(response, request, collection, url)
+{
+  //Read and display the favicon
+  fs.readFile('./favicon.ico', function (err, ico) 
+  {
+      response.writeHead(200, {"Content-Type": "text/html"});       
+      response.write(ico);
+      response.end();
+  });
+}
+
 function start(response) {
-  console.log("Request handler 'start' was called.");
+  console.log("\nRequest handler 'start' was called.");
 
   var body = "<html lang = 'en' style= 'background-color:#00FFFF; padding: 20px 50px 50px ALIGN:center' >" +
     '<head>'+
@@ -66,7 +78,7 @@ function start(response) {
 }
 
 function upload(response, request) {
-  console.log("Request handler 'upload' was called.");
+  console.log("\nRequest handler 'upload' was called.");
 
   var form = new formidable.IncomingForm();
   console.log("about to parse");
@@ -89,7 +101,7 @@ function upload(response, request) {
 }
 
 function show(response) {
-  console.log("Request handler 'show' was called.");
+  console.log("\nRequest handler 'show' was called.");
   fs.readFile("/tmp/test.png", "binary", function(error, file) {
     if(error) {
       response.writeHead(500, {"Content-Type": "text/plain"});
@@ -106,7 +118,7 @@ function show(response) {
 // var UnitClassArray;
 function SpecManager(response, request, collection, url) {
 
-  console.log("Request handler 'SpecManager' was called");
+  console.log("\nRequest handler 'SpecManager' was called");
   var FieldQuery = url.parse(request.url,true).query;
 
   if(!FieldQuery.hasOwnProperty('Event'))
@@ -203,60 +215,96 @@ function SpecManager(response, request, collection, url) {
   }
 }
 
+/*
+* This is the handler for the parameter page.  This page is used to
+* manage the lowest level of a products specs.  The user can add and
+* remove fields. There is also a live list view of the available fields.
+*/
 function parameter (response, request, collection, url, content) {
+
   //parse url
-  console.log("Request handler 'parameter' was called");
+  console.log("\nRequest handler 'parameter'");
   var FieldQuery = url.parse(request.url,true).query;
 
   // Return the main page if the page hasn't loaded yet.
   if(!FieldQuery.loaded)
   {
     requestHelpers.return_html('./parameter.html', response);
-    console.log(FieldQuery.loaded);
   }
-  // if(FieldQuery.value)
-  // {
-  //   console.log(FieldQuery.value);
-  //   response.writeHead(200, {"Content-Type": "text/html"});       
-  //   response.write('Congratulations! You entered: ' + FieldQuery.value);
-  //   response.end();
-  // }
+ 
+  //If there was an insertion requested, add the entry to the db, initialize its value to null.
   if(FieldQuery.action == 'newField')
   {
-    collection.save({'type': 'field', 'field_name': FieldQuery.value});
+    //Save the new field to the db only if it's a unique name, don't allow duplicates
+    collection.save({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value':'null'});
     collection.ensureIndex({'field_name':1},{unique: true, sparse: true, dropDups: true});
+    //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Field — \'' + FieldQuery.value + '\' successfully added');
+    response.write('New Field — \'' + FieldQuery.field_name + '\' successfully added');
     response.end();
   }
 
+  //If there is a removal requested, remove the field from the db if it exists
+  if(FieldQuery.action == 'removeField')
+  {
+    collection.findAndRemove({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value': 'null'},
+    function(error, result)
+    {
+      //If it's found and removed successfully, report it.
+      if(result!=null)
+      {
+        console.log('Field Removal: successful');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write(FieldQuery.field_name + ' successfully removed');
+        response.end();
+      }
+      //otherwise, report that the field wasn't found
+      else
+      {
+        console.log('Field Removal: nothing to remove');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Failure to Remove \' '+ FieldQuery.field_name + ' \' : Field not found.');
+        response.end();
+      }
+    });
+  }
+
+  //This is called on every change to the db and on page load
+  //This is the full list of available fields
   if(FieldQuery.action == 'getFields')
   {
+    //Get the list of fields from the db
     collection.find({'type':'field'}).toArray(
-      function(error, doc)
+      function(error, result)
       {
-        if(doc.length)
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
         {
-          var string = JSON.stringify(doc);
+          var string = JSON.stringify(result);
           response.writeHead(200, {"Content-Type": "text/plain"});
           response.write(string);
           response.end();
         }
+        //Otherwise, let the page know, it's empty
         else
         {
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('empty');
+          response.write('--empty--');
           response.end();
         }
-
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getFields':" + error + '\n');
+        }
       });
   }
-  
 }
 
 function Inventory(response, request, collection, url) {
 
-  console.log("Request handler 'Inventory' was called");
+  console.log("\nRequest handler 'Inventory' was called");
   var FieldQuery = url.parse(request.url,true).query;
 
   if(!FieldQuery.hasOwnProperty('Event'))
@@ -359,6 +407,7 @@ function Inventory(response, request, collection, url) {
 }
 
 // exports.UnitClassArray = UnitClassArray; 
+exports.favicon = favicon;
 exports.parameter = parameter;
 exports.start = start;
 exports.upload = upload;

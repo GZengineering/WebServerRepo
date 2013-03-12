@@ -1,5 +1,6 @@
 //server.js
 
+//get modules, setup server and db variables
 var http = require("http"),
 	url = require("url"),
 	port = 80;
@@ -30,7 +31,9 @@ handle["/Inventory"] = requestHandlers.Inventory;
 handle["/Home"] = requestHandlers.Home;
 handle["/SpecManager"] = requestHandlers.SpecManager;
 handle["/parameter"] = requestHandlers.parameter;
+handle["/favicon.ico"] = requestHandlers.favicon;
 
+//open the connection to the collection
 db.open(function(error, db)
 	{
 		OpenDB = db;
@@ -44,6 +47,7 @@ db.open(function(error, db)
 			})
 	});	
 
+//start the server, and when we get requests, handle the path
 function start(route, handle) {
   function onRequest(request, response) {
     var pathname = url.parse(request.url).pathname;
@@ -54,8 +58,8 @@ function start(route, handle) {
   http.createServer(onRequest).listen(port);
 }
 
+//route the request to the appropriate files
 function route(handle, pathname, response, request, collection, url) {
-  console.log("About to route a request for " + pathname);
   if (typeof handle[pathname] === 'function') {
     handle[pathname](response, request, collection, url);
   } else {
