@@ -302,6 +302,60 @@ function parameter (response, request, collection, url, content) {
   }
 }
 
+function group(response, request, collection, url)
+{
+  console.log("\nRequest handler 'group'");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./group.html', response);
+  }
+  //This is called on every change to the db and on page load
+  //This is the full list of available fields
+  if(FieldQuery.action == 'getFields')
+  {
+    //Get the list of fields from the db
+    collection.find({'type':'field'}).toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var string = JSON.stringify(result);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getFields':" + error + '\n');
+        }
+      });
+  }
+}
+
+function groupHelper(response, request, collection, url)
+{
+  //Read and display the favicon
+  fs.readFile('./groupHelper.js', function (err, file) 
+  {
+      response.writeHead(200, {"Content-Type": "text/html"});       
+      response.write(file);
+      response.end();
+  });
+}
+
 function Inventory(response, request, collection, url) {
 
   console.log("\nRequest handler 'Inventory' was called");
@@ -407,7 +461,9 @@ function Inventory(response, request, collection, url) {
 }
 
 // exports.UnitClassArray = UnitClassArray; 
+exports.groupHelper = groupHelper;
 exports.favicon = favicon;
+exports.group = group;
 exports.parameter = parameter;
 exports.start = start;
 exports.upload = upload;

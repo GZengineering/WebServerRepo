@@ -14,7 +14,6 @@ function return_html(page, response) {
       {
         response.writeHead(200, {"Content-Type": "text/html"});       
         response.write(html);
-        console.log('loading parameter Form');
         response.end();
       }
     });

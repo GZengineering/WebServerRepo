@@ -31,7 +31,9 @@ handle["/Inventory"] = requestHandlers.Inventory;
 handle["/Home"] = requestHandlers.Home;
 handle["/SpecManager"] = requestHandlers.SpecManager;
 handle["/parameter"] = requestHandlers.parameter;
+handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
+handle["/groupHelper.js"] = requestHandlers.groupHelper;
 
 //open the connection to the collection
 db.open(function(error, db)
