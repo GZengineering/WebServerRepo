@@ -13,17 +13,27 @@
             height: 20em;
             width: 30%;
         }
+        #selectionGrid 
+        {
+            height: 20em;
+            width: 30%;
+        }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
     </script>
 
-    <script>require(['dojo/_base/lang', 
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
         'dojox/grid/DataGrid' , 
         'dojo/data/ItemFileWriteStore' ,
+        "dojo/_base/array",
+        'dijit/registry',
         'dojo/_base/xhr', 
+        'dojox/grid/_CheckBoxSelector',
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, xhr, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, dom)
         {
             var fields = new Array();
             var has_loaded = false;
@@ -54,10 +64,110 @@
                     });
                 }
 
-            getFields();    
+
+                
 
             //Build the Dojo Grid with the 
             function buildParameterGrid(fields)
+            {
+                if(fields.length < 1)
+                    dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
+                else
+                {
+                    //Grid Data
+                    var data = 
+                    {
+                      identifier: "id",
+                      items: []
+                    };
+
+                    var data_list = []; // data list to display data
+
+                    //set data list values from fields parameter
+                    for(i=0;i<fields.length;i++)
+                    {
+                      data_list[i] = {col1: 'id', col2: fields[i].field_name}
+                    }
+
+                    var rows = data_list.length; //# of rows = # of data
+                    for(var i = 0; i < rows; i++)
+                    {
+                      data.items.push(lang.mixin({ id: i }, data_list[i]));
+                    }
+                    var parameterStore = new ItemFileWriteStore({data: data}); //set up the store
+
+                    /*set up layout*/
+                    var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                      {'name': '#', 'field': 'id', 'width': '25px'},
+                      {'name': 'Field', 'field': 'col2',},
+                    ]];
+
+                    /*create a new grid*/
+                    var grid = new DataGrid({
+                        id: 'grid',
+                        store: parameterStore,
+                        structure: layout,
+                        autoWidth: true,
+                        autoHeigth: true});
+
+
+                    /*append the new grid to the div*/
+                    grid.placeAt("parameterGridDiv");
+
+                    /*Call startup() to render the grid*/
+                    grid.startup();
+
+                    //This function reports what fields are selected for the current working group
+                    function reportSelection(node)
+                        {
+                            var items = this.selection.getSelected();
+                            var tmp = baseArray.map(items, function(item){
+                                return item.col2;
+                            }, this);
+                            if(tmp.length > 0)
+                            {
+                                var msg = "You have selected " + ((tmp.length > 1) ? " ": " ");
+                            }
+                            else
+                                var msg = "Nothing Selected";
+                            node.innerHTML = msg + tmp.join(", ");
+                        }
+
+                    //update the selectionGrid if the selection changes    
+                    function updateSelectionGrid(node)
+                    {
+                        //get the selected items from the parameter grid
+                        var items = this.selection.getSelected();
+                        //get the name of the field
+                        var selectionArray = baseArray.map(items, function(item)
+                        {
+                            return item.col2; 
+                        }, this);
+                        //title appropriately based on amount of selected fields
+                        if(selectionArray.length > 0)
+                        {
+                            dom.byId('selectionGridLabel').innerHTML = "<b>Selected Fields:<b>";
+                        }
+                        else
+                        {
+                            dom.byId('selectionGridLabel').innerHTML = "<b>No fields selected<b>";
+                        }
+                        //build the new selection grid
+                        buildSelectionGrid(selectionArray);
+                     }
+
+                    // Event for when the selections are changed, call reportselection on the dom id given
+                    // hitch() returns a function that will execute a given function in a given context. This function allows you 
+                    // to control how a function executes, particularly in asynchronous operations
+                    grid.on("SelectionChanged",
+                        lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+                    grid.on("SelectionChanged",
+                        lang.hitch(grid, updateSelectionGrid, dom.byId("selectionGridLabel")), true);
+                }    
+            }
+
+            //Builds the grid of selected parameters for the working group
+            function buildSelectionGrid(selectedArray)
             {
                 var data = 
                 {
@@ -65,59 +175,64 @@
                   items: []
                 };
                 var data_list = [];
-                for(i=0;i<fields.length;i++)
+                for(i=0;i<selectedArray.length;i++)
                 {
-                  data_list[i] = {col1: 'id', col2: fields[i].field_name}
-                  console.log('\nfield_name: '+fields[i].field_name +'\nDatalist: ' + data_list[i].col2);
+                  data_list[i] = {col1: 'id', col2: selectedArray[i]}
                 }
-                var rows = fields.length;
+                var rows = data_list.length;
                 for(var i = 0; i < rows; i++)
                 {
                   data.items.push(lang.mixin({ id: i }, data_list[i]));
                 }
-                var store = new ItemFileWriteStore({data: data});
+                var selectionStore = new ItemFileWriteStore({data: data});
 
                 /*set up layout*/
                 var layout = [[
                   {'name': '#', 'field': 'id', 'width': '25px'},
                   {'name': 'Field', 'field': 'col2',},
-                  // {'name': 'Add', 'field': 'col3', 'width': '15px', 'editable': 'true'}
-                  {'name': 'Add', 'type': 'dojox.grid.cells.Bool', 'editable': 'true'}
                 ]];
 
+                //remove the old selectionGrid from the dom
+                dijit.registry.remove("selectionGrid");
+
                 /*create a new grid*/
-                var grid = new DataGrid({
-                    id: 'grid',
-                    store: store,
+                var selectionGrid = new DataGrid({
+                    store: selectionStore,
                     structure: layout,
                     autoWidth: true,
-                    autoHeigth: true,
-                    rowSelector: '20px'});
-
-                /*append the new grid to the div*/
-                grid.placeAt("parameterGridDiv");
+                    autoHeigth: true}, "selectionGrid");
 
                 /*Call startup() to render the grid*/
-                grid.startup();
-
-                var item = grid.getItem(2);
-                var item2;
-                if(item)
-                    item2 = item.col2;
-
-                console.log('\n- - - - - - - item: ' + item + 'item2: ' + item2 + '- - - - - - -');
+                selectionGrid.startup();
             }
-
-
-            // if(dom.byId("parameterGridDiv").Add.value == true)
-            //     console.log("\n----Holy Shmoly----\n");
-
-            
+            getFields();
         });
 </script>
 </head>
+<!-- Layout -->
 <body class="claro">
-    <div id="parameterGridDiv" style="float: left"></div>
-    <div id="serverResponse"></div>
+    <table width = '400px'>
+        <tr> <!-- Labels -->
+            <td style = "text-align: left">
+                <p><b>Fields to Select From:</b></p>
+            </td>
+            <td style = "text-align: left">
+                <p><div id = "selectionGridLabel"></div></p>
+            </td>
+        </tr>
+        <tr> <!-- Grids -->
+            <td>
+                <div id="parameterGridDiv"></div>
+            </td>
+            <td>
+                <div id= "selectionGrid"></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan = "2" style = "padding: 10px">
+                <div id="serverResponse">Nothing Selected</div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
