@@ -343,17 +343,71 @@ function group(response, request, collection, url)
         }
       });
   }
-}
 
-function groupHelper(response, request, collection, url)
-{
-  //Read and display the favicon
-  fs.readFile('./groupHelper.js', function (err, file) 
+  if(FieldQuery.action == 'getGroups')
   {
-      response.writeHead(200, {"Content-Type": "text/html"});       
-      response.write(file);
-      response.end();
-  });
+    //Get the list of fields from the db
+    collection.find({'type':'group'}).toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var string = JSON.stringify(result);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getGroups':" + error + '\n');
+        }
+      });
+  }
+
+
+  if(FieldQuery.action == 'newGroup')
+  {
+    var group_fields = FieldQuery.group_fields;
+
+    for(i=0;i<group_fields.length;i++)
+      console.log('passed field: ' + group_fields[i]);
+
+    collection.find({'type': 'group', 'group_name': FieldQuery.group_name}).toArray( 
+      function(error, result)
+      {
+        if(error)
+        {
+          console.log('Error: ' + error);
+        }
+        else
+        {
+          if(result.length == 1)
+          {
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('A Group with name — \'' + FieldQuery.group_name + '\' already exists');
+            response.end();
+          }
+          else if(result.length == 0)
+          {
+            collection.save({'type': 'group', 'group_name': FieldQuery.group_name, 'fields' : group_fields});
+            collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('New Group — \'' + FieldQuery.group_name + '\' successfully added');
+            response.end();
+          }
+        }
+      });
+  }
 }
 
 function Inventory(response, request, collection, url) {
@@ -461,7 +515,6 @@ function Inventory(response, request, collection, url) {
 }
 
 // exports.UnitClassArray = UnitClassArray; 
-exports.groupHelper = groupHelper;
 exports.favicon = favicon;
 exports.group = group;
 exports.parameter = parameter;

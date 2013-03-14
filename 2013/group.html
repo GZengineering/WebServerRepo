@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
 <head>
+    <title>Specs: Group Builder</title>
+
 
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
@@ -10,13 +12,18 @@
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
         #parameterGridDiv 
         {
-            height: 20em;
-            width: 30%;
+            height: 40em;
+            width: 100%;
         }
         #selectionGrid 
         {
-            height: 20em;
-            width: 30%;
+            height: 40em;
+            width: 100%;
+        }
+        #groupGrid 
+        {
+            height: 40em;
+            width: 100%;
         }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
@@ -31,9 +38,10 @@
         'dijit/registry',
         'dojo/_base/xhr', 
         'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button", 
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
         {
             var fields = new Array();
             var has_loaded = false;
@@ -41,31 +49,103 @@
 
             //Get the parameters from the db
             function getFields()
+            {
+                xhr.get(
                 {
-                    xhr.get(
+                    url:'/group',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
                     {
-                        url:'/group',
-                        handleAs: 'json', //grabs the xhr string and turns it into an object
-                        content:
-                        {
-                            action: 'getFields',
-                            loaded: has_loaded = true,
-                        },
-                        load:function(response)
-                        {
-                            fields = response;
-                            buildParameterGrid(fields); //rebuild the dojo Grid
-                        },
-                        error:function(error)
-                        {
-                            console.log("There was an error: " + error);
-                            dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                        }
-                    });
+                        action: 'getFields',
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        fields = response;
+                        buildParameterGrid(fields); //rebuild the dojo Grid
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }
+
+            
+
+
+            var GroupGrid = new Object();
+            //Build the Dojo Grid for groups
+            GroupGrid.buildGroupGrid = function(groups)
+            {
+                //Grid Data
+                var data = 
+                {
+                  identifier: "id",
+                  items: []
+                };
+
+                var data_list = []; // data list to display data
+
+                //set data list values from fields parameter
+                for(i=0;i<groups.length;i++)
+                {
+                  data_list[i] = {col1: 'id', col2: groups[i].group_name}
                 }
 
+                var rows = data_list.length; //# of rows = # of data
+                for(var i = 0; i < rows; i++)
+                {
+                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                }
+                var groupStore = new ItemFileWriteStore({data: data}); //set up the store
 
-                
+                /*set up layout*/
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '10%'},
+                  {'name': 'Group', 'field': 'col2', 'width': '80%'},
+                ]];
+
+                //Remove the group grid if it already exists
+                dijit.registry.remove("groupGrid");
+
+                /*create a new grid*/
+                var groupGrid = new DataGrid({
+                    store: groupStore,
+                    structure: layout,
+                    autoHeigth: true}, "groupGrid");
+
+
+                /*Call startup() to render the grid*/
+                groupGrid.startup();
+            }
+
+            GroupGrid.getGroups = function()
+            {
+                xhr.get(
+                {
+                    url:'/group',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getGroups',
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        this.groups = response;
+                        GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
+                        return this.groups;
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }    
+
 
             //Build the Dojo Grid with the 
             function buildParameterGrid(fields)
@@ -98,8 +178,8 @@
 
                     /*set up layout*/
                     var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                      {'name': '#', 'field': 'id', 'width': '25px'},
-                      {'name': 'Field', 'field': 'col2',},
+                      {'name': '#', 'field': 'id', 'width': '10%'},
+                      {'name': 'Field', 'field': 'col2', 'width': '80%'},
                     ]];
 
                     /*create a new grid*/
@@ -107,7 +187,6 @@
                         id: 'grid',
                         store: parameterStore,
                         structure: layout,
-                        autoWidth: true,
                         autoHeigth: true});
 
 
@@ -153,7 +232,7 @@
                             dom.byId('selectionGridLabel').innerHTML = "<b>No fields selected<b>";
                         }
                         //build the new selection grid
-                        buildSelectionGrid(selectionArray);
+                        SelectionGrid.buildSelectionGrid(selectionArray);
                      }
 
                     // Event for when the selections are changed, call reportselection on the dom id given
@@ -166,9 +245,15 @@
                 }    
             }
 
+            //Selection Grid contains a function to build a fresh version of itself
+            //and a getter for the the selected items from the parameter grid
+            var SelectionGrid = new Object();
+            
             //Builds the grid of selected parameters for the working group
-            function buildSelectionGrid(selectedArray)
+            SelectionGrid.buildSelectionGrid = function(selectedArray)
             {
+                this.selectedArray = selectedArray;
+
                 var data = 
                 {
                   identifier: "id",
@@ -188,8 +273,8 @@
 
                 /*set up layout*/
                 var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '25px'},
-                  {'name': 'Field', 'field': 'col2',},
+                  {'name': '#', 'field': 'id', 'width': '15%'},
+                  {'name': 'Field', 'field': 'col2', 'width': '85%'},
                 ]];
 
                 //remove the old selectionGrid from the dom
@@ -199,37 +284,110 @@
                 var selectionGrid = new DataGrid({
                     store: selectionStore,
                     structure: layout,
-                    autoWidth: true,
+                    // autoWidth: true,
                     autoHeigth: true}, "selectionGrid");
 
                 /*Call startup() to render the grid*/
                 selectionGrid.startup();
             }
-            getFields();
+
+            SelectionGrid.getSelected = function()
+            {
+                return this.selectedArray;
+            }
+
+            
+
+            //Group Name Textbox
+            var txtBox_groupName = registry.byId("txtBox_groupName");
+
+            //Confirm selection button for new group
+            //require a name for the group
+            var button_confirmSelection = new Button(
+            {
+                display: 'none',
+                label: 'Confirm',
+                onClick: function()
+                {
+                    var selected_fields = SelectionGrid.getSelected();
+                    if(selected_fields.length < 1)
+                    {
+                        dom.byId('serverResponse').innerHTML = 'You are required to select at least one parameter to form a group';
+                    }
+                    else if(dom.byId('txtBox_groupName').value == '')
+                        dom.byId('serverResponse').innerHTML = 'You are required to provide a name for the new group';
+                    else
+                    {
+                        xhr.get(
+                        {
+                            url:"/group",
+                            content: 
+                            {
+                                action: 'newGroup',
+                                group_name: dom.byId('txtBox_groupName').value,
+                                group_fields: selected_fields,
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                GroupGrid.getGroups();
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+                }
+            }, "button_confirmSelection");  
+
+        /* On load events */
+        //Build an empty grid of selected items on load
+        SelectionGrid.buildSelectionGrid(new Array());
+        //Get the parameters and groups from the db
+        getFields();
+        // GroupGrid.buildGroupGrid(new Array());
+        GroupGrid.getGroups();
         });
 </script>
 </head>
+
 <!-- Layout -->
 <body class="claro">
-    <table width = '400px'>
+    <table width = '80%' border = "1">
+        <col width = "25%">
+        <col width = "25%">
+        <col width = "25%">
+        <col width = "25%">
         <tr> <!-- Labels -->
-            <td style = "text-align: left">
+            <td style = "text-align: center; padding: 5px">
                 <p><b>Fields to Select From:</b></p>
             </td>
-            <td style = "text-align: left">
-                <p><div id = "selectionGridLabel"></div></p>
+            <td style = "text-align: center; padding: 5px">
+                <p><div id = "selectionGridLabel"><b>No Fields Selected</b></div></p>
             </td>
+            <td style = "text-align: center; padding: 5px"><b>Available Groups:</b></td>
         </tr>
         <tr> <!-- Grids -->
-            <td>
+            <td valign = "top" style = "padding: 5px">
                 <div id="parameterGridDiv"></div>
             </td>
-            <td>
+            <td valign ="top" style = "padding: 5px">
                 <div id= "selectionGrid"></div>
+                <br>
+                    <label for="txtBox_groupName" style = "padding: 5px">New Group Name:</label><br>  
+                    <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
+                    <div id= "button_confirmSelection" data-dojo-type="dijit/form/button"></div>
+            </td>
+            
+            <td valign = "top" style = "padding: 5px">
+                <div id="groupGrid"></div>
             </td>
         </tr>
         <tr>
-            <td colspan = "2" style = "padding: 10px">
+            <td colspan = "100%" style = "padding: 10px">
                 <div id="serverResponse">Nothing Selected</div>
             </td>
         </tr>
