@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<head>
+    <title>Specs: Product Builder</title>
+
+
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        
+    <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/claro/claro.css"> -->
+    <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #parameterGridDiv 
+        {
+            height: 40em;
+            width: 100%;
+        }
+        #selectionGrid 
+        {
+            height: 40em;
+            width: 100%;
+        }
+        #groupGrid 
+        {
+            height: 40em;
+            width: 100%;
+        }
+    </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
+    </script>
+
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
+        'dojox/grid/DataGrid' , 
+        'dojo/data/ItemFileWriteStore' ,
+        "dojo/_base/array",
+        'dijit/registry',
+        'dojo/_base/xhr', 
+        'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button", 
+        'dojo/dom' , 
+        'dojo/domReady!'],
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
+        {
+
+            var has_loaded = false;
+
+            var GroupGrid = new Object();
+            //Build the Dojo Grid for groups
+            GroupGrid.buildGroupGrid = function(groups)
+            {
+                GroupGrid.selectedGroups;
+                GroupGrid.dataOfSelection = new Array();
+                GroupGrid.SelectionArray = new Array();
+
+                //Grid Data
+                var data = 
+                {
+                  identifier: "id",
+                  items: []
+                };
+
+                var data_list = []; // data list to display data
+
+                //set data list values from fields parameter
+                for(i=0;i<groups.length;i++)
+                {
+                  data_list[i] = {col1: 'id', col2: groups[i].group_name}
+                }
+
+                var rows = data_list.length; //# of rows = # of data
+                for(var i = 0; i < rows; i++)
+                {
+                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                }
+                var groupStore = new ItemFileWriteStore({data: data}); //set up the store
+
+                /*set up layout*/
+                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                  {'name': '#', 'field': 'id', 'width': '15%'},
+                  {'name': 'Group', 'field': 'col2', 'width': '85%'},
+                ]];
+
+                //Remove the group grid if it already exists
+                dijit.registry.remove("groupGrid");
+
+                /*create a new grid*/
+                var groupGrid = new DataGrid({
+                    store: groupStore,
+                    structure: layout,
+                    autoHeigth: true}, "groupGrid");
+
+
+                /*Call startup() to render the grid*/
+                groupGrid.startup();
+
+                //store the currently selected group.
+                function noteSelected(node)
+                {
+                    var items = this.selection.getSelected();
+                    GroupGrid.selectedGroups = baseArray.map(items, function(item)
+                    {
+                        return item.col2;
+                    }, this);
+                    console.log('quantity selected: ' + GroupGrid.selectedGroups);
+                    if(GroupGrid.selectedGroups.length > 0)
+                    {
+                        var msg = "You have selected " + ((GroupGrid.selectedGroups.length > 1) ? " ": " ");
+                    }
+                    else
+                        var msg = "Nothing Selected";
+                    node.innerHTML = msg + GroupGrid.selectedGroups.join(", ");
+                }
+
+                //When the group selection changes, update the SelectedGrid
+                //and store which group is currently selected.
+                groupGrid.on("SelectionChanged",
+                        lang.hitch(groupGrid, noteSelected, dom.byId("serverResponse")), true);
+                groupGrid.on("SelectionChanged",
+                        lang.hitch(groupGrid, GroupGrid.getFieldsOfSelectedGroup, true));
+            }
+
+            //Getter for the currently selected group
+            GroupGrid.getSelected = function()
+            {
+                return this.selectedGroups;
+            }
+
+            GroupGrid.getSelectedData = function()
+            {
+                return this.dataOfSelection;
+            }
+
+            //get the fields of the selected group from the database.
+            GroupGrid.getFieldsOfSelectedGroup = function()
+            {
+                //store the selected group
+                var selectedGroups = GroupGrid.selectedGroups;
+
+                //Clear the selection array before retrieving the new set of data.
+                GroupGrid.SelectionArray = new Array();
+
+                for(i=0;i<selectedGroups.length;i++)
+                {
+                    xhr.get(
+                    {
+                        url:'/productBuilder',
+                        handleAs: 'json', //grabs the xhr string and turns it into an object
+                        content:
+                        {
+                            action: 'getFieldsOfSelectedGroup',
+                            group_name: selectedGroups[i],
+                            loaded: has_loaded = true,
+                        },
+                        load:function(response)
+                        {
+                            //pass the retrieved group_name and fields to the array builder.
+                            var group_name = response[0].group_name;
+                            var fields = response[0].fields;
+                            GroupGrid.buildSelectionArray(group_name, fields);
+                        },
+                        error:function(error)
+                        {
+                            console.log("There was an error: " + error);
+                            dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                        }
+                    });
+                }
+            }
+
+            //This builds the array for the selection grid.
+            GroupGrid.buildSelectionArray = function(group_name, fields)
+            {
+                //create a set that pairs each parameter with it's parent group.
+                //and add each set to the array
+                for(i=0;i<fields.length;i++)
+                {
+                    var set = new Object();
+                    set.group_name = group_name;
+                    set.parameter = fields[i];
+                    GroupGrid.SelectionArray.push(set);
+                }
+                //Build the SelectionGrid
+                SelectionGrid.buildSelectionGrid(GroupGrid.SelectionArray);
+            }
+
+            //Retrieve the groups from the db
+            GroupGrid.getGroups = function()
+            {
+                xhr.get(
+                {
+                    url:'/group',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getGroups',
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        this.groups = response;
+                        GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
+                        return this.groups;
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }
+
+            /********************************     Selection Grid      *********************************/
+
+            //Selection Grid contains a function to build a fresh version of itself
+            //and a getter for the the selected items from the parameter grid
+            var SelectionGrid = new Object();
+            
+            //Builds the grid of selected parameters for the working group
+            // SelectionGrid.buildSelectionGrid = function(selectedArray)
+            SelectionGrid.buildSelectionGrid = function(retrieved_data)
+            {
+                if(retrieved_data)
+                {
+                    for(i=0;i<retrieved_data.length;i++)
+                    {
+                        console.log(retrieved_data[i].parameter);
+                    }
+                }
+
+                var data = 
+                {
+                  identifier: "id",
+                  items: []
+                };
+                var data_list = [];
+                for(i=0;i<retrieved_data.length;i++)
+                {
+                  data_list[i] = {col1: 'id', col2: retrieved_data[i].group_name, col3: retrieved_data[i].parameter}
+                }
+                var rows = data_list.length;
+                for(var i = 0; i < rows; i++)
+                {
+                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                }
+                var selectionStore = new ItemFileWriteStore({data: data});
+
+                /*set up layout*/
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '10%'},
+                  {'name': 'Group', 'field': 'col2', 'width': '45%'},
+                  {'name': 'Field', 'field': 'col3', 'width': '45%'}
+                ]];
+
+                //remove the old selectionGrid from the dom
+                dijit.registry.remove("selectionGrid");
+
+                /*create a new grid*/
+                var selectionGrid = new DataGrid({
+                    store: selectionStore,
+                    structure: layout,
+                    autoHeigth: true}, "selectionGrid");
+
+                /*Call startup() to render the grid*/
+                selectionGrid.startup();
+            }
+
+            //On Load Functions    
+            GroupGrid.getGroups();
+            SelectionGrid.buildSelectionGrid(new Array());
+        });
+
+    </script>
+</head>
+
+<!-- Layout -->
+<body class="claro">
+    <table width = '80%' border = "1">
+        <col width = '50%'>
+        <col width = '50%'>
+        <tr>
+        <td style = "text-align: center; padding: 5px">
+            <b>Available Groups:</b>
+        </td>
+        <td style = "text-align: center; padding: 5px">
+            <p><b>Fields of Selected Group:</b></p>
+        </td>
+    </tr>
+    <tr>
+        <td valign = "top" style = "padding: 5px; text-align:right">
+            <div id="groupGrid"></div>
+        </td>
+        <td valign ="top" style = "padding: 5px">
+            <div id= "selectionGrid"></div>
+        </td>
+    </tr>
+        <tr>
+            <td colspan = "100%" style = "padding: 10px">
+                <div id="serverResponse">Nothing Selected</div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
+
+
+
+

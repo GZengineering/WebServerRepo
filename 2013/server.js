@@ -33,7 +33,7 @@ handle["/SpecManager"] = requestHandlers.SpecManager;
 handle["/parameter"] = requestHandlers.parameter;
 handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
-handle["/groupHelper.js"] = requestHandlers.groupHelper;
+handle["/productBuilder"] = requestHandlers.productBuilder;
 
 //open the connection to the collection
 db.open(function(error, db)

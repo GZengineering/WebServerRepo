@@ -344,6 +344,34 @@ function group(response, request, collection, url)
       });
   }
 
+  if(FieldQuery.action == 'getFieldsOfSelectedGroup')
+  {
+    collection.find({'group_name': FieldQuery.group_name}).toArray( 
+      function(error, result)
+      {
+        if(result!=null)
+        {
+          console.log(result[0].fields[0]);
+          var fieldsAsString = JSON.stringify(result[0].fields);
+          console.log(fieldsAsString);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(fieldsAsString);
+          response.end();
+        }
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getGroups':" + error + '\n');
+        }
+      });
+  }
+
   if(FieldQuery.action == 'getGroups')
   {
     //Get the list of fields from the db
@@ -374,13 +402,9 @@ function group(response, request, collection, url)
       });
   }
 
-
   if(FieldQuery.action == 'newGroup')
   {
     var group_fields = FieldQuery.group_fields;
-
-    for(i=0;i<group_fields.length;i++)
-      console.log('passed field: ' + group_fields[i]);
 
     collection.find({'type': 'group', 'group_name': FieldQuery.group_name}).toArray( 
       function(error, result)
@@ -408,6 +432,69 @@ function group(response, request, collection, url)
         }
       });
   }
+
+  if(FieldQuery.action == 'removeGroup')
+  {
+    collection.findAndRemove({'group_name' : FieldQuery.group_name},
+      function(error, result)
+    {
+      if(result!=null)
+      {
+        console.log('Removal of Group: ' + FieldQuery.group_name + 'Succeeded');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Group \'' + FieldQuery.group_name + '\' successfully removed');
+        response.end();
+      }
+      else
+      {
+        console.log('Removal of Group: ' + FieldQuery.group_name + 'Failed');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Failure to Remove Group\' '+ FieldQuery.group_name + ' \' : Group not found.');
+        response.end();
+      }
+    });
+  }
+}
+
+//Handler for product builder page
+function productBuilder(response, request, collection, url)
+{
+  console.log("\nRequest handler 'Product Builder'");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./productBuilder.html', response);
+  }
+
+  if(FieldQuery.action == 'getFieldsOfSelectedGroup')
+  {
+    collection.find({'group_name': FieldQuery.group_name}).toArray( 
+      function(error, result)
+      {
+        if(result!=null)
+        {
+          var objString = JSON.stringify(result);
+          console.log(objString);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(objString);
+          response.end();
+        }
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getGroups':" + error + '\n');
+        }
+      });
+  }
+
 }
 
 function Inventory(response, request, collection, url) {
@@ -516,6 +603,7 @@ function Inventory(response, request, collection, url) {
 
 // exports.UnitClassArray = UnitClassArray; 
 exports.favicon = favicon;
+exports.productBuilder = productBuilder;
 exports.group = group;
 exports.parameter = parameter;
 exports.start = start;
