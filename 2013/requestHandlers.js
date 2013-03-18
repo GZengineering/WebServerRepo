@@ -476,7 +476,6 @@ function productBuilder(response, request, collection, url)
         if(result!=null)
         {
           var objString = JSON.stringify(result);
-          console.log(objString);
           response.writeHead(200, {"Content-Type": "text/plain"});
           response.write(objString);
           response.end();
@@ -498,10 +497,7 @@ function productBuilder(response, request, collection, url)
   if(FieldQuery.action == 'newProduct')
   {
     var group_field_sets = new Array();
-    var selected = eval('(' + FieldQuery.selected + ')');
-    console.log('\n---- THIS IS WHAT WAS PASSED ----\n');
-    console.log(selected);
-    // console.log(JSON.stringify(selected[0].group_name));
+    var selected = eval('(' + FieldQuery.selected + ')'); //parse the passed JSON string as a JSON object
 
     collection.find({'type': 'product', 'product_name': FieldQuery.product_name}).toArray( 
       function(error, result)
@@ -520,61 +516,18 @@ function productBuilder(response, request, collection, url)
           }
           else if(result.length == 0)
           {
-            // var set = new Object();
-
-            // set.group_name = selected[0].group_name;
-            // set.fields = new Array();
-
             var i;
             for(i=0;i<selected.length;i++)
             {
               selected[i].value = 0;
-              // if(i>0)
-              //   if(set.group_name != selected[i].group_name)
-              //   {
-              //     group_field_sets.push(set);
-              //     console.log(set.group_name + ' added to the array');
-              //     set.group_name = selected[i].group_name;
-              //     set.fields = new Array();
-              //   }
-              // set.fields.push(selected[i].parameter)
-              // console.log('---Added This: GName: ' + set.group_name + ' parameter: ' + selected[i].parameter);  
             }
 
-            
-            // console.log('---group_name: ' + group_name + ' param: ' + parameter);
-            
-
-            console.log('selected with 0 vals: ' + JSON.stringify(selected));
             collection.save({'type': 'product', 'product_name': FieldQuery.product_name, 'specs' : selected});
             collection.ensureIndex({'product_name':1},{unique: true, sparse: true, dropDups: true});
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write('New Product — \'' + FieldQuery.product_name + '\' successfully added');
             response.end();
 
-            // set = new Object();
-            // set.group_name = '';
-            // set.fields = new Array();
-            // var i;
-            // for(i=0;i<groups.length;i++)
-            // {
-            //   console.log('Product: ' + FieldQuery.product_name + ' - Group: ' + groups[i]);
-            //   collection.find({'group_name': groups[i]}).toArray( 
-            //     function(error, group)
-            //     {
-            //       if(group!=null)
-            //       {
-            //         console.log('first field: ' + group[0].fields[0]);
-            //         set.fields = group[i].fields;
-            //         set.group_name = group[i].group_name;
-            //         group_field_sets[i] = set;
-            //       }
-            //     });
-            //   console.log('group[' + i + '] = ' + groups[i]);
-            //   set.group_name = groups[i];
-            //   console.log('Set.group_name: ' + set.group_name + ' First field of Set.fields: ' + set.fields);
-              
-            // }
           }
         }
       });
@@ -610,6 +563,68 @@ function productBuilder(response, request, collection, url)
       });
   }
 
+  if(FieldQuery.action == 'getSpecs')
+  {
+    collection.find({'product_name': FieldQuery.product_name}).toArray(
+      function(error, product)
+      {
+        if(error)
+        {
+          console.log('Error: ' + error);
+        }
+        else if(!product)
+        {
+          console.log('--Here!-- # 1: ');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        else
+        {
+          var string = JSON.stringify(product);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+      });
+  }
+
+  if(FieldQuery.action == 'updateSpecs')
+  {
+    var specs = eval('(' + FieldQuery.specs + ')'); //parse the passed JSON string as a JSON object
+    // var specs = FieldQuery.specs;
+    for(var i = 0;i<specs.length;i++)
+    {
+      console.log('Handler Specs: ' + specs[i].value);
+    }
+
+    collection.find({'type': 'product', 'product_name': FieldQuery.product_name}).toArray( 
+      function(error, result)
+      {
+        if(error)
+        {
+          console.log('Error: ' + error);
+        }
+        else
+        {
+          if(result.length == 1)
+          {
+            console.log('specs added to db as: ' + JSON.stringify(specs));
+            collection.update({'product_name': FieldQuery.product_name},
+              {'type':'product', 'product_name':FieldQuery.product_name, 'specs' : specs});
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Product — \'' + FieldQuery.product_name + '\' successfully updated');
+            response.end();
+          }
+          else if(result.length == 0)
+          {
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('A Product with name — \'' + FieldQuery.product_name + '\' Not Found');
+            response.end();
+          }
+        }
+      });
+  }
 
 }
 

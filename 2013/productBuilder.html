@@ -323,12 +323,12 @@
                     ProductGrid.selectedProduct = items[0].col2;
                 }
 
-                //When the group selection changes, update the SelectedGrid
-                //and store which group is currently selected.
-                // productGrid.on("SelectionChanged",
-                //         lang.hitch(productGrid, ProductGrid.getSpecs, true));
-                // productGrid.on("SelectionChanged",
-                //         lang.hitch(productGrid, noteSelected, true));
+                // When the group selection changes, update the SelectedGrid
+                // and store which group is currently selected.
+                productGrid.on("SelectionChanged",
+                        lang.hitch(productGrid, ProductGrid.getSpecs, true));
+                productGrid.on("SelectionChanged",
+                        lang.hitch(productGrid, noteSelected, true));
 
             }
 
@@ -338,37 +338,39 @@
                 return this.selectedProduct;
             }
 
-            // //get the fields of the selected group from the database.
-            // ProductGrid.getSpecs = function()
-            // {
-            //     //get the selected items from the parameter grid
-            //     var items = this.selection.getSelected();
-            //     //store the selected group
-            //     var selectedProduct = items[0].col2;
+            //get the fields of the selected group from the database.
+            ProductGrid.getSpecs = function()
+            {
+                //get the selected items from the parameter grid
+                var items = this.selection.getSelected();
+                //store the selected group
+                var selectedProduct = items[0].col2;
+                var returnedProduct;
 
-            //     xhr.get(
-            //     {
-            //         url:'/productBuilder',
-            //         handleAs: 'json', //grabs the xhr string and turns it into an object
-            //         content:
-            //         {
-            //             action: 'getSpecs',
-            //             product_name: selectedProduct,
-            //             loaded: has_loaded = true,
-            //         },
-            //         load:function(response)
-            //         {
-            //             fieldsOfGroup = response;
-            //             // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
-            //             SelectionGrid.buildSelectionGrid();
-            //         },
-            //         error:function(error)
-            //         {
-            //             console.log("There was an error: " + error);
-            //             dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-            //         }
-            //     });
-            // }
+                xhr.get(
+                {
+                    url:'/productBuilder',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getSpecs',
+                        product_name: selectedProduct,
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        returnedProduct = response;
+                        // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
+                        console.log('in XHR: ' +returnedProduct);
+                        ProductSummaryGrid.buildGrid(returnedProduct);
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }
 
             ProductGrid.getProducts = function()
             {
@@ -396,6 +398,84 @@
 
             /****************************   End Product Grid  *********************************/
 
+
+            /****************************   Begin Product Summary Grid  *********************************/
+
+
+            var ProductSummaryGrid = new Object();
+
+            ProductSummaryGrid.buildGrid = function(returnedProduct)
+            {
+                ProductSummaryGrid.data;
+                var productSpecs = new Array();
+
+                if(returnedProduct.length > 0)
+                {
+                    productSpecs = returnedProduct[0].specs;
+                }
+
+                var data = 
+                {
+                  identifier: "id",
+                  items: []
+                };
+                var data_list = [];
+                for(i=0;i<productSpecs.length;i++)
+                {
+                  data_list[i] = {col1: 'id', 
+                    col2: productSpecs[i].group_name, 
+                    col3: productSpecs[i].parameter,
+                    col4: productSpecs[i].value
+                    }
+                }
+                var rows = data_list.length;
+                for(var i = 0; i < rows; i++)
+                {
+                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                }
+                var productSummaryStore = new ItemFileWriteStore({data: data});
+                ProductSummaryGrid.data = data;
+
+                /*set up layout*/
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '10%'},
+                  {'name': 'Group', 'field': 'col2', 'width': '25%'},
+                  {'name': 'Field', 'field': 'col3', 'width': '35%'},
+                  {'name': 'Value', 'field': 'col4', 'width': '30%', 'editable': true}
+                ]];
+
+                //remove the old selectionGrid from the dom
+                dijit.registry.remove("productSummaryGrid");
+
+                /*create a new grid*/
+                var productSummaryGrid = new DataGrid({
+                    store: productSummaryStore,
+                    structure: layout,
+                    autoHeigth: true}, "productSummaryGrid");
+
+                /*Call startup() to render the grid*/
+                productSummaryGrid.startup();
+
+                productSummaryGrid.on("SelectionChanged",
+                        lang.hitch(productSummaryGrid, ProductSummaryGrid.updateSpecs, true));
+            }
+
+            ProductSummaryGrid.updateSpecs = function()
+            {
+                console.log('Get Here?');
+                items = this.selection.getSelected();
+                console.log(items[0].col4);
+            }
+
+            ProductSummaryGrid.getData = function()
+            {
+                return this.data;
+
+            }
+
+
+
+            /****************************   TextBoxes / Button / Etc  *********************************/
 
             //Group Name Textbox
             var txtBox_productName = registry.byId("txtBox_productName");
@@ -442,7 +522,70 @@
                         });
                     }
                 }
-            }, "button_confirmNewProduct");  
+            }, "button_confirmNewProduct");
+
+            //Confirm selection button for new group
+            //require a name for the group
+            var button_confirmUpdateSpecs = new Button(
+            {
+                label: 'Confirm Changes',
+                onClick: function()
+                {
+                    var selectedProduct = ProductGrid.selectedProduct;
+                    //store the selected group
+                    console.log('Selected Product: ' + selectedProduct);
+                    // console.log("Selection size: " + GroupGrid.getSelected().length);
+                    var data = ProductSummaryGrid.getData();
+                    var specs = new Array();
+                    
+                    console.log('data: ' + data.items[0].col4);
+                    var i;
+                    console.log('Amount of Data = ' + data.items.length);
+                    for(i = 0; i<data.items.length;i++)
+                    {
+                        var spec = new Object();
+                        spec.group_name = data.items[i].col2;
+                        spec.parameter = data.items[i].col3;
+                        spec.value = data.items[i].col4;
+                        console.log('Spec: Group Name - ' + spec.group_name);
+                        console.log('Spec: parameter - ' + spec.parameter);
+                        console.log('Spec: value - ' + spec.value);
+                        
+                        specs.push(spec);
+                    }
+
+                    var specString = JSON.stringify(specs);
+                    
+                    if(!selectedProduct)
+                    {
+                        dom.byId('serverResponse').innerHTML = 'You are required to select at least one group to form a product.';
+                    }
+                    else
+                    {
+                        xhr.get(
+                        {
+                            url:"/productBuilder",
+                            content: 
+                            {
+                                action: 'updateSpecs',
+                                product_name: selectedProduct,
+                                specs: specString,
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                clearAll();
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+                }
+            }, "button_confirmUpdateSpecs");    
 
 
             function clearAll()
@@ -450,6 +593,7 @@
                 GroupGrid.getGroups();
                 ProductGrid.getProducts();
                 SelectionGrid.buildSelectionGrid(new Array());
+                ProductSummaryGrid.buildGrid(new Array());
                 dom.byId('txtBox_productName').value = '';
             }
 
@@ -469,31 +613,38 @@
         <col width = '22%'>
         <col width = '34%'>
         <tr>
-        <td style = "text-align: center; padding: 5px">
-            <b>Available Groups:</b>
-        </td>
-        <td style = "text-align: center; padding: 5px">
-            <p><b>Fields of Selected Groups:</b></p>
-        </td>
-        <td style = "text-align: center; padding: 5px">
-            <p><b>Available Products:</b></p>
-        </td>
-    </tr>
-    <tr>
-        <td valign = "top" style = "padding: 5px; text-align:right">
-            <div id="groupGrid"></div>
-        </td>
-        <td valign ="top" style = "padding: 5px">
-            <div id= "selectionGrid"></div>
-            <br>
-            <label for="txtBox_productName" style = "padding: 5px">New Product Name:</label><br>  
-            <input id="txtBox_productName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
-            <div id= "button_confirmNewProduct" data-dojo-type="dijit/form/button"></div>
-        </td>
-        <td valign = "top" style = "padding: 5px; text-align:right">
-            <div id="productGrid"></div>
-        </td>
-    </tr>
+            <td style = "text-align: center; padding: 5px">
+                <b>Available Groups:</b>
+            </td>
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Fields of Selected Groups:</b></p>
+            </td>
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Available Products:</b></p>
+            </td>
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Specs of Selected Product:</b></p>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="groupGrid"></div>
+            </td>
+            <td valign ="top" style = "padding: 5px">
+                <div id= "selectionGrid"></div>
+                <br>
+                <label for="txtBox_productName" style = "padding: 5px">New Product Name:</label><br>  
+                <input id="txtBox_productName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
+                <div id= "button_confirmNewProduct" data-dojo-type="dijit/form/button"></div>
+            </td>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="productGrid"></div>
+            </td>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="productSummaryGrid"></div>
+                <div id= "button_confirmUpdateSpecs" data-dojo-type="dijit/form/button"></div>
+            </td>
+        </tr>
         <tr>
             <td colspan = "100%" style = "padding: 10px">
                 <div id="serverResponse">Nothing Selected</div>
