@@ -3,6 +3,7 @@
 
 <html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
 	<head>
+        <title>Specs: Parameter Builder</title>
 		 <!-- Load Dojo API -->
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
@@ -12,107 +13,57 @@
                         data-dojo-config="async: true, isDebug: true">
         </script>
 
+        <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #parameterGridDiv 
+        {
+            height: 40em;
+            width: 100%;
+        }
+        #txtBox_paramDef
+        {
+            width: 80%;
+        }
+        #txtBox_paramOutput
+        {
+            width: 80%;
+        }
+        </style>
+
         <!-- parameter creator functions -->
         <script>
 
         var has_loaded = false; // tells the request handler if this page has already been loaded
         var fields = new Array(); //array to contain content returned
 
-        	require(["dojo/ready",
+        	require(['dojo/_base/lang',
                 "dojo/dom",
                 'dijit/registry',
                 'dijit/form/Button',
+                "dojo/_base/array",
                 'dojo/_base/xhr', 
                 'dijit/form/TextBox',
-                'dojox/grid/DataGrid',
                 'dojo/data/ItemFileWriteStore',
+                'dojox/grid/DataGrid',
+                'dojox/grid/_CheckBoxSelector',
+                'dijit/form/CheckBox',
+                'dojox/grid/cells/dijit',
+                'dijit/layout/ContentPane',
                 'dojo/domReady!'], 
-                function(ready, dom, registry, Button, xhr, TextBox, DataGrid)
+                function(lang, dom, registry, Button, baseArray, xhr, TextBox, ItemFileWriteStore, DataGrid, _CheckBoxSelector, CheckBox, cells, CP)
                 {
-                    //do this
-                    ready(function()
-                    {
-                         //input text box
-                    	 var txtBox = registry.byId("txtBox");
+                        /********************************     Parameter Grid      *********************************/
 
-                         //Button to Insert new parameter
-                    	 var button_insertNewField = new Button(
-                    	 {
-                    	 	label: 'Enter',
-                    	 	onClick: function()
-                    	 	{
-                                //require the textbox to have something
-                    	 		if(dom.byId("txtBox").value=="")
-                                {
-                                     dom.byId("serverResponse").innerHTML = "Enter something into the TextBox";
-                                }
-                                else
-                                {
-                                    //send request to create a new parameter
-                                	xhr.get(
-                                	{
-                                		url:"/parameter",
-                                		content: 
-                                        {
-                                            action: 'newField',
-                                            field_name: dom.byId('txtBox').value,
-                                            loaded: has_loaded=true,
-                                        },
-                                		load:function(response)
-                                		{
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                		},
-                                		error:function(error)
-                                		{
-                                			console.log("There was an error: \n"+error);
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                                		}
-                                	});
-                                }
-                                getFields(); //refresh the contents of the table
-                                console.log ("Insert button pressed.");
-                    	 	}
-                    	 }, 'button_insertNewField');
+                        //The ParameterGrid is the grid that displays all the available fields from the database.
+                        var ParameterGrid = new Object();
 
-                        var button_removeField = new Button(
-                         {
-                            label: 'Remove',
-                            onClick: function()
-                            {
-                                if(dom.byId("txtBox").value=="")
-                                {
-                                     dom.byId("serverResponse").innerHTML = "Enter something into the TextBox";
-                                }
-                                else
-                                {
-                                //send request to remove a parameter
-                                    xhr.get(
-                                    {
-                                        url:"/parameter",
-                                        content: 
-                                        {
-                                            action: 'removeField',
-                                            field_name: dom.byId('txtBox').value,
-                                            loaded: has_loaded=true,
-                                        },
-                                        load:function(response)
-                                        {
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                        },
-                                        error:function(error)
-                                        {
-                                            console.log("There was an error: \n"+error);
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                                        }
-                                    });
-                                getFields(); //refresh the contents of the table
-                                }
-                            console.log ("remove button pressed.");
-                            }
-                         }, 'button_removeField');
+                        //Return the set of selected fields
+                        ParameterGrid.getSelected = function()
+                        {
+                            return this.selected_fields;
+                        }
 
-                        //requests an update on the contents of the table 
-                        function getFields()
+                        //Get the parameters from the db
+                        ParameterGrid.getFields = function()
                         {
                             xhr.get(
                             {
@@ -126,7 +77,7 @@
                                 load:function(response)
                                 {
                                     fields = response;
-                                    buildTable(fields); //rebuild the html table
+                                    ParameterGrid.buildParameterGrid(fields); //rebuild the dojo Grid
                                 },
                                 error:function(error)
                                 {
@@ -136,60 +87,371 @@
                             });
                         }
 
-                        // Build the table based on the contents returned from the handler
-                        function buildTable(fields)
+                        //Gets all the data that makes up the row at the index given by id
+                        ParameterGrid.getGridItemById = function(id)
                         {
-                            fields = fields.sort();
-                            var table_html_string;
-                            //If there are some existing fields, build a table of them
-                            if(fields.length > 0)
-                            {
-                                table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
-                                '<tr>' +
-                                '<td style = "background-color:#E0E0E0; text-align:center"> <b>Available Fields</b>' +
-                                '</td>' +
-                                '</tr>';
-
-                                for(i = 0; i < fields.length; i++)
-                                {
-                                    table_html_string += '<tr>' +
-                                    '<div id = "field"'+i+'><td style = "background-color:#F0F0F0; width:90px; vertical-align:top;">' +
-                                    fields[i].field_name +
-                                    '</td></div>' + 
-                                    '</tr>';
+                            var gridItem = null;
+                            var grid = dijit.registry.byId('parameterGridDiv');
+                            grid.store.fetchItemByIdentity({
+                                identity: id,
+                                onItem: function(item, request)
+                                { 
+                                    gridItem=item; 
                                 }
-                                table_html_string += '</table>';
-                            }
-                            //otherwise build a table and clarify there are no fields available
+                            });
+                            return gridItem;
+                        }
+
+                        //Removes and entire parameter from the database given the id of the row
+                        //of the selected parameter
+                        ParameterGrid.deleteRow = function(id)
+                        {
+                            var sub = id.substring(4, id.length);
+                            item = ParameterGrid.getGridItemById(sub);
+                            console.log('Field to delete: ' + item.col2);
+                            if(!item){ return alert('error deleting '+sub+' from ParameterGrid'); }
+                            if(!confirm("Are you sure you want to delete \'" + item.col2 +"\'?"))
+                                return;
                             else
                             {
-                                table_html_string = "<table width = '250px' border = '1' ALIGN = center>" +
-                                '<tr>' +
-                                '<td style = "background-color:#E0E0E0; text-align:center"> <b>Available Fields</b>' +
-                                '</td>' +
-                                '</tr>' +
-                                '<tr>' +
-                                '<td style = "background-color:#F0F0F0; width:90px; vertical-align:top;" ALIGN = center>' +
-                                '<b> There Are No Fields Available </b>' +
-                                '</td></tr>' +
-                                '</table>';
+                                xhr.get(
+                                    {
+                                        url:"/parameter",
+                                        content: 
+                                        {
+                                            action: 'removeField',
+                                            field_name: item.col2,
+                                            field_value: item.col3,
+                                            field_unit: item.col5,  
+                                            loaded: has_loaded=true,
+                                        },
+                                        load:function(response)
+                                        {
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                        },
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                        }
+                                    });
+                                ParameterGrid.getFields(); //refresh the contents of the table
                             }
-                            dom.byId('fieldList').innerHTML = table_html_string;
-                            console.log ("List refreshed");
                         }
-                        //refreshes the contents on page load
-                        getFields();
-                    });
+
+                        //Adds the selected field value to the computed field definition textbox
+                        ParameterGrid.addFieldValueToDefinition = function(id)
+                        {
+                            var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
+                            item = ParameterGrid.getGridItemById(sub); //get the item by the given id
+                            var field = item.col2; //The field we're using is from column 2 of the grid
+                            var value = item.col3; //the value is from column 5 of the grid
+                            var addThis = '\{value: '+field+'\}'; // This is the text string to add to the textbox
+                            dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                        }
+
+                        //Adds the selected field unit to the computed field definition textbox
+                        ParameterGrid.addFieldUnitToDefinition = function(id)
+                        {
+                            var sub = id.substring(4, id.length); //the id contains the 'unit' identifier in front, cut it off
+                            item = ParameterGrid.getGridItemById(sub); //get the item by the given id
+                            var field = item.col2; //The field we're using is from column 2 of the grid
+                            var unit = item.col5; //the unit is from column 5 of the grid
+                            var addThis = '\{unit: '+field+'\}'; // This is the text string to add to the textbox
+                            dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                        }
+
+
+                        //Build the Dojo Grid with the 
+                        ParameterGrid.buildParameterGrid = function(fields)
+                        {
+                            ParameterGrid.selected_fields;
+
+                            if(fields.length < 1)
+                                dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
+                            else
+                            {
+                                //Grid Data
+                                var data = 
+                                {
+                                  identifier: "id",
+                                  items: []
+                                };
+
+                                var data_list = []; // data list to display data
+
+                                //set data list values from fields parameter
+                                for(var i=0;i<fields.length;i++)
+                                {
+                                  dijit.registry.remove('bttn'+i);
+                                  dijit.registry.remove('valu'+i);  
+                                  dijit.registry.remove('unit'+i);  
+                                  data_list[i] = 
+                                  {
+                                    col1: 'id', 
+                                    col2: fields[i].field_name,
+                                    col3: fields[i].field_value, 
+                                    col4: new Button({label: 'Get', id: 'valu'+i, onClick: function()
+                                        {
+                                            console.log('ValuID: ' + this.id);
+                                            ParameterGrid.addFieldValueToDefinition(this.id);
+                                        }
+                                    }) ,
+                                    col5: fields[i].field_unit,
+                                    col6: new Button({label: 'Get', id: 'unit'+i, onClick: function()
+                                        {
+                                            console.log('UnitID: ' + this.id);
+                                            ParameterGrid.addFieldUnitToDefinition(this.id);
+                                        }
+                                    }) ,
+                                    col7: new Button({label: 'Delete', id: 'bttn'+i, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            ParameterGrid.deleteRow(this.id);
+                                        }
+                                    })
+                                  }
+                                }
+
+                                var rows = data_list.length; //# of rows = # of data
+                                for(var i = 0; i < rows; i++)
+                                {
+                                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                                }
+                                parameterStore = new ItemFileWriteStore({data: data}); //set up the store
+
+                                /*set up layout*/
+                                var layout = [[
+                                  {'name': '#', 'field': 'id', 'width': '5%'},
+                                  {'name': 'Field', 'field': 'col2', 'width': '35%', 'editable': true, },
+                                  {'name': 'Value', 'field': 'col3', 'width': '17%', },
+                                  {'name': 'Get Value', 'field': 'col4', 'width': '8%',},
+                                  {'name': 'Unit', 'field':'col5', 'width':'17%'},
+                                  {'name': 'Get Unit', 'field': 'col6', 'width': '8%'},
+                                  {'name': 'Delete', 'field': 'col7', 'width': '10%'}
+                                ]];
+
+                                dijit.registry.remove("parameterGridDiv");
+
+                                /*create a new grid*/
+                                var grid = new DataGrid({
+                                    store: parameterStore,
+                                    structure: layout,
+                                    autoHeight: true}, 'parameterGridDiv');
+
+
+                                /*Call startup() to render the grid*/
+                                grid.startup();
+
+                                //This function reports what fields are selected for the current working group
+                                function reportSelection(node)
+                                    {
+                                        var items = this.selection.getSelected();
+                                        ParameterGrid.selected_fields = baseArray.map(items, function(item)
+                                        {
+                                            return item.col2;
+                                        }, this);
+                                        if(ParameterGrid.selected_fields.length > 0)
+                                        {
+                                            var msg = "You have selected " + ((ParameterGrid.selected_fields.length > 1) ? " ": " ");
+                                        }
+                                        else
+                                            var msg = "Nothing Selected";
+                                        node.innerHTML = msg + ParameterGrid.selected_fields.join(", ");
+
+                                        ParameterGrid.selectedRow
+
+                                    }
+
+                                
+
+                                // Event for when the selections are changed, call reportselection on the dom id given
+                                // hitch() returns a function that will execute a given function in a given context. This function allows you 
+                                // to control how a function executes, particularly in asynchronous operations
+                                grid.on("SelectionChanged",
+                                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+                                
+                            }    
+                        }
+
+                         //input text boxes
+                    	 var txtBox_paramName = registry.byId("txtBox_paramName");
+                         var txtBox_paramValue = registry.byId("txtBox_paramValue");
+                         var txtBox_paramUnit = registry.byId("txtBox_paramUnit");
+                         var txtBox_paramDef = registry.byId("txtBox_paramDef");
+                         var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
+
+                         var chkBox_compField = new CheckBox(
+                         {
+                            value: 'isCompField',
+                            checked: false,
+                            onChange: function()
+                            {
+                                if(this.checked == true)
+                                {
+                                    dom.byId("fields_computed").style.display="block";
+                                    dom.byId("serverResponse").innerHTML = "The Box is checked";
+                                }
+                                else
+                                {
+                                    dom.byId("fields_computed").style.display="none";
+                                    dom.byId("serverResponse").innerHTML = "The Box is unchecked";
+                                }
+                            }
+
+                         }, 'chkBox_compField');
+
+                         //Button to Insert new parameter
+                    	 var button_insertNewField = new Button(
+                    	 {
+                    	 	label: 'Submit New Parameter',
+                    	 	onClick: function()
+                    	 	{
+                                //require the textbox to have something
+                    	 		if(dom.byId("txtBox_paramName").value=="")
+                                {
+                                     dom.byId("serverResponse").innerHTML = "Enter a name into the name field";
+                                }
+                                else if(dom.byId("txtBox_paramValue").value=="")
+                                {
+                                     dom.byId("serverResponse").innerHTML = "Enter a value into the value field";
+                                }
+                                else if(dom.byId("txtBox_paramUnit").value=="")
+                                {
+                                     dom.byId("serverResponse").innerHTML = "Enter a unit of measure into the UOM field";
+                                }
+                                else
+                                {
+                                    //send request to create a new parameter
+                                	xhr.get(
+                                	{
+                                		url:"/parameter",
+                                		content: 
+                                        {
+                                            action: 'newField',
+                                            field_name: dom.byId('txtBox_paramName').value,
+                                            field_value: dom.byId('txtBox_paramValue').value,
+                                            field_unit: dom.byId('txtBox_paramUnit').value,
+                                            loaded: has_loaded=true,
+                                        },
+                                		load:function(response)
+                                		{
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                            ParameterGrid.getFields(); //refresh the contents of the table
+                                            ClearTextFields();
+                                		},
+                                		error:function(error)
+                                		{
+                                			console.log("There was an error: \n"+error);
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                		}
+                                	});
+                                }
+                                
+                                console.log ("New Parameter Submitted.");
+                    	 	}
+                    	 }, 'button_insertNewField');
+
+                        //This function serves to parse the contents of the definition field to a
+                        //user readable string containing values for the spec report
+                        function parseDefinitionFieldToOutput()
+                        {
+                            // var definition = dom.byId("txtBox_paramDef").value;
+                            // var val_string = 'value: ';
+                            // var unit_string = 'unit: ';
+                            // var index = definition.indexOf(val_string);
+                            // var fieldToGetValue = definition.substring(index+val_string,)
+
+                        }
+
+                        //Clear all the textboxes
+                        function ClearTextFields()
+                        {
+                            dom.byId("txtBox_paramDef").value = "";
+                            dom.byId("txtBox_paramOutput").value = "";
+                            dom.byId("txtBox_paramName").value = "";
+                            dom.byId("txtBox_paramValue").value = "";
+                            dom.byId("txtBox_paramUnit").value = "";
+                        }
+
+                        //OnLoad Do these
+                        ParameterGrid.getFields();
+                        ClearTextFields();
                 });
         </script>
     </head>
 
     <!-- Layout -->	
-    <body class="claro">
-        <div id = 'fieldList'></div> <!-- The table that displays the available fields -->
-    	<input id ='txtBox' data-dojo-type="dijit/form/TextBox"> </input>
-        <button id="button_insertNewField"></button>
-        <button id="button_removeField"></button>
-    	<div id = 'serverResponse'></div> <!-- The server response string string -->
+    <body class="claro"><table width = '90%' border = "1">
+        <col width = "35%">
+        <col width = "65%">
+        <tr> <!-- Labels -->
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Create a New Parameter</b></p>
+            </td>
+            <td style = "text-align: center; padding: 5px">
+                <b>Available Parameters:</b>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px">
+                <a style = "padding: 5px">Computed Field</a>
+                <input id = 'chkBox_compField' data-dojo-type="dijit/form/CheckBox"></input>
+                <br><br>
+                <div id = "fields_computed" style = "display: none">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>  
+                                <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramOutput" style = "padding: 5px">Output:</label><br>  
+                                <input id = "txtBox_paramOutput" data-dojo-type="dijit/form/TextBox"></input>
+                            </td>
+                        </tr>
+                </table>
+                </div>
+                <table>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <label for="txtBox_paramName" style = "padding: 5px">New Parameter Name:</label><br>  
+                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <label for="txtBox_paramValue" style = "padding: 5px">New Parameter Value:</label><br>  
+                            <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <label for="txtBox_paramUnit" style = "padding: 5px">New Parameter UOM:</label><br>  
+                            <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <button id="button_insertNewField"></button>
+                            <!-- <button id="button_removeField"></button> -->
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="parameterGridDiv"></div>
+                <br><br>
+                <!-- <div id= "button_removeGroup" data-dojo-type="dijit/form/button"></div> -->
+            </td>
+        </tr>
+        <tr>
+            <td colspan = "100%" style = "padding: 10px">
+                <div id="serverResponse"></div>
+            </td>
+        </tr>
+    </table>
     </body>	
 </html>

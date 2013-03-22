@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<head>
+    <title>Specs: Product Spec Reports</title>
+
+
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        
+    <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/claro/claro.css"> -->
+    <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #parameterGridDiv 
+        {
+            height: 40em;
+            width: 100%;
+        }
+        #selectionGrid 
+        {
+            height: 40em;
+            width: 100%;
+        }
+        #groupGrid 
+        {
+            height: 40em;
+            width: 100%;
+        }
+    </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
+    </script>
+
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
+        'dojox/grid/DataGrid' , 
+        'dojo/data/ItemFileWriteStore' ,
+        "dojo/_base/array",
+        'dijit/registry',
+        'dojo/_base/xhr', 
+        'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button", 
+        'dojo/dom' , 
+        'dojo/domReady!'],
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
+        {
+            /****************************   Begin Product Grid  *********************************/
+
+            var ProductGrid = new Object();
+            //Build the Dojo Grid for groups
+            ProductGrid.buildProductGrid = function(products)
+            {
+                ProductGrid.selectedProduct;
+                //Grid Data
+                var data = 
+                {
+                  identifier: "id",
+                  items: []
+                };
+
+                var data_list = []; // data list to display data
+
+                //set data list values from fields parameter
+                for(i=0;i<products.length;i++)
+                {
+                  data_list[i] = {col1: 'id', col2: products[i].product_name}
+                }
+
+                var rows = data_list.length; //# of rows = # of data
+                for(var i = 0; i < rows; i++)
+                {
+                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                }
+                var productStore = new ItemFileWriteStore({data: data}); //set up the store
+
+                /*set up layout*/
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '15%'},
+                  {'name': 'Product', 'field': 'col2', 'width': '85%'},
+                ]];
+
+                //Remove the group grid if it already exists
+                dijit.registry.remove("productGrid");
+
+                /*create a new grid*/
+                var productGrid = new DataGrid({
+                    store: productStore,
+                    structure: layout,
+                    autoHeigth: true}, "productGrid");
+
+
+                /*Call startup() to render the grid*/
+                productGrid.startup();
+
+                //store the currently selected group.
+                function noteSelected()
+                {
+                    var items = this.selection.getSelected();
+                    ProductGrid.selectedProduct = items[0].col2;
+                }
+
+                // When the group selection changes, update the SelectedGrid
+                // and store which group is currently selected.
+                productGrid.on("SelectionChanged",
+                        lang.hitch(productGrid, ProductGrid.getSpecs, true));
+                productGrid.on("SelectionChanged",
+                        lang.hitch(productGrid, noteSelected, true));
+
+            }
+
+            //Getter for the currently selected group
+            ProductGrid.getSelected = function()
+            {
+                return this.selectedProduct;
+            }
+
+            //get the fields of the selected group from the database.
+            ProductGrid.getSpecs = function()
+            {
+                //get the selected items from the parameter grid
+                var items = this.selection.getSelected();
+                //store the selected group
+                var selectedProduct = items[0].col2;
+                var returnedProduct;
+
+                xhr.get(
+                {
+                    url:'/productBuilder',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getSpecs',
+                        product_name: selectedProduct,
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        returnedProduct = response;
+                        // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
+                        console.log('in XHR: ' +returnedProduct);
+                        ProductSummaryGrid.buildGrid(returnedProduct);
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }
+
+            ProductGrid.getProducts = function()
+            {
+                xhr.get(
+                {
+                    url:'/productBuilder',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getProducts',
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        this.products = response;
+                        ProductGrid.buildProductGrid(this.products); //rebuild the dojo Grid
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                    }
+                });
+            }
+
+            /****************************   End Product Grid  *********************************/
+
+            ProductGrid.getProducts();
+        });
+
+    </script>
+</head>
+
+<!-- Layout -->
+<body class="claro">
+    <table width = '80%' border = "1">
+        <col width = '50%'>
+        <col width = '50%'>
+        <tr>
+            <td style = "text-align: center; padding: 5px">
+                <b>Products:</b>
+            </td>
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Spec Report:</b></p>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="productGrid"></div>
+            </td>
+            <td valign ="top" style = "padding: 5px">
+                <div id= "selectionGrid"></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan = "100%" style = "padding: 10px">
+                <div id="serverResponse">Nothing Selected</div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

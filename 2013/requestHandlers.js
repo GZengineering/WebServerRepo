@@ -220,7 +220,7 @@ function SpecManager(response, request, collection, url) {
 * manage the lowest level of a products specs.  The user can add and
 * remove fields. There is also a live list view of the available fields.
 */
-function parameter (response, request, collection, url, content) {
+function parameter (response, request, collection, url) {
 
   //parse url
   console.log("\nRequest handler 'parameter'");
@@ -236,8 +236,8 @@ function parameter (response, request, collection, url, content) {
   if(FieldQuery.action == 'newField')
   {
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value':'null'});
-    collection.ensureIndex({'field_name':1},{unique: true, sparse: true, dropDups: true});
+    collection.save({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value':FieldQuery.field_value, 'field_unit': FieldQuery.field_unit});
+    // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
     response.write('New Field — \'' + FieldQuery.field_name + '\' successfully added');
@@ -247,7 +247,7 @@ function parameter (response, request, collection, url, content) {
   //If there is a removal requested, remove the field from the db if it exists
   if(FieldQuery.action == 'removeField')
   {
-    collection.findAndRemove({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value': 'null'},
+    collection.findAndRemove({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value': FieldQuery.field_value, 'field_unit': FieldQuery.field_unit},
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -628,6 +628,18 @@ function productBuilder(response, request, collection, url)
 
 }
 
+function specReports(response, request, collection, url)
+{
+  console.log("\nHandler 'Spec Reports' requested");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./specReports.html', response);
+  }
+}
+
 function Inventory(response, request, collection, url) {
 
   console.log("\nRequest handler 'Inventory' was called");
@@ -734,6 +746,7 @@ function Inventory(response, request, collection, url) {
 
 // exports.UnitClassArray = UnitClassArray; 
 exports.favicon = favicon;
+exports.specReports = specReports;
 exports.productBuilder = productBuilder;
 exports.group = group;
 exports.parameter = parameter;

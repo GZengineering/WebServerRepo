@@ -8,6 +8,7 @@ var http = require("http"),
 	Server = mongo.Server,
 	MongoServer = new Server('localhost', 27017, 
 		{
+			safe: false,
 			auto_reconnect: true
 		}),
 	Db = mongo.Db,
@@ -34,6 +35,7 @@ handle["/parameter"] = requestHandlers.parameter;
 handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
 handle["/productBuilder"] = requestHandlers.productBuilder;
+handle["/specReports"] = requestHandlers.specReports;
 
 //open the connection to the collection
 db.open(function(error, db)
