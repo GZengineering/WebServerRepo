@@ -1,4 +1,5 @@
 <!-- parameter creator -->
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
 <!DOCTYPE html>
 
 <html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
@@ -76,8 +77,8 @@
                                 },
                                 load:function(response)
                                 {
-                                    fields = response;
-                                    ParameterGrid.buildParameterGrid(fields); //rebuild the dojo Grid
+                                    ParameterGrid.allFields = response;
+                                    ParameterGrid.buildParameterGrid(ParameterGrid.allFields); //rebuild the dojo Grid
                                 },
                                 error:function(error)
                                 {
@@ -102,7 +103,7 @@
                             return gridItem;
                         }
 
-                        //Removes and entire parameter from the database given the id of the row
+                        //Removes an entire parameter from the database given the id of the row
                         //of the selected parameter
                         ParameterGrid.deleteRow = function(id)
                         {
@@ -139,26 +140,54 @@
                             }
                         }
 
-                        //Adds the selected field value to the computed field definition textbox
+
                         ParameterGrid.addFieldValueToDefinition = function(id)
                         {
                             var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
                             item = ParameterGrid.getGridItemById(sub); //get the item by the given id
-                            var field = item.col2; //The field we're using is from column 2 of the grid
-                            var value = item.col3; //the value is from column 5 of the grid
-                            var addThis = '\{value: '+field+'\}'; // This is the text string to add to the textbox
+                            var pair = new Object();
+                            pair.field = item.col2[0];
+                            pair.property = 'value';
+                            ParameterGrid.def_params.push(pair);
+                            if(dom.byId('txtBox_paramDef').value == '')
+                                var pairString = JSON.stringify(pair);
+                            else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                                var pairString = JSON.stringify(pair);
+                            else    
+                                var pairString = ';' + JSON.stringify(pair);
+
+                            console.log('Pair: ' + pairString);
+
+                            var addThis = pairString; // This is the text string to add to the textbox
+                            // defString = ;
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                            parseDefinitionFieldToOutput();
                         }
 
-                        //Adds the selected field unit to the computed field definition textbox
+
                         ParameterGrid.addFieldUnitToDefinition = function(id)
                         {
-                            var sub = id.substring(4, id.length); //the id contains the 'unit' identifier in front, cut it off
+                            var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
                             item = ParameterGrid.getGridItemById(sub); //get the item by the given id
-                            var field = item.col2; //The field we're using is from column 2 of the grid
-                            var unit = item.col5; //the unit is from column 5 of the grid
-                            var addThis = '\{unit: '+field+'\}'; // This is the text string to add to the textbox
+                            var pair = new Object();
+                            pair.field = item.col2[0];
+                            pair.property = 'unit';
+                            ParameterGrid.def_params.push(pair);
+                            if(dom.byId('txtBox_paramDef').value == '')
+                                var pairString = JSON.stringify(pair);
+                            else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                                var pairString = JSON.stringify(pair);
+                            else    
+                                var pairString = ';' + JSON.stringify(pair);
+
+
+
+                            console.log('Pair: ' + pairString);
+
+                            var addThis = pairString; // This is the text string to add to the textbox
+                            // defString = ;
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                            parseDefinitionFieldToOutput();
                         }
 
 
@@ -166,6 +195,10 @@
                         ParameterGrid.buildParameterGrid = function(fields)
                         {
                             ParameterGrid.selected_fields;
+                            ParameterGrid.def_params = new Array(); //the elements of the definition string
+                            // ParameterGrid.allFields;
+                            ParameterGrid.outputElements = new Array();
+
 
                             if(fields.length < 1)
                                 dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
@@ -263,8 +296,6 @@
 
                                     }
 
-                                
-
                                 // Event for when the selections are changed, call reportselection on the dom id given
                                 // hitch() returns a function that will execute a given function in a given context. This function allows you 
                                 // to control how a function executes, particularly in asynchronous operations
@@ -352,16 +383,77 @@
                     	 	}
                     	 }, 'button_insertNewField');
 
+                        var button_appendDefinitionText = new Button (
+                        {
+                            label: "Append Text",
+                            onClick: function()
+                            {
+                                var def = dom.byId('txtBox_paramDef').value;
+                                var def_elements = def.split(";");
+                                var text_element = def_elements[def_elements.length-1];
+                                ParameterGrid.outputElements.push(text_element);
+                                buildOutputString();
+                            }
+                        }, "button_appendDefinitionText");
+
                         //This function serves to parse the contents of the definition field to a
                         //user readable string containing values for the spec report
                         function parseDefinitionFieldToOutput()
                         {
-                            // var definition = dom.byId("txtBox_paramDef").value;
-                            // var val_string = 'value: ';
-                            // var unit_string = 'unit: ';
-                            // var index = definition.indexOf(val_string);
-                            // var fieldToGetValue = definition.substring(index+val_string,)
+                            var definition = dom.byId("txtBox_paramDef").value;
 
+                            var element;
+                            var def_elements = definition.split(";");
+                            element = def_elements[def_elements.length-1];
+
+                            console.log('elements: ' + def_elements);
+                            console.log('elements string : ' + JSON.stringify(def_elements));
+                            console.log('elements size: ' + def_elements.length);
+                            
+                            element = eval("(" + element + ")");
+                            console.log('element : ' + element);
+                            if(element.field != null)
+                            {
+                                console.log('Field is ' + element.field);
+                                xhr.get(
+                                {
+                                    url:"/parameter",
+                                    content: 
+                                    {
+                                        action: 'parseDef',
+                                        field: element.field,
+                                        property: element.property,
+                                        loaded: has_loaded=true,
+                                    },
+                                    load:function(response)
+                                    {
+                                        console.log('Response: ' + response);
+                                        ParameterGrid.outputElements.push(response);
+                                        buildOutputString();
+                                    },
+                                    error:function(error)
+                                    {
+                                        console.log("There was an error: \n"+error);
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                ParameterGrid.outputElements.push(element);
+                                buildOutputString();
+                            }
+
+                        }
+
+                        //Builds the output string based on the array built by the additions
+                        //to the definition
+                        function buildOutputString()
+                        {
+                            dom.byId('txtBox_paramOutput').value = ''; // clear the output box 
+                            console.log('# String elements: ' + ParameterGrid.outputElements.length);
+                            for(var i = 0; i < ParameterGrid.outputElements.length; i++)
+                                dom.byId('txtBox_paramOutput').value += '' + ParameterGrid.outputElements[i];
                         }
 
                         //Clear all the textboxes
@@ -402,8 +494,9 @@
                     <table width = '100%' border = '0'>
                         <tr>
                             <td style = "padding: 5px">
-                                <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>  
+                                <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>
                                 <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
+                                <button id="button_appendDefinitionText"></button>
                             </td>
                         </tr>
                         <tr>

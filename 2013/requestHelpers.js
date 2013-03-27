@@ -1,4 +1,5 @@
 //requestHelpers.js
+// This code was written by Alex Stout for Goal Zero, LLC private use
  var fs = require("fs");
 
 function return_html(page, response) {

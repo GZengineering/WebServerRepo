@@ -1,4 +1,5 @@
 //requestHandlers.js
+// This code was written by Alex Stout for Goal Zero, LLC private use
 
 //get modules
 var querystring = require("querystring"),
@@ -220,7 +221,8 @@ function SpecManager(response, request, collection, url) {
 * manage the lowest level of a products specs.  The user can add and
 * remove fields. There is also a live list view of the available fields.
 */
-function parameter (response, request, collection, url) {
+function parameter (response, request, collection, url) 
+{
 
   //parse url
   console.log("\nRequest handler 'parameter'");
@@ -284,6 +286,41 @@ function parameter (response, request, collection, url) {
           var string = JSON.stringify(result);
           response.writeHead(200, {"Content-Type": "text/plain"});
           response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getFields':" + error + '\n');
+        }
+      });
+  }
+
+  if(FieldQuery.action == 'parseDef')
+  {
+    console.log('field: ' + FieldQuery.field);
+    property = FieldQuery.property;
+    collection.find({'type':'field', 'field_name':FieldQuery.field}).toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var r;
+          if(property == 'value')
+            r = result[0].field_value;
+          else
+            r = result[0].field_unit;
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(r);
           response.end();
         }
         //Otherwise, let the page know, it's empty

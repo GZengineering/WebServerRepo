@@ -1,4 +1,5 @@
 //server.js
+// This code was written by Alex Stout for Goal Zero, LLC private use
 
 //get modules, setup server and db variables
 var http = require("http"),
