@@ -140,7 +140,7 @@
                             }
                         }
 
-
+                        
                         ParameterGrid.addFieldValueToDefinition = function(id)
                         {
                             var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
@@ -159,9 +159,8 @@
                             console.log('Pair: ' + pairString);
 
                             var addThis = pairString; // This is the text string to add to the textbox
-                            // defString = ;
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
-                            parseDefinitionFieldToOutput();
+                            // parseDefinitionFieldToOutput();
                         }
 
 
@@ -180,14 +179,11 @@
                             else    
                                 var pairString = ';' + JSON.stringify(pair);
 
-
-
                             console.log('Pair: ' + pairString);
 
                             var addThis = pairString; // This is the text string to add to the textbox
-                            // defString = ;
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
-                            parseDefinitionFieldToOutput();
+                            // parseDefinitionFieldToOutput();
                         }
 
 
@@ -196,9 +192,7 @@
                         {
                             ParameterGrid.selected_fields;
                             ParameterGrid.def_params = new Array(); //the elements of the definition string
-                            // ParameterGrid.allFields;
                             ParameterGrid.outputElements = new Array();
-
 
                             if(fields.length < 1)
                                 dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
@@ -312,6 +306,8 @@
                          var txtBox_paramDef = registry.byId("txtBox_paramDef");
                          var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
 
+                         //This checkbox indicates whether the user wishes to add a new computed field or a new
+                         //product spec field
                          var chkBox_compField = new CheckBox(
                          {
                             value: 'isCompField',
@@ -383,77 +379,38 @@
                     	 	}
                     	 }, 'button_insertNewField');
 
-                        var button_appendDefinitionText = new Button (
+                        var button_ParseDefinition = new Button (
                         {
-                            label: "Append Text",
+                            label: "Parse Definition to Output",
                             onClick: function()
                             {
-                                var def = dom.byId('txtBox_paramDef').value;
-                                var def_elements = def.split(";");
-                                var text_element = def_elements[def_elements.length-1];
-                                ParameterGrid.outputElements.push(text_element);
-                                buildOutputString();
+                                parseDefinitionFieldToOutput();
                             }
-                        }, "button_appendDefinitionText");
+                        }, "button_ParseDefinition");
 
-                        //This function serves to parse the contents of the definition field to a
-                        //user readable string containing values for the spec report
                         function parseDefinitionFieldToOutput()
                         {
                             var definition = dom.byId("txtBox_paramDef").value;
-
-                            var element;
-                            var def_elements = definition.split(";");
-                            element = def_elements[def_elements.length-1];
-
-                            console.log('elements: ' + def_elements);
-                            console.log('elements string : ' + JSON.stringify(def_elements));
-                            console.log('elements size: ' + def_elements.length);
-                            
-                            element = eval("(" + element + ")");
-                            console.log('element : ' + element);
-                            if(element.field != null)
+                            xhr.get(
                             {
-                                console.log('Field is ' + element.field);
-                                xhr.get(
+                                url:"/parameter",
+                                content: 
                                 {
-                                    url:"/parameter",
-                                    content: 
-                                    {
-                                        action: 'parseDef',
-                                        field: element.field,
-                                        property: element.property,
-                                        loaded: has_loaded=true,
-                                    },
-                                    load:function(response)
-                                    {
-                                        console.log('Response: ' + response);
-                                        ParameterGrid.outputElements.push(response);
-                                        buildOutputString();
-                                    },
-                                    error:function(error)
-                                    {
-                                        console.log("There was an error: \n"+error);
-                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                ParameterGrid.outputElements.push(element);
-                                buildOutputString();
-                            }
-
-                        }
-
-                        //Builds the output string based on the array built by the additions
-                        //to the definition
-                        function buildOutputString()
-                        {
-                            dom.byId('txtBox_paramOutput').value = ''; // clear the output box 
-                            console.log('# String elements: ' + ParameterGrid.outputElements.length);
-                            for(var i = 0; i < ParameterGrid.outputElements.length; i++)
-                                dom.byId('txtBox_paramOutput').value += '' + ParameterGrid.outputElements[i];
+                                    action: 'parseDef',
+                                    definition: definition,
+                                    loaded: has_loaded=true,
+                                },
+                                load:function(response)
+                                {
+                                    console.log('Response: ' + response);
+                                    dom.byId('txtBox_paramOutput').value = response;
+                                },
+                                error:function(error)
+                                {
+                                    console.log("There was an error: \n"+error);
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                }
+                            });
                         }
 
                         //Clear all the textboxes
@@ -496,7 +453,7 @@
                             <td style = "padding: 5px">
                                 <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>
                                 <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
-                                <button id="button_appendDefinitionText"></button>
+                                <button id="button_ParseDefinition"></button>
                             </td>
                         </tr>
                         <tr>

@@ -216,6 +216,37 @@ function SpecManager(response, request, collection, url) {
   }
 }
 
+//Some member variables for the parameter handler
+var Parameter = new Object();
+
+//array that contains the data for the output string
+Parameter.outPutTextElements = new Array();
+//the output string
+Parameter.outPutString;
+
+//A member function that adds a matched element to the array of output data.
+Parameter.addElement = function(element)
+{
+  console.log('element to add: ' + element);
+  Parameter.outPutTextElements.push(element);
+  console.log('element at end of array: ' + Parameter.outPutTextElements[Parameter.outPutTextElements.length - 1]);
+  console.log('outPutTextElements.length: ' + Parameter.outPutTextElements.length);
+  for(var i = 0; i < Parameter.outPutTextElements.length; i ++)
+    console.log('Element #'+i + ': ' + Parameter.outPutTextElements[i]);
+}
+
+//A function that builds the output string based on the data in the array.
+Parameter.buildOutputString = function()
+{
+  Parameter.outPutString = '';
+
+  for(var i = 0; i < Parameter.outPutTextElements.length; i++)
+  {
+    Parameter.outPutString += '' + Parameter.outPutTextElements[i];
+  }
+}
+
+
 /*
 * This is the handler for the parameter page.  This page is used to
 * manage the lowest level of a products specs.  The user can add and
@@ -303,29 +334,80 @@ function parameter (response, request, collection, url)
       });
   }
 
+  //Parses the definition for a computed field into a user friendly, readable output text
+  //specifically used for nice report output.
+  //It gets the definition string from the page, splits it into an array of elements
+  //requests all the fields from the db, and compares the elements in the definition
+  //to those returned from the db, if there's a match, we get the appropriate data
+  //and build an array that contains the data for the output string.
+  //once the definition is depleted, we build the string using the array built on the
+  //matched data.  Yup, it's pretty inefficient. 
   if(FieldQuery.action == 'parseDef')
   {
-    console.log('field: ' + FieldQuery.field);
-    property = FieldQuery.property;
-    collection.find({'type':'field', 'field_name':FieldQuery.field}).toArray(
-      function(error, result)
+    var definition = FieldQuery.definition; //the definition string from the page
+    var def_elements = definition.split(";"); //split the string into elements by ';'
+    Parameter.outPutTextElements = new Array(); //the array to contain the output data
+    //get all the fields so we can find the data we need
+    collection.find({'type': 'field'}).toArray(
+      function (error, result)
       {
-        //If there's something returned from the db, send it to the page as
-        //a JSON object
+        //if we get something back
         if(result!=null)
         {
-          var r;
-          if(property == 'value')
-            r = result[0].field_value;
-          else
-            r = result[0].field_unit;
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(r);
-          response.end();
+          //go through each element of the definition until it's depleted
+          while(def_elements.length > 0)  
+          {
+            var r; // the temp var to store the output data
+            var element = eval("(" + def_elements.shift() + ")"); //turn the current element into an object
+            if(element.field != null) //if this element has a field property
+            {
+              //find the match in the set of fields from the db
+              for(var i = 0; i < result.length; i++)
+              {
+                //if we find a match
+                if(element.field == result[i].field_name)
+                {
+                  //determine which property was requested
+                  //value or unit
+                  if(element.property == 'value')
+                    r = result[i].field_value;
+                  else
+                    r = result[i].field_unit;
+                  //Add the element to the array
+                  Parameter.addElement(r);
+                }
+                //otherwise report that one of the elements couldn't be found
+                else
+                {
+                  console.log('Bad definition request.');
+                  response.writeHead(200, {"Content-Type": "text/plain"});
+                  response.write("One or more of the fields requested couldn't be matched");
+                  response.end();
+                }
+              }
+            }
+            //if the element doesn't possess any properties, it must be a string
+            //so add the string to the output
+            else
+            {
+              Parameter.addElement(element);
+            }
+          }
+          //Once we've depleted the definition set
+          if(def_elements.length < 1)
+          {
+            //build the output string
+            Parameter.buildOutputString();
+            //and give the string back to the page
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write(Parameter.outPutString);
+            response.end();
+          }
         }
-        //Otherwise, let the page know, it's empty
+        //Otherwise, let the page know it's empty
         else
         {
+          console.log('!!! Here !!!: 2');
           response.writeHead(200, {"Content-Type": "text/plain"});
           response.write('--empty--');
           response.end();
@@ -333,11 +415,13 @@ function parameter (response, request, collection, url)
         //If there's an error, log it.
         if(error)
         {
-          console.log("\nError in 'getFields':" + error + '\n');
+          console.log('!!! Here !!!: 3');
+          console.log("\nError in 'ParseDef':" + error + '\n');
         }
       });
-  }
+    }
 }
+
 
 function group(response, request, collection, url)
 {

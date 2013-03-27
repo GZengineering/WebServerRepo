@@ -1,3 +1,5 @@
 {value: Port Nominal Voltage}{unit: Port Nominal Voltage}, up to {value: Port Current Max}{unit: Port Current Max} ({value: Port Nominal Voltage}*{value: Port Current Max}W max), regulated
 
 "{0}{1}, up to {2}{3} ({4}*{5}W max), regulated", {field: Port Nominal Voltage, property: 'value'}, {field: Port Nominal Voltage, propert: 'unit'},...
+
+{"field":"Cell Capacity","property":"value"};{"field":"Cell Capacity","property":"unit"};", up to "; {"field":"Cell Capacity","property":"unit"}
