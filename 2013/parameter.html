@@ -22,11 +22,11 @@
         }
         #txtBox_paramDef
         {
-            width: 80%;
+            width: 97%;
         }
         #txtBox_paramOutput
         {
-            width: 80%;
+            width: 97%;
         }
         </style>
 
@@ -43,6 +43,7 @@
                 "dojo/_base/array",
                 'dojo/_base/xhr', 
                 'dijit/form/TextBox',
+                'dijit/InlineEditBox',
                 'dojo/data/ItemFileWriteStore',
                 'dojox/grid/DataGrid',
                 'dojox/grid/_CheckBoxSelector',
@@ -50,7 +51,7 @@
                 'dojox/grid/cells/dijit',
                 'dijit/layout/ContentPane',
                 'dojo/domReady!'], 
-                function(lang, dom, registry, Button, baseArray, xhr, TextBox, ItemFileWriteStore, DataGrid, _CheckBoxSelector, CheckBox, cells, CP)
+                function(lang, dom, registry, Button, baseArray, xhr, TextBox, InlineEditBox, ItemFileWriteStore, DataGrid, _CheckBoxSelector, CheckBox, cells, CP)
                 {
                         /********************************     Parameter Grid      *********************************/
 
@@ -215,7 +216,7 @@
                                   dijit.registry.remove('unit'+i);  
                                   data_list[i] = 
                                   {
-                                    col1: 'id', 
+                                    col1: 'id',
                                     col2: fields[i].field_name,
                                     col3: fields[i].field_value, 
                                     col4: new Button({label: 'Get', id: 'valu'+i, onClick: function()
@@ -236,7 +237,7 @@
                                             console.log('ID: ' + this.id);
                                             ParameterGrid.deleteRow(this.id);
                                         }
-                                    })
+                                    }),
                                   }
                                 }
 
@@ -285,26 +286,238 @@
                                         else
                                             var msg = "Nothing Selected";
                                         node.innerHTML = msg + ParameterGrid.selected_fields.join(", ");
-
-                                        ParameterGrid.selectedRow
-
                                     }
 
                                 // Event for when the selections are changed, call reportselection on the dom id given
                                 // hitch() returns a function that will execute a given function in a given context. This function allows you 
                                 // to control how a function executes, particularly in asynchronous operations
-                                grid.on("SelectionChanged",
+                                grid.on("SelectionChanged", 
                                     lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
                                 
                             }    
                         }
 
+                        /********************************     End of Parameter Grid      *********************************/
+
+                        
+                        /********************************     Computed Field Grid      *********************************/
+
+                        var CompFieldGrid = new Object();
+
+                        CompFieldGrid.getSelected = function()
+                        {
+                            return this.selected_fields;
+                        }
+
+                        //Get the parameters from the db
+                        CompFieldGrid.getFields = function()
+                        {
+                            xhr.get(
+                            {
+                                url:'/parameter',
+                                handleAs: 'json', //grabs the xhr string and turns it into an object
+                                content:
+                                {
+                                    action: 'getCompFields',
+                                    loaded: has_loaded = true,
+                                },
+                                load:function(response)
+                                {
+                                    CompFieldGrid.allFields = response;
+                                    CompFieldGrid.buildGrid(CompFieldGrid.allFields); //rebuild the dojo Grid
+                                },
+                                error:function(error)
+                                {
+                                    console.log("There was an error: " + error);
+                                    dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                                }
+                            });
+                        }
+
+                        //Gets all the data that makes up the row at the index given by id
+                        CompFieldGrid.getGridItemById = function(id)
+                        {
+                            var gridItem = null;
+                            var grid = dijit.registry.byId('CompFieldGrid');
+                            grid.store.fetchItemByIdentity({
+                                identity: id,
+                                onItem: function(item, request)
+                                { 
+                                    gridItem=item; 
+                                }
+                            });
+                            return gridItem;
+                        }
+
+                        //Removes an entire parameter from the database given the id of the row
+                        //of the selected parameter
+                        CompFieldGrid.deleteRow = function(id)
+                        {
+                            var sub = id.substring(4, id.length);
+                            item = CompFieldGrid.getGridItemById(sub);
+                            console.log('Field to delete: ' + item.col2);
+                            if(!item){ return alert('error deleting '+sub+' from CompFieldGrid'); }
+                            if(!confirm("Are you sure you want to delete \'" + item.col2 +"\'?"))
+                                return;
+                            else
+                            {
+                                xhr.get(
+                                    {
+                                        url:"/parameter",
+                                        content: 
+                                        {
+                                            action: 'removeCompField',
+                                            field_name: item.col2,
+                                            field_def: item.col3,
+                                            loaded: has_loaded=true,
+                                        },
+                                        load:function(response)
+                                        {
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                        },
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                        }
+                                    });
+                                CompFieldGrid.getFields(); //refresh the contents of the table
+                            }
+                        }
+
+                        CompFieldGrid.addGridDefToDefinition = function(id)
+                        {
+                            var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
+                            item = CompFieldGrid.getGridItemById(sub); //get the item by the given id
+                            var pair = new Object();
+                            pair.field = item.col2[0];
+                            pair.property = 'unit';
+                            var def = item.col3[0];
+                            // ParameterGrid.def_params.push(def);
+                            if(dom.byId('txtBox_paramDef').value == '')
+                                var addString = def;
+                            else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                                var addString = def;
+                            else    
+                                var addString = ';' + def;
+
+                            console.log('Copying definition: ' + def);
+
+                            // var addThis = pairString; // This is the text string to add to the textbox
+                            dom.byId('txtBox_paramDef').value += addString; //append it to the textbox
+                            // parseDefinitionFieldToOutput();
+                        }
+
+                        //Build the Dojo Grid with the 
+                        CompFieldGrid.buildGrid = function(fields)
+                        {
+                            CompFieldGrid.selected_fields;
+                            CompFieldGrid.def_params = new Array(); //the elements of the definition string
+                            CompFieldGrid.outputElements = new Array();
+
+                            if(fields.length < 1)
+                                dom.byId('CompFieldGrid').innerHTML = '<b>There are no Computed Fields available</b>';
+                            else
+                            {
+                                //Grid Data
+                                var data = 
+                                {
+                                  identifier: "id",
+                                  items: []
+                                };
+
+                                var data_list = []; // data list to display data
+
+                                //set data list values from fields parameter
+                                for(var i=0;i<fields.length;i++)
+                                {
+                                  dijit.registry.remove('delt'+i);
+                                  dijit.registry.remove('defi'+i);  
+                                  data_list[i] = 
+                                  {
+                                    col1: 'id',
+                                    col2: fields[i].field_name,
+                                    col3: fields[i].field_def, 
+                                    col4: new Button({label: 'Get', id: 'defi'+i, onClick: function()
+                                        {
+                                            console.log('DefinitionID: ' + this.id);
+                                            CompFieldGrid.addGridDefToDefinition(this.id);
+                                        }
+                                    }) ,
+                                    col5: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            CompFieldGrid.deleteRow(this.id);
+                                        }
+                                    }),
+                                  }
+                                }
+
+                                var rows = data_list.length; //# of rows = # of data
+                                for(var i = 0; i < rows; i++)
+                                {
+                                  data.items.push(lang.mixin({ id: i }, data_list[i]));
+                                }
+                                compFieldStore = new ItemFileWriteStore({data: data}); //set up the store
+
+                                /*set up layout*/
+                                var layout = [[
+                                  {'name': '#', 'field': 'id', 'width': '3%'},
+                                  {'name': 'Name', 'field': 'col2', 'width': '22%', 'editable': true, },
+                                  {'name': 'Definition', 'field': 'col3', 'width': '59%', },
+                                  {'name': 'Get Definition', 'field': 'col4', 'width': '7%',},
+                                  {'name': 'Delete', 'field': 'col5', 'width': '9%'}
+                                ]];
+
+                                dijit.registry.remove("CompFieldGrid");
+
+                                /*create a new grid*/
+                                var grid = new DataGrid({
+                                    store: compFieldStore,
+                                    structure: layout,
+                                    autoHeight: true}, 'CompFieldGrid');
+
+
+                                /*Call startup() to render the grid*/
+                                grid.startup();
+
+                                //This function reports what fields are selected for the current working group
+                                function reportSelection(node)
+                                    {
+                                        var items = this.selection.getSelected();
+                                        CompFieldGrid.selected_fields = baseArray.map(items, function(item)
+                                        {
+                                            return item.col2;
+                                        }, this);
+                                        if(CompFieldGrid.selected_fields.length > 0)
+                                        {
+                                            var msg = "You have selected " + ((CompFieldGrid.selected_fields.length > 1) ? " ": " ");
+                                        }
+                                        else
+                                            var msg = "Nothing Selected";
+                                        node.innerHTML = msg + CompFieldGrid.selected_fields.join(", ");
+                                    }
+
+                                // Event for when the selections are changed, call reportselection on the dom id given
+                                // hitch() returns a function that will execute a given function in a given context. This function allows you 
+                                // to control how a function executes, particularly in asynchronous operations
+                                grid.on("SelectionChanged", 
+                                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+                                
+                            }    
+                        }
+
+                        /********************************     End of Comp Field Grid      *********************************/
+
+
                          //input text boxes
-                    	 var txtBox_paramName = registry.byId("txtBox_paramName");
-                         var txtBox_paramValue = registry.byId("txtBox_paramValue");
-                         var txtBox_paramUnit = registry.byId("txtBox_paramUnit");
-                         var txtBox_paramDef = registry.byId("txtBox_paramDef");
-                         var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
+                        var txtBox_paramName = registry.byId("txtBox_paramName");
+                        var txtBox_paramValue = registry.byId("txtBox_paramValue");
+                        var txtBox_paramUnit = registry.byId("txtBox_paramUnit");
+                        var txtBox_paramDef = registry.byId("txtBox_paramDef");
+                        var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
+                        document.getElementById('txtBox_paramOutput').readOnly = 'readOnly';
+
 
                          //This checkbox indicates whether the user wishes to add a new computed field or a new
                          //product spec field
@@ -317,12 +530,12 @@
                                 if(this.checked == true)
                                 {
                                     dom.byId("fields_computed").style.display="block";
-                                    dom.byId("serverResponse").innerHTML = "The Box is checked";
+                                    dom.byId("fields_paramProperties").style.display = "none";
                                 }
                                 else
                                 {
                                     dom.byId("fields_computed").style.display="none";
-                                    dom.byId("serverResponse").innerHTML = "The Box is unchecked";
+                                    dom.byId("fields_paramProperties").style.display = "block";
                                 }
                             }
 
@@ -339,42 +552,73 @@
                                 {
                                      dom.byId("serverResponse").innerHTML = "Enter a name into the name field";
                                 }
-                                else if(dom.byId("txtBox_paramValue").value=="")
+                                else if(dom.byId("txtBox_paramValue").value=="" && chkBox_compField.checked == false)
                                 {
                                      dom.byId("serverResponse").innerHTML = "Enter a value into the value field";
                                 }
-                                else if(dom.byId("txtBox_paramUnit").value=="")
+                                else if(dom.byId("txtBox_paramUnit").value=="" && chkBox_compField.checked == false)
                                 {
                                      dom.byId("serverResponse").innerHTML = "Enter a unit of measure into the UOM field";
                                 }
+                                else if(chkBox_compField.checked == true && dom.byId('txtBox_paramDef').value == "")
+                                {
+                                     dom.byId("serverResponse").innerHTML = "Enter a definition for the computed field";
+                                }
                                 else
                                 {
-                                    //send request to create a new parameter
-                                	xhr.get(
-                                	{
-                                		url:"/parameter",
-                                		content: 
+                                    if(!chkBox_compField.checked)
+                                    {
+                                        //send request to create a new parameter
+                                    	xhr.get(
+                                    	{
+                                    		url:"/parameter",
+                                    		content: 
+                                            {
+                                                action: 'newField',
+                                                field_name: dom.byId('txtBox_paramName').value,
+                                                field_value: dom.byId('txtBox_paramValue').value,
+                                                field_unit: dom.byId('txtBox_paramUnit').value,
+                                                loaded: has_loaded=true,
+                                            },
+                                    		load:function(response)
+                                    		{
+                                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                                ParameterGrid.getFields(); //refresh the contents of the table
+                                                ClearTextFields();
+                                    		},
+                                    		error:function(error)
+                                    		{
+                                    			console.log("There was an error: \n"+error);
+                                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                    		}
+                                    	});
+                                    }
+                                    else
+                                    {
+                                        xhr.get(
                                         {
-                                            action: 'newField',
-                                            field_name: dom.byId('txtBox_paramName').value,
-                                            field_value: dom.byId('txtBox_paramValue').value,
-                                            field_unit: dom.byId('txtBox_paramUnit').value,
-                                            loaded: has_loaded=true,
-                                        },
-                                		load:function(response)
-                                		{
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                            ParameterGrid.getFields(); //refresh the contents of the table
-                                            ClearTextFields();
-                                		},
-                                		error:function(error)
-                                		{
-                                			console.log("There was an error: \n"+error);
-                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                                		}
-                                	});
+                                            url:"/parameter",
+                                            content: 
+                                            {
+                                                action: 'newCompField',
+                                                field_name: dom.byId('txtBox_paramName').value,
+                                                field_def: dom.byId('txtBox_paramDef').value,
+                                                loaded: has_loaded=true,
+                                            },
+                                            load:function(response)
+                                            {
+                                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                                CompFieldGrid.getFields(); //refresh the contents of the table
+                                                ClearTextFields();
+                                            },
+                                            error:function(error)
+                                            {
+                                                console.log("There was an error: \n"+error);
+                                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                            }
+                                        });
+                                    }
                                 }
-                                
                                 console.log ("New Parameter Submitted.");
                     	 	}
                     	 }, 'button_insertNewField');
@@ -425,6 +669,7 @@
 
                         //OnLoad Do these
                         ParameterGrid.getFields();
+                        CompFieldGrid.getFields();
                         ClearTextFields();
                 });
         </script>
@@ -464,6 +709,22 @@
                         </tr>
                 </table>
                 </div>
+                <div id = "fields_paramProperties" style = "display: block">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramUnit" style = "padding: 5px">New Parameter UOM:</label><br>  
+                                <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramValue" style = "padding: 5px">New Parameter Value:</label><br>  
+                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
                 <table>
                     <tr>
                         <td style = "padding: 5px">
@@ -473,33 +734,24 @@
                     </tr>
                     <tr>
                         <td style = "padding: 5px">
-                            <label for="txtBox_paramValue" style = "padding: 5px">New Parameter Value:</label><br>  
-                            <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style = "padding: 5px">
-                            <label for="txtBox_paramUnit" style = "padding: 5px">New Parameter UOM:</label><br>  
-                            <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style = "padding: 5px">
                             <button id="button_insertNewField"></button>
-                            <!-- <button id="button_removeField"></button> -->
                         </td>
                     </tr>
                 </table>
             </td>
             <td valign = "top" style = "padding: 5px; text-align:right">
                 <div id="parameterGridDiv"></div>
+                <br>
+                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Fields</b></p></div>
+                <br>
+                <div id="CompFieldGrid"></div>
                 <br><br>
-                <!-- <div id= "button_removeGroup" data-dojo-type="dijit/form/button"></div> -->
             </td>
+            
         </tr>
         <tr>
             <td colspan = "100%" style = "padding: 10px">
-                <div id="serverResponse"></div>
+                <div id="serverResponse">Status: Awaiting action...</div>
             </td>
         </tr>
     </table>

@@ -254,7 +254,6 @@ Parameter.buildOutputString = function()
 */
 function parameter (response, request, collection, url) 
 {
-
   //parse url
   console.log("\nRequest handler 'parameter'");
   var FieldQuery = url.parse(request.url,true).query;
@@ -334,6 +333,72 @@ function parameter (response, request, collection, url)
       });
   }
 
+  if(FieldQuery.action == 'getCompFields')
+  {
+    //Get the list of fields from the db
+    collection.find({'type':'compField'}).toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var string = JSON.stringify(result);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getCompFields':" + error + '\n');
+        }
+      });
+  }
+
+  //If there was an insertion requested, add the entry to the db, initialize its value to null.
+  if(FieldQuery.action == 'newCompField')
+  {
+    //Save the new field to the db only if it's a unique name, don't allow duplicates
+    collection.save({'type': 'compField', 'field_name': FieldQuery.field_name, 'field_def':FieldQuery.field_def});
+    // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
+    //Send the response back to the page
+    response.writeHead(200, {"Content-Type": "text/plain"});
+    response.write('New Computed Field — \'' + FieldQuery.field_name + '\' successfully added');
+    response.end();
+  }
+
+  if(FieldQuery.action == 'removeCompField')
+  {
+    collection.findAndRemove({'type': 'compField', 'field_name': FieldQuery.field_name, 'field_def': FieldQuery.field_def},
+    function(error, result)
+    {
+      //If it's found and removed successfully, report it.
+      if(result!=null)
+      {
+        console.log('Comp Field Removal: successful');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write(FieldQuery.field_name + ' successfully removed');
+        response.end();
+      }
+      //otherwise, report that the field wasn't found
+      else
+      {
+        console.log('Comp Field Removal: nothing to remove');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Failure to Remove \' '+ FieldQuery.field_name + ' \' : Field not found.');
+        response.end();
+      }
+    });
+  }
+
   //Parses the definition for a computed field into a user friendly, readable output text
   //specifically used for nice report output.
   //It gets the definition string from the page, splits it into an array of elements
@@ -357,8 +422,27 @@ function parameter (response, request, collection, url)
           //go through each element of the definition until it's depleted
           while(def_elements.length > 0)  
           {
+            var notFound = true;
             var r; // the temp var to store the output data
-            var element = eval("(" + def_elements.shift() + ")"); //turn the current element into an object
+            var element = def_elements.shift();
+            try
+            {
+              var element = eval("(" + element + ")"); //turn the current element into an object
+            }
+            catch (err)
+            {
+              if(err == SyntaxError)
+              {
+                console.log('Error: SyntaxError' + err);
+                Parameter.addElement(element);
+                continue;
+              }
+              else
+              {
+                console.log('Error: ' + err);
+              }
+            }
+            // var element = JSON.parse(def_elements.shift());
             if(element.field != null) //if this element has a field property
             {
               //find the match in the set of fields from the db
@@ -375,16 +459,14 @@ function parameter (response, request, collection, url)
                     r = result[i].field_unit;
                   //Add the element to the array
                   Parameter.addElement(r);
+                  notFound = false;
+                  break;
                 }
-                //otherwise report that one of the elements couldn't be found
-                else
-                {
-                  console.log('Bad definition request.');
-                  response.writeHead(200, {"Content-Type": "text/plain"});
-                  response.write("One or more of the fields requested couldn't be matched");
-                  response.end();
-                }
+                //otherwise go to the next element from the db
               }
+              //if we never find a match, stick a note in the output string for the missing element
+              if(notFound)
+                Parameter.addElement('(No Match: ' + element.field + ')');
             }
             //if the element doesn't possess any properties, it must be a string
             //so add the string to the output
