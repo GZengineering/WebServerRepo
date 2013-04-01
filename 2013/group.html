@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
-<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
 <head>
     <title>Specs: Group Builder</title>
+    <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Group </h1>
 
 
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
@@ -13,17 +14,17 @@
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
         #parameterGridDiv 
         {
-            height: 40em;
+            height: 46em;
             width: 100%;
         }
         #selectionGrid 
         {
-            height: 40em;
+            height: 50em;
             width: 100%;
         }
         #groupGrid 
         {
-            height: 40em;
+            height: 50em;
             width: 100%;
         }
     </style>
@@ -39,14 +40,14 @@
         'dijit/registry',
         'dojo/_base/xhr', 
         'dojox/grid/_CheckBoxSelector',
+        'dijit/form/Select',
         "dijit/form/Button", 
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Select, Button, dom)
         {
             var fields = new Array();
             var has_loaded = false;
-            /*set up data store*/
 
             /********************************     Group Grid      *********************************/
 
@@ -68,7 +69,17 @@
                 //set data list values from fields parameter
                 for(i=0;i<groups.length;i++)
                 {
-                  data_list[i] = {col1: 'id', col2: groups[i].group_name}
+                    dijit.registry.remove('delt'+i);
+                    data_list[i] = 
+                    {
+                        col1: 'id', 
+                        col2: groups[i].group_name,
+                        col3: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                            {
+                                GroupGrid.deleteRow(this.id);
+                            }
+                        })
+                    }
                 }
 
                 var rows = data_list.length; //# of rows = # of data
@@ -80,8 +91,9 @@
 
                 /*set up layout*/
                 var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '15%'},
-                  {'name': 'Group', 'field': 'col2', 'width': '85%'},
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Group', 'field': 'col2', 'width': '80%'},
+                  {'name': 'Delete', 'field': 'col3', 'width': '15%'}
                 ]];
 
                 //Remove the group grid if it already exists
@@ -113,6 +125,54 @@
 
             }
 
+            //Gets all the data that makes up the row at the index given by id
+            GroupGrid.getGridItemById = function(id)
+            {
+                var gridItem = null;
+                var grid = dijit.registry.byId('groupGrid');
+                grid.store.fetchItemByIdentity({
+                    identity: id,
+                    onItem: function(item, request)
+                    { 
+                        gridItem=item; 
+                    }
+                });
+                return gridItem;
+            }
+
+            //deletes the from the db and updates the grid
+            GroupGrid.deleteRow = function(id)
+            {
+                var sub = id.substring(4, id.length);
+                item = GroupGrid.getGridItemById(sub);
+                if(!item){ return alert('error deleting '+sub+' from GroupGrid'); }
+                if(!confirm("Are you sure you want to delete \'" + item.col2 +"\'?"))
+                    return;
+                else
+                {
+                    xhr.get(
+                        {
+                            url:"/group",
+                            content: 
+                            {
+                                action: 'removeGroup',
+                                group_name: item.col2,
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    GroupGrid.getGroups(); //refresh the contents of the table
+                }
+            }
+
             //Getter for the currently selected group
             GroupGrid.getSelected = function()
             {
@@ -123,7 +183,9 @@
             GroupGrid.getFieldsOfSelectedGroup = function()
             {
                 //get the selected items from the parameter grid
-                var items = this.selection.getSelected();
+                var items = this.getSelected();
+                if(!items)
+                    return;
                 //store the selected group
                 var selectedGroup = items[0].col2;
 
@@ -151,6 +213,7 @@
                 });
             }
 
+            //Gets all the groups from the db
             GroupGrid.getGroups = function()
             {
                 xhr.get(
@@ -175,47 +238,6 @@
                     }
                 });
             }
-
-            //Button that executes removal of a selected group
-            var button_removeGroup = new Button(
-            {
-                label: 'Remove Selected Group',
-                onClick: function()
-                {
-                    //Get the selected group, if a group isn't selected, tell the user
-                    //to do so.
-                    var selected_group = GroupGrid.getSelected();
-                    if(!selected_group)
-                    {
-                        dom.byId('serverResponse').innerHTML = 'Select a group to remove.';
-                    }
-                    //otherwise execute group removal
-                    else
-                    {
-                        xhr.get(
-                        {
-                            url:"/group",
-                            content: 
-                            {
-                                action: 'removeGroup',
-                                group_name: selected_group,
-                                loaded: has_loaded=true,
-                            },
-                            load:function(response)
-                            {
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                GroupGrid.getGroups();
-                                SelectionGrid.buildSelectionGrid(new Array());
-                            },
-                            error:function(error)
-                            {
-                                console.log("There was an error: \n"+error);
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                            }
-                        });
-                    }
-                }
-            }, "button_removeGroup");    
 
 
             /********************************     Parameter Grid      *********************************/
@@ -288,7 +310,7 @@
                     /*set up layout*/
                     var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
                       {'name': '#', 'field': 'id', 'width': '10%'},
-                      {'name': 'Field', 'field': 'col2', 'width': '80%'},
+                      {'name': 'Parameters', 'field': 'col2', 'width': '80%'},
                     ]];
 
                     dijit.registry.remove("parameterGridDiv");
@@ -360,7 +382,7 @@
                 /*set up layout*/
                 var layout = [[
                   {'name': '#', 'field': 'id', 'width': '15%'},
-                  {'name': 'Field', 'field': 'col2', 'width': '85%'},
+                  {'name': 'Parameters', 'field': 'col2', 'width': '85%'},
                 ]];
 
                 //remove the old selectionGrid from the dom
@@ -378,6 +400,13 @@
 
             //Group Name Textbox
             var txtBox_groupName = registry.byId("txtBox_groupName");
+
+            var select_groupType = new Select({
+                options:
+                [
+                    {label: "Product Group", value: "product"},
+                    {label: "View Group", value: "view"}
+                ]}, "select_groupType");
 
             //Confirm selection button for new group
             //require a name for the group
@@ -435,33 +464,33 @@
 
 <!-- Layout -->
 <body class="claro">
-    <table width = '80%' border = "1">
+    <table width = '100%' border = "1">
         <col width = "33%">
         <col width = "34%">
         <col width = "33%">
         <tr> <!-- Labels -->
-            <td style = "text-align: center; padding: 5px">
-                <p><b>Available Fields to Group:</b></p>
+            <td style = "text-align: center">
+                <p><b>Create New</b></p>
             </td>
-            <td style = "text-align: center; padding: 5px">
-                <b>Available Groups:</b>
+            <td style = "text-align: center">
+                <b>Group List</b>
             </td>
-            <td style = "text-align: center; padding: 5px">
-                <p><b>Fields of Selected Group:</b></p>
+            <td style = "text-align: center">
+                <p><b>Group Viewer</b></p>
             </td>
         </tr>
         <tr> <!-- Grids -->
             <td valign = "top" style = "padding: 5px">
-                <div id="parameterGridDiv"></div>
-                <br>
+                <label for="select_groupType" style = "padding: 5px">New Group Type:</label>
                 <label for="txtBox_groupName" style = "padding: 5px">New Group Name:</label><br>  
+                <div id="select_groupType" style ="width: 50%;"></div>
                 <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
                 <div id= "button_confirmSelection" data-dojo-type="dijit/form/button"></div>
+                <br><br>
+                <div id="parameterGridDiv"></div>
             </td>
             <td valign = "top" style = "padding: 5px; text-align:right">
                 <div id="groupGrid"></div>
-                <br><br>
-                <div id= "button_removeGroup" data-dojo-type="dijit/form/button"></div>
             </td>
             <td valign ="top" style = "padding: 5px">
                 <div id= "selectionGrid"></div>

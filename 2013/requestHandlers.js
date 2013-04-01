@@ -697,6 +697,28 @@ function productBuilder(response, request, collection, url)
       });
   }
 
+  if(FieldQuery.action == 'removeFamily')
+  {
+    collection.findAndRemove({'product_name' : FieldQuery.product_name},
+      function(error, result)
+    {
+      if(result!=null)
+      {
+        console.log('Removal of Product: ' + FieldQuery.product_name + ' Succeeded');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Product \'' + FieldQuery.product_name + '\' successfully removed');
+        response.end();
+      }
+      else
+      {
+        console.log('Removal of Product: ' + FieldQuery.product_name + 'Failed');
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('Failure to Remove Group\' '+ FieldQuery.product_name + ' \' : Product not found.');
+        response.end();
+      }
+    });
+  }
+
   if(FieldQuery.action == 'newProduct')
   {
     var group_field_sets = new Array();
@@ -843,6 +865,74 @@ function specReports(response, request, collection, url)
   }
 }
 
+function viewBuilder(response, request, collection, url)
+{
+  console.log("\nRequest handler 'Product Builder'");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./viewBuilder.html', response);
+  }
+
+  if(FieldQuery.action == 'getProducts')
+  {
+    //Get the list of fields from the db
+    collection.find({'type':'product'}).toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var string = JSON.stringify(result);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getProducts':" + error + '\n');
+        }
+      });
+  }
+
+  if(FieldQuery.action == 'getSpecs')
+  {
+    collection.find({'product_name': FieldQuery.product_name}).toArray(
+      function(error, product)
+      {
+        if(error)
+        {
+          console.log('Error: ' + error);
+        }
+        else if(!product)
+        {
+          console.log('--Here!-- # 1: ');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        else
+        {
+          var string = JSON.stringify(product);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+      });
+  }
+}
+
 function Inventory(response, request, collection, url) {
 
   console.log("\nRequest handler 'Inventory' was called");
@@ -950,6 +1040,7 @@ function Inventory(response, request, collection, url) {
 // exports.UnitClassArray = UnitClassArray; 
 exports.favicon = favicon;
 exports.specReports = specReports;
+exports.viewBuilder = viewBuilder;
 exports.productBuilder = productBuilder;
 exports.group = group;
 exports.parameter = parameter;

@@ -37,6 +37,7 @@ handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
 handle["/productBuilder"] = requestHandlers.productBuilder;
 handle["/specReports"] = requestHandlers.specReports;
+handle["/viewBuilder"] = requestHandlers.viewBuilder;
 
 //open the connection to the collection
 db.open(function(error, db)

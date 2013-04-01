@@ -2,9 +2,10 @@
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
 <!DOCTYPE html>
 
-<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
 	<head>
         <title>Specs: Parameter Builder</title>
+        <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Individual </h1>
 		 <!-- Load Dojo API -->
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
@@ -625,7 +626,7 @@
 
                         var button_ParseDefinition = new Button (
                         {
-                            label: "Parse Definition to Output",
+                            label: "Parse",
                             onClick: function()
                             {
                                 parseDefinitionFieldToOutput();
@@ -676,21 +677,47 @@
     </head>
 
     <!-- Layout -->	
-    <body class="claro"><table width = '90%' border = "1">
+    <body class="claro"><table width = '100%' border = "1">
         <col width = "35%">
         <col width = "65%">
         <tr> <!-- Labels -->
-            <td style = "text-align: center; padding: 5px">
-                <p><b>Create a New Parameter</b></p>
+            <td style = "text-align: center">
+                <p><b>Create New</b></p>
             </td>
-            <td style = "text-align: center; padding: 5px">
-                <b>Available Parameters:</b>
+            <td style = "text-align: center">
+                <b>Parameter List</b>
             </td>
         </tr>
         <tr>
             <td valign = "top" style = "padding: 5px">
-                <a style = "padding: 5px">Computed Field</a>
-                <input id = 'chkBox_compField' data-dojo-type="dijit/form/CheckBox"></input>
+                <table>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <label for="txtBox_paramName" style = "padding: 5px">New Parameter Name:</label><br>  
+                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                        <td>
+                            <a style = "padding: 5px">Computed Field</a>
+                            <input id = 'chkBox_compField' data-dojo-type="dijit/form/CheckBox"></input>
+                        </td>
+                    </tr>
+                </table>
+                <div id = "fields_paramProperties" style = "display: block">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramValue" style = "padding: 5px">Value:</label><br>  
+                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramUnit" style = "padding: 5px">Units:</label><br>  
+                                <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
                 <br><br>
                 <div id = "fields_computed" style = "display: none">
                     <table width = '100%' border = '0'>
@@ -698,7 +725,9 @@
                             <td style = "padding: 5px">
                                 <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>
                                 <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
-                                <button id="button_ParseDefinition"></button>
+                                <div id = "ParseButtonDiv" style="text-align: right; padding: 10px">
+                                    <button id="button_ParseDefinition"></button>
+                                </div>
                             </td>
                         </tr>
                         <tr>
@@ -707,47 +736,20 @@
                                 <input id = "txtBox_paramOutput" data-dojo-type="dijit/form/TextBox"></input>
                             </td>
                         </tr>
-                </table>
-                </div>
-                <div id = "fields_paramProperties" style = "display: block">
-                    <table width = '100%' border = '0'>
-                        <tr>
-                            <td style = "padding: 5px">
-                                <label for="txtBox_paramUnit" style = "padding: 5px">New Parameter UOM:</label><br>  
-                                <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style = "padding: 5px">
-                                <label for="txtBox_paramValue" style = "padding: 5px">New Parameter Value:</label><br>  
-                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
-                            </td>
-                        </tr>
                     </table>
                 </div>
-                <table>
-                    <tr>
-                        <td style = "padding: 5px">
-                            <label for="txtBox_paramName" style = "padding: 5px">New Parameter Name:</label><br>  
-                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style = "padding: 5px">
-                            <button id="button_insertNewField"></button>
-                        </td>
-                    </tr>
-                </table>
+                <div id = "newFieldButtonDiv" style="text-align: right; padding: 10px">
+                    <button id="button_insertNewField"></button>
+                </div>
             </td>
-            <td valign = "top" style = "padding: 5px; text-align:right">
+            <td valign = "top" style = "padding: 2px; text-align:right">
+                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
                 <div id="parameterGridDiv"></div>
-                <br>
-                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Fields</b></p></div>
+                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
                 <br>
                 <div id="CompFieldGrid"></div>
                 <br><br>
             </td>
-            
         </tr>
         <tr>
             <td colspan = "100%" style = "padding: 10px">

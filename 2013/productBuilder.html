@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
-<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
 <head>
     <title>Specs: Product Builder</title>
-
+    <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Family </h1>
 
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
@@ -11,19 +11,24 @@
         
     <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/claro/claro.css"> -->
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
-        #parameterGridDiv 
+        #productGrid
         {
-            height: 40em;
+            height: 45.5em;
             width: 100%;
         }
         #selectionGrid 
         {
-            height: 40em;
+            height: 42em;
             width: 100%;
         }
         #groupGrid 
         {
-            height: 40em;
+            height: 42em;
+            width: 100%;
+        }
+        #productSummaryGrid
+        {
+            height: 45.5em;
             width: 100%;
         }
     </style>
@@ -40,9 +45,10 @@
         'dojo/_base/xhr', 
         'dojox/grid/_CheckBoxSelector',
         "dijit/form/Button", 
+        'dijit/form/Select',
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, Select, dom)
         {
 
             var has_loaded = false;
@@ -104,7 +110,6 @@
                     {
                         return item.col2;
                     }, this);
-                    console.log('quantity selected: ' + GroupGrid.selectedGroups);
                     if(GroupGrid.selectedGroups.length > 0)
                     {
                         var msg = "You have selected " + ((GroupGrid.selectedGroups.length > 1) ? " ": " ");
@@ -222,15 +227,6 @@
             // SelectionGrid.buildSelectionGrid = function(selectedArray)
             SelectionGrid.buildSelectionGrid = function(retrieved_data)
             {
-                if(retrieved_data)
-                {
-                    var i;
-                    for(i=0;i<retrieved_data.length;i++)
-                    {
-                        console.log(retrieved_data[i].parameter);
-                    }
-                }
-
                 var data = 
                 {
                   identifier: "id",
@@ -288,7 +284,17 @@
                 //set data list values from fields parameter
                 for(i=0;i<products.length;i++)
                 {
-                  data_list[i] = {col1: 'id', col2: products[i].product_name}
+                    dijit.registry.remove('delt'+i);
+                    data_list[i] = 
+                    {
+                        col1: 'id', 
+                        col2: products[i].product_name,
+                        col3: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                            {
+                                ProductGrid.deleteRow(this.id);
+                            }
+                        })
+                    } 
                 }
 
                 var rows = data_list.length; //# of rows = # of data
@@ -300,8 +306,9 @@
 
                 /*set up layout*/
                 var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '15%'},
-                  {'name': 'Product', 'field': 'col2', 'width': '85%'},
+                  {'name': '#', 'field': 'id', 'width': '8%'},
+                  {'name': 'Product', 'field': 'col2', 'width': '70%'},
+                  {'name': 'Delete', 'field': 'col3', 'width': '22%'}
                 ]];
 
                 //Remove the group grid if it already exists
@@ -333,6 +340,54 @@
 
             }
 
+            //Gets all the data that makes up the row at the index given by id
+            ProductGrid.getGridItemById = function(id)
+            {
+                var gridItem = null;
+                var grid = dijit.registry.byId('productGrid');
+                grid.store.fetchItemByIdentity({
+                    identity: id,
+                    onItem: function(item, request)
+                    { 
+                        gridItem=item; 
+                    }
+                });
+                return gridItem;
+            }
+
+            //deletes the from the db and updates the grid
+            ProductGrid.deleteRow = function(id)
+            {
+                var sub = id.substring(4, id.length);
+                item = ProductGrid.getGridItemById(sub);
+                if(!item){ return alert('error deleting '+sub+' from productGrid'); }
+                if(!confirm("Are you sure you want to delete \'" + item.col2 +"\'?"))
+                    return;
+                else
+                {
+                    xhr.get(
+                        {
+                            url:"/productBuilder",
+                            content: 
+                            {
+                                action: 'removeFamily',
+                                product_name: item.col2,
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    ProductGrid.getProducts(); //refresh the contents of the table
+                }
+            }
+
             //Getter for the currently selected group
             ProductGrid.getSelected = function()
             {
@@ -361,8 +416,6 @@
                     load:function(response)
                     {
                         returnedProduct = response;
-                        // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
-                        console.log('in XHR: ' +returnedProduct);
                         ProductSummaryGrid.buildGrid(returnedProduct);
                     },
                     error:function(error)
@@ -480,6 +533,13 @@
 
             //Group Name Textbox
             var txtBox_productName = registry.byId("txtBox_productName");
+
+            var select_familyType = new Select({
+                options:
+                [
+                    {label: "Product Family", value: "product"},
+                    {label: "View Family", value: "view"}
+                ]}, "select_familyType");
 
             //Confirm selection button for new group
             //require a name for the group
@@ -608,36 +668,45 @@
 
 <!-- Layout -->
 <body class="claro">
-    <table width = '80%' border = "1">
-        <col width = '22%'>
-        <col width = '22%'>
-        <col width = '22%'>
-        <col width = '34%'>
+    <table width = '100%' border = "1">
+        <col width = '40%'>
+        <col width = '25%'>
+        <col width = '35%'>
         <tr>
             <td style = "text-align: center; padding: 5px">
-                <b>Available Groups:</b>
+                <b>Create New</b>
             </td>
-            <td style = "text-align: center; padding: 5px">
+            <!-- <td style = "text-align: center; padding: 5px">
                 <p><b>Fields of Selected Groups:</b></p>
+            </td> -->
+            <td style = "text-align: center; padding: 5px">
+                <p><b>Family List</b></p>
             </td>
             <td style = "text-align: center; padding: 5px">
-                <p><b>Available Products:</b></p>
-            </td>
-            <td style = "text-align: center; padding: 5px">
-                <p><b>Specs of Selected Product:</b></p>
+                <p><b>Family Viewer</b></p>
             </td>
         </tr>
         <tr>
-            <td valign = "top" style = "padding: 5px; text-align:right">
-                <div id="groupGrid"></div>
-            </td>
-            <td valign ="top" style = "padding: 5px">
-                <div id= "selectionGrid"></div>
-                <br>
-                <label for="txtBox_productName" style = "padding: 5px">New Product Name:</label><br>  
+            <td valign = "top" style = "padding: 5px">
+                <label for="select_familyType" style = "padding: 5px 10px 10px 25px text-align: left">Family Type:</label>
+                <label for="txtBox_productName" style = "padding: 5px 15px 15px 40px"> New Family Name:</label><br>
+                <div id= "select_familyType" style = "text-align: left"></div>  
                 <input id="txtBox_productName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
                 <div id= "button_confirmNewProduct" data-dojo-type="dijit/form/button"></div>
+                <table width = '100%'>
+                    <tr>
+                        <td>
+                            <div id="groupGrid"></div>
+                        </td>
+                        <td>
+                            <div id= "selectionGrid"></div>
+                        </td>
+                    </tr>
+                </table>
             </td>
+            <!-- <td valign ="top" style = "padding: 5px">
+                
+            </td> -->
             <td valign = "top" style = "padding: 5px; text-align:right">
                 <div id="productGrid"></div>
             </td>
