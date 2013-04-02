@@ -404,9 +404,7 @@
 
                             console.log('Copying definition: ' + def);
 
-                            // var addThis = pairString; // This is the text string to add to the textbox
                             dom.byId('txtBox_paramDef').value += addString; //append it to the textbox
-                            // parseDefinitionFieldToOutput();
                         }
 
                         //Build the Dojo Grid with the 
@@ -477,7 +475,6 @@
                                     store: compFieldStore,
                                     structure: layout,
                                     autoHeight: true}, 'CompFieldGrid');
-
 
                                 /*Call startup() to render the grid*/
                                 grid.startup();

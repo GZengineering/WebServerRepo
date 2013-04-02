@@ -53,6 +53,8 @@
 
 
             var GroupGrid = new Object();
+
+            GroupGrid._data = new Object();
             //Build the Dojo Grid for groups
             GroupGrid.buildGroupGrid = function(groups)
             {
@@ -113,6 +115,7 @@
                 function noteSelected()
                 {
                     var items = this.selection.getSelected();
+                    GroupGrid._data = items[0].col2;
                     GroupGrid.selectedGroup = items[0].col2;
                 }
 
@@ -176,18 +179,16 @@
             //Getter for the currently selected group
             GroupGrid.getSelected = function()
             {
-                return this.selectedGroup;
+                return GroupGrid._data[0];
             }
 
             //get the fields of the selected group from the database.
             GroupGrid.getFieldsOfSelectedGroup = function()
             {
                 //get the selected items from the parameter grid
-                var items = this.getSelected();
-                if(!items)
+                var selectedGroup = GroupGrid.getSelected();
+                if(!selectedGroup)
                     return;
-                //store the selected group
-                var selectedGroup = items[0].col2;
 
                 xhr.get(
                 {
