@@ -428,6 +428,7 @@ function parameter (response, request, collection, url)
             try
             {
               var element = eval("(" + element + ")"); //turn the current element into an object
+              console.log(element);
             }
             catch (err)
             {
@@ -549,30 +550,43 @@ function group(response, request, collection, url)
 
   if(FieldQuery.action == 'getFieldsOfSelectedGroup')
   {
-    collection.find({'group_name': FieldQuery.group_name}).toArray( 
-      function(error, result)
-      {
-        if(result!=null)
+    if(!FieldQuery.group_name)
+    {
+      response.writeHead(200, {"Content-Type": "text/plain"});
+      response.write('--undefined--');
+      response.end();
+    }
+    else
+    {
+      collection.find({'group_name': FieldQuery.group_name}).toArray( 
+        function(error, result)
         {
-          console.log(result[0].fields[0]);
-          var fieldsAsString = JSON.stringify(result[0].fields);
-          console.log(fieldsAsString);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(fieldsAsString);
-          response.end();
-        }
-        else
-        {
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('--empty--');
-          response.end();
-        }
-        //If there's an error, log it.
-        if(error)
-        {
-          console.log("\nError in 'getGroups':" + error + '\n');
-        }
-      });
+          console.log("RESULT: " + result);
+          if(result.length > 0)
+          {
+            console.log("Case 1");
+            console.log(result[0].fields[0]);
+            var fieldsAsString = JSON.stringify(result[0].fields);
+            console.log(fieldsAsString);
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write(fieldsAsString);
+            response.end();
+          }
+          else
+          {
+            console.log("Case 2");
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            // response.write("empty");
+            response.end();
+          }
+          //If there's an error, log it.
+          if(error)
+          {
+            console.log("Case 3");
+            console.log("\nError in 'getGroups':" + error + '\n');
+          }
+        });
+    }
   }
 
   if(FieldQuery.action == 'getGroups')
@@ -607,7 +621,12 @@ function group(response, request, collection, url)
 
   if(FieldQuery.action == 'newGroup')
   {
-    var group_fields = FieldQuery.group_fields;
+    var group_fields = new Array();
+    for(var f in FieldQuery.group_fields)
+    {
+      var temp = eval('(' + FieldQuery.group_fields[f] + ')');
+      group_fields.push(temp);
+    }
 
     collection.find({'type': 'group', 'group_name': FieldQuery.group_name}).toArray( 
       function(error, result)
@@ -626,7 +645,7 @@ function group(response, request, collection, url)
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'group', 'group_name': FieldQuery.group_name, 'fields' : group_fields});
+            collection.save({'type': 'group', 'group_name': FieldQuery.group_name, 'pg_type': FieldQuery.pg_type, 'fields' : group_fields});
             collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write('New Group — \'' + FieldQuery.group_name + '\' successfully added');
@@ -643,7 +662,7 @@ function group(response, request, collection, url)
     {
       if(result!=null)
       {
-        console.log('Removal of Group: ' + FieldQuery.group_name + 'Succeeded');
+        console.log('Removal of Group: ' + FieldQuery.group_name + ' Succeeded');
         response.writeHead(200, {"Content-Type": "text/plain"});
         response.write('Group \'' + FieldQuery.group_name + '\' successfully removed');
         response.end();

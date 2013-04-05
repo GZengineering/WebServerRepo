@@ -19,12 +19,12 @@
         }
         #selectionGrid 
         {
-            height: 50em;
+            height: 55em;
             width: 100%;
         }
         #groupGrid 
         {
-            height: 50em;
+            height: 55em;
             width: 100%;
         }
     </style>
@@ -40,11 +40,12 @@
         'dijit/registry',
         'dojo/_base/xhr', 
         'dojox/grid/_CheckBoxSelector',
+        'dijit/form/RadioButton',
         'dijit/form/Select',
         "dijit/form/Button", 
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Select, Button, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RadioButton, Select, Button, dom)
         {
             var fields = new Array();
             var has_loaded = false;
@@ -76,7 +77,8 @@
                     {
                         col1: 'id', 
                         col2: groups[i].group_name,
-                        col3: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                        col3: groups[i].pg_type,
+                        col4: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
                             {
                                 GroupGrid.deleteRow(this.id);
                             }
@@ -94,8 +96,9 @@
                 /*set up layout*/
                 var layout = [[
                   {'name': '#', 'field': 'id', 'width': '5%'},
-                  {'name': 'Group', 'field': 'col2', 'width': '80%'},
-                  {'name': 'Delete', 'field': 'col3', 'width': '15%'}
+                  {'name': 'Group', 'field': 'col2', 'width': '60%'},
+                  {'name': 'Type', 'field': 'col3', 'width': '20%'},
+                  {'name': 'Delete', 'field': 'col4', 'width': '15%'}
                 ]];
 
                 //Remove the group grid if it already exists
@@ -106,6 +109,9 @@
                     store: groupStore,
                     structure: layout,
                     autoHeigth: true}, "groupGrid");
+
+                groupGrid.selection.setSelected(groupGrid.selection.selectedIndex, false);
+
 
 
                 /*Call startup() to render the grid*/
@@ -122,10 +128,9 @@
                 //When the group selection changes, update the SelectedGrid
                 //and store which group is currently selected.
                 groupGrid.on("SelectionChanged",
-                        lang.hitch(groupGrid, GroupGrid.getFieldsOfSelectedGroup, true));
-                groupGrid.on("SelectionChanged",
                         lang.hitch(groupGrid, noteSelected, true));
-
+                groupGrid.on("SelectionChanged",
+                        lang.hitch(groupGrid, GroupGrid.getFieldsOfSelectedGroup, true));
             }
 
             //Gets all the data that makes up the row at the index given by id
@@ -165,6 +170,7 @@
                             load:function(response)
                             {
                                 dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                GroupGrid._data[0] = null;
                             },
                             error:function(error)
                             {
@@ -172,6 +178,7 @@
                                 dom.byId("serverResponse").innerHTML = "Response from server: " + error;
                             }
                         });
+                    SelectionGrid.buildSelectionGrid(new Array());
                     GroupGrid.getGroups(); //refresh the contents of the table
                 }
             }
@@ -186,32 +193,44 @@
             GroupGrid.getFieldsOfSelectedGroup = function()
             {
                 //get the selected items from the parameter grid
-                var selectedGroup = GroupGrid.getSelected();
+                var selectedGroup = GroupGrid._data[0];
                 if(!selectedGroup)
                     return;
-
-                xhr.get(
+                else
                 {
-                    url:'/group',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
-                    content:
+                    xhr.get(
                     {
-                        action: 'getFieldsOfSelectedGroup',
-                        group_name: selectedGroup,
-                        loaded: has_loaded = true,
-                    },
-                    load:function(response)
-                    {
-                        fieldsOfGroup = response;
-                        // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
-                        SelectionGrid.buildSelectionGrid(fieldsOfGroup);
-                    },
-                    error:function(error)
-                    {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                    }
-                });
+                        url:'/group',
+                        handleAs: 'json', //grabs the xhr string and turns it into an object
+                        content:
+                        {
+                            action: 'getFieldsOfSelectedGroup',
+                            group_name: selectedGroup,
+                            loaded: has_loaded = true,
+                        },
+                        load:function(response)
+                        {
+                            if(response == null)
+                                SelectionGrid.buildSelectionGrid(new Array());
+                            else
+                                SelectionGrid.buildSelectionGrid(response);
+                        },
+                        error:function(error)
+                        {
+                            var e_string = '' + error;
+                            if(e_string.indexOf('empty') > 0)
+                            {
+                                SelectionGrid.buildSelectionGrid(new Array());
+                                dom.byId("serverResponse").innerHTML = 'Response: Selection Refreshed';
+                            }
+                            else
+                            {
+                                console.log("There was an error: " + error);
+                                dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                            }
+                        }
+                    });
+                }
             }
 
             //Gets all the groups from the db
@@ -298,7 +317,13 @@
                     //set data list values from fields parameter
                     for(i=0;i<fields.length;i++)
                     {
-                      data_list[i] = {col1: 'id', col2: fields[i].field_name}
+                      data_list[i] = 
+                      {
+                        col1: 'id', 
+                        field_name: fields[i].field_name,
+                        field_value: fields[i].field_value,
+                        field_unit: fields[i].field_unit
+                      }
                     }
 
                     var rows = data_list.length; //# of rows = # of data
@@ -310,8 +335,10 @@
 
                     /*set up layout*/
                     var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                      {'name': '#', 'field': 'id', 'width': '10%'},
-                      {'name': 'Parameters', 'field': 'col2', 'width': '80%'},
+                      {'name': '#', 'field': 'id', 'width': '5%'},
+                      {'name': 'Parameters', 'field': 'field_name', 'width': '60%'},
+                      {'name': 'Value', 'field': 'field_value', 'width':'20%'},
+                      {'name': 'Unit', 'field':'field_unit','width':'15%'}
                     ]];
 
                     dijit.registry.remove("parameterGridDiv");
@@ -332,25 +359,15 @@
                             var items = this.selection.getSelected();
                             ParameterGrid.selected_fields = baseArray.map(items, function(item)
                             {
-                                return item.col2;
+                                return item;
                             }, this);
-                            if(ParameterGrid.selected_fields.length > 0)
-                            {
-                                var msg = "You have selected " + ((ParameterGrid.selected_fields.length > 1) ? " ": " ");
-                            }
-                            else
-                                var msg = "Nothing Selected";
-                            node.innerHTML = msg + ParameterGrid.selected_fields.join(", ");
                         }
-
-                    
 
                     // Event for when the selections are changed, call reportselection on the dom id given
                     // hitch() returns a function that will execute a given function in a given context. This function allows you 
                     // to control how a function executes, particularly in asynchronous operations
                     grid.on("SelectionChanged",
                         lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
-                    
                 }    
             }
 
@@ -363,6 +380,8 @@
             //Builds the grid of selected parameters for the working group
             SelectionGrid.buildSelectionGrid = function(selectedArray)
             {
+                if(selectedArray[0])
+                    console.log(selectedArray[0]);
                 var data = 
                 {
                   identifier: "id",
@@ -371,7 +390,13 @@
                 var data_list = [];
                 for(i=0;i<selectedArray.length;i++)
                 {
-                  data_list[i] = {col1: 'id', col2: selectedArray[i]}
+                  data_list[i] = 
+                  {
+                    col1: 'id', 
+                    field_name: selectedArray[i].field_name,
+                    field_value: selectedArray[i].field_value,
+                    field_unit: selectedArray[i].field_unit
+                  }
                 }
                 var rows = data_list.length;
                 for(var i = 0; i < rows; i++)
@@ -382,8 +407,10 @@
 
                 /*set up layout*/
                 var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '15%'},
-                  {'name': 'Parameters', 'field': 'col2', 'width': '85%'},
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Parameters', 'field': 'field_name', 'width': '55%'},
+                  {'name': 'Value', 'field': 'field_value', 'width':'25%'},
+                  {'name': 'Unit', 'field': 'field_unit', 'width':'15%'}
                 ]];
 
                 //remove the old selectionGrid from the dom
@@ -402,6 +429,43 @@
             //Group Name Textbox
             var txtBox_groupName = registry.byId("txtBox_groupName");
 
+            var radio_product= new RadioButton(
+                {
+                    checked: true,
+                    value: "product",
+                    name: "pg-type",
+                    onChange: function()
+                    {
+                        if(this.checked == true)
+                        {
+                            //do something
+                        }
+                        else
+                        {
+                            //do something
+                        }
+                    }
+
+                }, "radio_product");
+
+            var radio_report = new RadioButton(
+                {
+                    checked: false,
+                    value: "report",
+                    name: "pg-type",
+                    onChange: function()
+                    {
+                        if(this.checked == true)
+                        {
+                            //do something
+                        }
+                        else
+                        {
+                            //do something
+                        }
+                    }
+                }, "radio_report");
+
             var select_groupType = new Select({
                 options:
                 [
@@ -417,14 +481,42 @@
                 onClick: function()
                 {
                     var selected_fields = ParameterGrid.getSelected();
+                    var allFields = new Array();
+                    for(var i = 0; i < selected_fields.length; i++)
+                    {
+                        var temp = JSON.stringify(selected_fields[i], function(key, val)
+                            {
+                                if(typeof val == "object")
+                                {
+                                    if(allFields.indexOf(val) >= 0)
+                                        return undefined;
+                                    var field = new Object();
+                                    field.field_name = val.field_name;
+                                    field.field_value = val.field_value;
+                                    field.field_unit = val.field_unit;
+                                    allFields.push(JSON.stringify(field));
+                                }
+                            });
+                        // allFields.push(temp);
+                    }
+                    for(var i = 0; i < selected_fields.length; i++)
+                    {
+                        console.log(allFields[i]);
+                    }
+                    console.log('selected fields size: ' + selected_fields.length);
+                    console.log('selected before submit ' + selected_fields[0].field_value);
                     if(!selected_fields)
                     {
                         dom.byId('serverResponse').innerHTML = 'You are required to select at least one parameter to form a group';
                     }
                     else if(dom.byId('txtBox_groupName').value == '')
                         dom.byId('serverResponse').innerHTML = 'You are required to provide a name for the new group';
-                    else
+                    else 
                     {
+                        if(radio_report.checked == true)
+                            var pg_type = 'report';
+                        else
+                            var pg_type = 'product';
                         xhr.get(
                         {
                             url:"/group",
@@ -432,7 +524,8 @@
                             {
                                 action: 'newGroup',
                                 group_name: dom.byId('txtBox_groupName').value,
-                                group_fields: selected_fields,
+                                pg_type: pg_type,
+                                group_fields: allFields,
                                 loaded: has_loaded=true,
                             },
                             load:function(response)
@@ -470,24 +563,30 @@
         <col width = "34%">
         <col width = "33%">
         <tr> <!-- Labels -->
-            <td style = "text-align: center">
-                <p><b>Create New</b></p>
+            <td style = "text-align: center; padding: 5px">
+                <b>Create New</b>
+                <div id= "button_div" style="text-align: right"><button id = "button_confirmSelection"></button></div>
             </td>
-            <td style = "text-align: center">
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>Group List</b>
             </td>
-            <td style = "text-align: center">
-                <p><b>Group Viewer</b></p>
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
+                <b>Group Viewer</b>
             </td>
         </tr>
         <tr> <!-- Grids -->
             <td valign = "top" style = "padding: 5px">
-                <label for="select_groupType" style = "padding: 5px">New Group Type:</label>
-                <label for="txtBox_groupName" style = "padding: 5px">New Group Name:</label><br>  
-                <div id="select_groupType" style ="width: 50%;"></div>
+                <div style = "padding: 2px">
+                <input id = "radio_product"><label for = "radio_product">Product</label></div>
+                <div style = "padding: 2px">
+                <input id = "radio_report"><label for = "radio_report">Report</label><br><br></div>
+                <!-- <label for="select_groupType" style = "padding: 5px">Type:</label> -->
+                <label for="txtBox_groupName" style = "padding: 5px">Name:</label><br>  
+                <!-- <div id="select_groupType" style ="width: 50%;"></div> -->
                 <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
-                <div id= "button_confirmSelection" data-dojo-type="dijit/form/button"></div>
+                
                 <br><br>
+                <div style = "padding 5px"><b>Parameters</b></div>
                 <div id="parameterGridDiv"></div>
             </td>
             <td valign = "top" style = "padding: 5px; text-align:right">
@@ -499,7 +598,7 @@
         </tr>
         <tr>
             <td colspan = "100%" style = "padding: 10px">
-                <div id="serverResponse">Nothing Selected</div>
+                <div id="serverResponse">Awaiting Action...</div>
             </td>
         </tr>
     </table>
