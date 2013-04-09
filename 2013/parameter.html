@@ -124,9 +124,9 @@
                                         content: 
                                         {
                                             action: 'removeField',
-                                            field_name: item.col2,
-                                            field_value: item.col3,
-                                            field_unit: item.col5,  
+                                            pi_name: item.col2,
+                                            pi_value: item.col3,
+                                            pi_unit: item.col5,  
                                             loaded: has_loaded=true,
                                         },
                                         load:function(response)
@@ -189,11 +189,16 @@
                             // parseDefinitionFieldToOutput();
                         }
 
+                        ParameterGrid.getData = function()
+                        {
+                            return this.data;
+                        }
 
                         //Build the Dojo Grid with the 
                         ParameterGrid.buildParameterGrid = function(fields)
                         {
                             ParameterGrid.selected_fields;
+                            ParameterGrid.data;
                             ParameterGrid.def_params = new Array(); //the elements of the definition string
                             ParameterGrid.outputElements = new Array();
 
@@ -219,15 +224,15 @@
                                   data_list[i] = 
                                   {
                                     col1: 'id',
-                                    col2: fields[i].field_name,
-                                    col3: fields[i].field_value, 
+                                    col2: fields[i].pi_name,
+                                    col3: fields[i].pi_value, 
                                     col4: new Button({label: 'Get', id: 'valu'+i, onClick: function()
                                         {
                                             console.log('ValuID: ' + this.id);
                                             ParameterGrid.addFieldValueToDefinition(this.id);
                                         }
                                     }) ,
-                                    col5: fields[i].field_unit,
+                                    col5: fields[i].pi_unit,
                                     col6: new Button({label: 'Get', id: 'unit'+i, onClick: function()
                                         {
                                             console.log('UnitID: ' + this.id);
@@ -249,14 +254,14 @@
                                   data.items.push(lang.mixin({ id: i }, data_list[i]));
                                 }
                                 parameterStore = new ItemFileWriteStore({data: data}); //set up the store
-
+                                ParameterGrid.data = data;
                                 /*set up layout*/
                                 var layout = [[
                                   {'name': '#', 'field': 'id', 'width': '5%'},
                                   {'name': 'Field', 'field': 'col2', 'width': '35%', 'editable': true, },
-                                  {'name': 'Value', 'field': 'col3', 'width': '17%', },
+                                  {'name': 'Value', 'field': 'col3', 'width': '17%', 'editable': true},
                                   {'name': 'Get Value', 'field': 'col4', 'width': '8%',},
-                                  {'name': 'Unit', 'field':'col5', 'width':'17%'},
+                                  {'name': 'Unit', 'field':'col5', 'width':'17%','editable': true},
                                   {'name': 'Get Unit', 'field': 'col6', 'width': '8%'},
                                   {'name': 'Delete', 'field': 'col7', 'width': '10%'}
                                 ]];
@@ -369,8 +374,8 @@
                                         content: 
                                         {
                                             action: 'removeCompField',
-                                            field_name: item.col2,
-                                            field_def: item.col3,
+                                            pi_name: item.col2,
+                                            pi_def: item.col3,
                                             loaded: has_loaded=true,
                                         },
                                         load:function(response)
@@ -416,7 +421,7 @@
                             CompFieldGrid.outputElements = new Array();
 
                             if(fields.length < 1)
-                                dom.byId('CompFieldGrid').innerHTML = '<b>There are no Computed Fields available</b>';
+                                dom.byId('CompFieldGrid').innerHTML = '<div style = "text-align: center"><b>There are no Computed Fields available</b></div>';
                             else
                             {
                                 //Grid Data
@@ -436,8 +441,8 @@
                                   data_list[i] = 
                                   {
                                     col1: 'id',
-                                    col2: fields[i].field_name,
-                                    col3: fields[i].field_def, 
+                                    col2: fields[i].pi_name,
+                                    col3: fields[i].pi_def, 
                                     col4: new Button({label: 'Get', id: 'defi'+i, onClick: function()
                                         {
                                             console.log('DefinitionID: ' + this.id);
@@ -508,6 +513,9 @@
 
                         /********************************     End of Comp Field Grid      *********************************/
 
+                        /********************************     Text Boxes, Buttons, etc      *********************************/
+
+
 
                          //input text boxes
                         var txtBox_paramName = registry.byId("txtBox_paramName");
@@ -521,7 +529,7 @@
                             {
                                 checked: true,
                                 value: "fixed",
-                                name: "pi-type",
+                                name: "pi_type",
                                 onChange: function()
                                 {
                                     if(this.checked == true)
@@ -542,7 +550,7 @@
                             {
                                 checked: false,
                                 value: "computed",
-                                name: "pi-type",
+                                name: "pi_type",
                                 onChange: function()
                                 {
                                     if(this.checked == true)
@@ -558,28 +566,6 @@
                                 }
                             }, "radio_computed");
 
-
-                         //This checkbox indicates whether the user wishes to add a new computed field or a new
-                         //product spec field
-                         var chkBox_compField = new CheckBox(
-                         {
-                            value: 'isCompField',
-                            checked: false,
-                            onChange: function()
-                            {
-                                if(this.checked == true)
-                                {
-                                    dom.byId("fields_computed").style.display="block";
-                                    dom.byId("fields_paramProperties").style.display = "none";
-                                }
-                                else
-                                {
-                                    dom.byId("fields_computed").style.display="none";
-                                    dom.byId("fields_paramProperties").style.display = "block";
-                                }
-                            }
-
-                         }, 'chkBox_compField');
 
                          //Button to Insert new parameter
                     	 var button_insertNewField = new Button(
@@ -615,9 +601,9 @@
                                     		content: 
                                             {
                                                 action: 'newField',
-                                                field_name: dom.byId('txtBox_paramName').value,
-                                                field_value: dom.byId('txtBox_paramValue').value,
-                                                field_unit: dom.byId('txtBox_paramUnit').value,
+                                                pi_name: dom.byId('txtBox_paramName').value,
+                                                pi_value: dom.byId('txtBox_paramValue').value,
+                                                pi_unit: dom.byId('txtBox_paramUnit').value,
                                                 loaded: has_loaded=true,
                                             },
                                     		load:function(response)
@@ -641,8 +627,8 @@
                                             content: 
                                             {
                                                 action: 'newCompField',
-                                                field_name: dom.byId('txtBox_paramName').value,
-                                                field_def: dom.byId('txtBox_paramDef').value,
+                                                pi_name: dom.byId('txtBox_paramName').value,
+                                                pi_def: dom.byId('txtBox_paramDef').value,
                                                 loaded: has_loaded=true,
                                             },
                                             load:function(response)
@@ -662,6 +648,70 @@
                                 console.log ("New Parameter Submitted.");
                     	 	}
                     	 }, 'button_insertNewField');
+
+                        //Confirm selection button for new group
+                        //require a name for the group
+                        var button_confirmUpdate = new Button(
+                        {
+                            label: 'Confirm Changes',
+                            onClick: function()
+                            {
+                                var selectedParameter = ParameterGrid.getSelected();
+                                var selectedType = 'fixed';
+                                //store the selected group
+                                console.log('Selected Product: ' + selectedProduct);
+                                var data = ParameterGrid.getData();
+                                var specs = new Array();
+                                
+                                console.log('data: ' + data.items[0].col2);
+                                var i;
+                                console.log('Amount of Data = ' + data.items.length);
+                                for(i = 0; i<data.items.length;i++)
+                                {
+                                    var spec = new Object();
+                                    spec.pi_name = data.items[i].col2;
+                                    spec.pi_value = data.items[i].col3;
+                                    spec.pi_unit = data.items[i].col5;
+                                    console.log('Spec: parameter - ' + spec.pi_name);
+                                    console.log('Spec: value - ' + spec.pi_value);
+                                    console.log('Spec: unit - ' + spec.pi_unit);    
+                                    
+                                    specs.push(spec);
+                                }
+
+                                var specString = JSON.stringify(specs);
+                                
+                                if(!selectedParameter)
+                                {
+                                    dom.byId('serverResponse').innerHTML = 'You are required to select at least one group to form a product.';
+                                }
+                                else
+                                {
+                                    xhr.get(
+                                    {
+                                        url:"/parameter",
+                                        content: 
+                                        {
+                                            action: 'update',
+                                            parameter_name: selectedParameter,
+                                            pi_type: selectedProductType,
+                                            specs: specString,
+                                            loaded: has_loaded=true,
+                                        },
+                                        load:function(response)
+                                        {
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                            refresh();
+                                        },
+                                        error:function(error)
+                                        {
+                                            console.log("There was an error: \n"+error);
+                                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                        }
+                                    });
+                                }
+                            }
+                        }, "button_confirmUpdateSpecs");    
 
                         var button_ParseDefinition = new Button (
                         {
@@ -697,6 +747,8 @@
                             });
                         }
 
+
+
                         //Clear all the textboxes
                         function ClearTextFields()
                         {
@@ -708,9 +760,14 @@
                         }
 
                         //OnLoad Do these
-                        ParameterGrid.getFields();
-                        CompFieldGrid.getFields();
-                        ClearTextFields();
+                        function refresh()
+                        {
+                            ParameterGrid.getFields();
+                            CompFieldGrid.getFields();
+                            ClearTextFields();
+                        }
+
+                        refresh();
                 });
         </script>
     </head>

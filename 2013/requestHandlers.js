@@ -268,18 +268,18 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'newField')
   {
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value':FieldQuery.field_value, 'field_unit': FieldQuery.field_unit});
+    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type' : 'fixed', 'pi_value':FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Field — \'' + FieldQuery.field_name + '\' successfully added');
+    response.write('New Field — \'' + FieldQuery.pi_name + '\' successfully added');
     response.end();
   }
 
   //If there is a removal requested, remove the field from the db if it exists
   if(FieldQuery.action == 'removeField')
   {
-    collection.findAndRemove({'type': 'field', 'field_name': FieldQuery.field_name, 'field_value': FieldQuery.field_value, 'field_unit': FieldQuery.field_unit},
+    collection.findAndRemove({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_value': FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit},
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -287,7 +287,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Field Removal: successful');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write(FieldQuery.field_name + ' successfully removed');
+        response.write(FieldQuery.pi_name + ' successfully removed');
         response.end();
       }
       //otherwise, report that the field wasn't found
@@ -295,7 +295,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Field Removal: nothing to remove');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove \' '+ FieldQuery.field_name + ' \' : Field not found.');
+        response.write('Failure to Remove \' '+ FieldQuery.pi_name + ' \' : Field not found.');
         response.end();
       }
     });
@@ -306,7 +306,7 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'getFields')
   {
     //Get the list of fields from the db
-    collection.find({'type':'field'}).toArray(
+    collection.find({'pi_type':'fixed'}).toArray(
       function(error, result)
       {
         //If there's something returned from the db, send it to the page as
@@ -336,7 +336,7 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'getCompFields')
   {
     //Get the list of fields from the db
-    collection.find({'type':'compField'}).toArray(
+    collection.find({'pi_type':'computed'}).toArray(
       function(error, result)
       {
         //If there's something returned from the db, send it to the page as
@@ -367,17 +367,17 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'newCompField')
   {
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'compField', 'field_name': FieldQuery.field_name, 'field_def':FieldQuery.field_def});
+    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type':'computed', 'pi_def':FieldQuery.pi_def});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Computed Field — \'' + FieldQuery.field_name + '\' successfully added');
+    response.write('New Computed Field — \'' + FieldQuery.pi_name + '\' successfully added');
     response.end();
   }
 
   if(FieldQuery.action == 'removeCompField')
   {
-    collection.findAndRemove({'type': 'compField', 'field_name': FieldQuery.field_name, 'field_def': FieldQuery.field_def},
+    collection.findAndRemove({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_def': FieldQuery.pi_def},
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -385,7 +385,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Comp Field Removal: successful');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write(FieldQuery.field_name + ' successfully removed');
+        response.write(FieldQuery.pi_name + ' successfully removed');
         response.end();
       }
       //otherwise, report that the field wasn't found
@@ -393,7 +393,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Comp Field Removal: nothing to remove');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove \' '+ FieldQuery.field_name + ' \' : Field not found.');
+        response.write('Failure to Remove \' '+ FieldQuery.pi_name + ' \' : Field not found.');
         response.end();
       }
     });
@@ -413,7 +413,7 @@ function parameter (response, request, collection, url)
     var def_elements = definition.split(";"); //split the string into elements by ';'
     Parameter.outPutTextElements = new Array(); //the array to contain the output data
     //get all the fields so we can find the data we need
-    collection.find({'type': 'field'}).toArray(
+    collection.find({'type': 'param_individual'}).toArray(
       function (error, result)
       {
         //if we get something back
@@ -446,18 +446,19 @@ function parameter (response, request, collection, url)
             // var element = JSON.parse(def_elements.shift());
             if(element.field != null) //if this element has a field property
             {
+              console.log('ELEMENT: ' + JSON.stringify(element));
               //find the match in the set of fields from the db
               for(var i = 0; i < result.length; i++)
               {
                 //if we find a match
-                if(element.field == result[i].field_name)
+                if(element.field == result[i].pi_name)
                 {
                   //determine which property was requested
                   //value or unit
                   if(element.property == 'value')
-                    r = result[i].field_value;
+                    r = result[i].pi_value;
                   else
-                    r = result[i].field_unit;
+                    r = result[i].pi_unit;
                   //Add the element to the array
                   Parameter.addElement(r);
                   notFound = false;
@@ -521,7 +522,7 @@ function group(response, request, collection, url)
   if(FieldQuery.action == 'getFields')
   {
     //Get the list of fields from the db
-    collection.find({'type':'field'}).toArray(
+    collection.find({'type':'param_individual'}).toArray(
       function(error, result)
       {
         //If there's something returned from the db, send it to the page as
@@ -558,7 +559,7 @@ function group(response, request, collection, url)
     }
     else
     {
-      collection.find({'group_name': FieldQuery.group_name}).toArray( 
+      collection.find({'pg_name': FieldQuery.group_name}).toArray( 
         function(error, result)
         {
           console.log("RESULT: " + result);
@@ -592,7 +593,7 @@ function group(response, request, collection, url)
   if(FieldQuery.action == 'getGroups')
   {
     //Get the list of fields from the db
-    collection.find({'type':'group'}).toArray(
+    collection.find({'type':'param_group'}).toArray(
       function(error, result)
       {
         //If there's something returned from the db, send it to the page as
@@ -628,7 +629,7 @@ function group(response, request, collection, url)
       group_fields.push(temp);
     }
 
-    collection.find({'type': 'group', 'group_name': FieldQuery.group_name}).toArray( 
+    collection.find({'type': 'param_group', 'pg_name': FieldQuery.group_name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -645,7 +646,7 @@ function group(response, request, collection, url)
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'group', 'group_name': FieldQuery.group_name, 'pg_type': FieldQuery.pg_type, 'fields' : group_fields});
+            collection.save({'type': 'param_group', 'pg_name': FieldQuery.group_name, 'pg_type': FieldQuery.pg_type, 'fields' : group_fields});
             collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write('New Group — \'' + FieldQuery.group_name + '\' successfully added');
@@ -657,7 +658,7 @@ function group(response, request, collection, url)
 
   if(FieldQuery.action == 'removeGroup')
   {
-    collection.findAndRemove({'group_name' : FieldQuery.group_name},
+    collection.findAndRemove({'pg_name' : FieldQuery.group_name},
       function(error, result)
     {
       if(result!=null)
@@ -676,6 +677,43 @@ function group(response, request, collection, url)
       }
     });
   }
+
+  if(FieldQuery.action == 'updateFields')
+  {
+    var fields = eval('(' + FieldQuery.fields + ')'); //parse the passed JSON string as a JSON object
+    // var specs = FieldQuery.specs;
+    for(var i = 0;i<fields.length;i++)
+    {
+      console.log('Handler Specs: ' + fields[i].pi_name);
+    }
+
+    collection.find({'pg_name': FieldQuery.group_name}).toArray( 
+      function(error, result)
+      {
+        if(error)
+        {
+          console.log('Error: ' + error);
+        }
+        else
+        {
+          if(result.length == 1)
+          {
+            console.log('specs added to db as: ' + JSON.stringify(fields));
+            collection.update({'pg_name': FieldQuery.group_name},
+              {'type':'param_group', 'pg_name':FieldQuery.group_name, 'pg_type' : FieldQuery.pg_type, 'fields' : fields});
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Group — \'' + FieldQuery.group_name + '\' successfully updated');
+            response.end();
+          }
+          else if(result.length == 0)
+          {
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Group with name — \'' + FieldQuery.group_name + '\' Not Found');
+            response.end();
+          }
+        }
+      });
+  }
 }
 
 //Handler for product builder page
@@ -692,7 +730,7 @@ function productBuilder(response, request, collection, url)
 
   if(FieldQuery.action == 'getFieldsOfSelectedGroup')
   {
-    collection.find({'group_name': FieldQuery.group_name}).toArray( 
+    collection.find({'pg_name': FieldQuery.group_name}).toArray( 
       function(error, result)
       {
         if(result!=null)
@@ -718,7 +756,7 @@ function productBuilder(response, request, collection, url)
 
   if(FieldQuery.action == 'removeFamily')
   {
-    collection.findAndRemove({'product_name' : FieldQuery.product_name},
+    collection.findAndRemove({'pf_name' : FieldQuery.product_name},
       function(error, result)
     {
       if(result!=null)
@@ -743,7 +781,7 @@ function productBuilder(response, request, collection, url)
     var group_field_sets = new Array();
     var selected = eval('(' + FieldQuery.selected + ')'); //parse the passed JSON string as a JSON object
 
-    collection.find({'type': 'product', 'product_name': FieldQuery.product_name}).toArray( 
+    collection.find({'type': 'param_family', 'pf_name': FieldQuery.product_name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -766,7 +804,7 @@ function productBuilder(response, request, collection, url)
               selected[i].value = 0;
             }
 
-            collection.save({'type': 'product', 'product_name': FieldQuery.product_name, 'specs' : selected});
+            collection.save({'type': 'param_family', 'pf_name': FieldQuery.product_name, 'pf_type' : FieldQuery.pf_type, 'specs' : selected});
             collection.ensureIndex({'product_name':1},{unique: true, sparse: true, dropDups: true});
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write('New Product — \'' + FieldQuery.product_name + '\' successfully added');
@@ -780,7 +818,7 @@ function productBuilder(response, request, collection, url)
   if(FieldQuery.action == 'getProducts')
   {
     //Get the list of fields from the db
-    collection.find({'type':'product'}).toArray(
+    collection.find({'type':'param_family'}).toArray(
       function(error, result)
       {
         //If there's something returned from the db, send it to the page as
@@ -809,7 +847,7 @@ function productBuilder(response, request, collection, url)
 
   if(FieldQuery.action == 'getSpecs')
   {
-    collection.find({'product_name': FieldQuery.product_name}).toArray(
+    collection.find({'pf_name': FieldQuery.product_name}).toArray(
       function(error, product)
       {
         if(error)
@@ -842,7 +880,7 @@ function productBuilder(response, request, collection, url)
       console.log('Handler Specs: ' + specs[i].value);
     }
 
-    collection.find({'type': 'product', 'product_name': FieldQuery.product_name}).toArray( 
+    collection.find({'type': 'param_family', 'pf_name': FieldQuery.product_name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -854,8 +892,8 @@ function productBuilder(response, request, collection, url)
           if(result.length == 1)
           {
             console.log('specs added to db as: ' + JSON.stringify(specs));
-            collection.update({'product_name': FieldQuery.product_name},
-              {'type':'product', 'product_name':FieldQuery.product_name, 'specs' : specs});
+            collection.update({'pf_name': FieldQuery.product_name},
+              {'type' : 'param_family', 'pf_name' : FieldQuery.product_name, 'pf_type' : FieldQuery.product_type, 'specs' : specs});
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write('Product — \'' + FieldQuery.product_name + '\' successfully updated');
             response.end();
