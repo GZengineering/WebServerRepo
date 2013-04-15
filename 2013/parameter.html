@@ -18,7 +18,12 @@
         <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
         #parameterGridDiv 
         {
-            height: 40em;
+            height: 52em;
+            width: 100%;
+        }
+        #CompFieldGrid
+        {
+            height: 52em;
             width: 100%;
         }
         #txtBox_paramDef
@@ -163,7 +168,6 @@
 
                             var addThis = pairString; // This is the text string to add to the textbox
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
-                            // parseDefinitionFieldToOutput();
                         }
 
 
@@ -186,7 +190,6 @@
 
                             var addThis = pairString; // This is the text string to add to the textbox
                             dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
-                            // parseDefinitionFieldToOutput();
                         }
 
                         ParameterGrid.getData = function()
@@ -271,8 +274,7 @@
                                 /*create a new grid*/
                                 var grid = new DataGrid({
                                     store: parameterStore,
-                                    structure: layout,
-                                    autoHeight: true}, 'parameterGridDiv');
+                                    structure: layout}, 'parameterGridDiv');
 
 
                                 /*Call startup() to render the grid*/
@@ -479,8 +481,7 @@
                                 /*create a new grid*/
                                 var grid = new DataGrid({
                                     store: compFieldStore,
-                                    structure: layout,
-                                    autoHeight: true}, 'CompFieldGrid');
+                                    structure: layout}, 'CompFieldGrid');
 
                                 /*Call startup() to render the grid*/
                                 grid.startup();
@@ -659,7 +660,7 @@
                                 var selectedParameter = ParameterGrid.getSelected();
                                 var selectedType = 'fixed';
                                 //store the selected group
-                                console.log('Selected Product: ' + selectedProduct);
+                                console.log('Selected Parameter: ' + selectedParameter);
                                 var data = ParameterGrid.getData();
                                 var specs = new Array();
                                 
@@ -718,9 +719,33 @@
                             label: "Parse",
                             onClick: function()
                             {
-                                parseDefinitionFieldToOutput();
+                                // parseDefinitionFieldToOutput();
+                                playWithRefs();
                             }
                         }, "button_ParseDefinition");
+
+                        function playWithRefs()
+                        {
+                            xhr.get(
+                            {
+                                url:"/parameter",
+                                handleAs: 'json',
+                                content:
+                                {
+                                    action: 'getRef',
+                                },
+                                load:function(response)
+                                {
+                                    console.log("Response: " + response);
+                                    dom.byId('txtBox_paramOutput').value = response;
+                                },
+                                error:function(error)
+                                {
+                                    console.log("There was an error: \n"+error);
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                }
+                            });
+                        }
 
                         function parseDefinitionFieldToOutput()
                         {
@@ -749,6 +774,7 @@
 
 
 
+
                         //Clear all the textboxes
                         function ClearTextFields()
                         {
@@ -774,8 +800,8 @@
 
     <!-- Layout -->	
     <body class="claro"><table width = '100%' border = "1">
-        <col width = "35%">
-        <col width = "65%">
+        <col width = "25%">
+        <col width = "75%">
         <tr> <!-- Labels -->
             <td style = "text-align: center; padding: 5px">
                 <b>Create New</b>
@@ -840,12 +866,21 @@
                 
             </td>
             <td valign = "top" style = "padding: 2px; text-align:right">
-                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
-                <div id="parameterGridDiv"></div>
-                <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
-                <br>
-                <div id="CompFieldGrid"></div>
-                <br><br>
+                <table width = '100%' border = '0'>
+                    <col width = '50%'>
+                    <col width = '50%'>
+                    <tr>
+                        <td valign = "top" style = "padding: 2px;">
+                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
+                            <div id="parameterGridDiv"></div>
+                        </td>
+                        <td valign = "top" style = "padding: 2px;">
+                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
+                            <div id="CompFieldGrid"></div>
+                            <br><br>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
         <tr>

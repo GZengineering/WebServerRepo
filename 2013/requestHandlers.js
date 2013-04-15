@@ -1,6 +1,7 @@
 //requestHandlers.js
 // This code was written by Alex Stout for Goal Zero, LLC private use
 
+
 //get modules
 var querystring = require("querystring"),
     fs = require("fs"),
@@ -268,7 +269,7 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'newField')
   {
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type' : 'fixed', 'pi_value':FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit});
+    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type' : 'fixed', 'pi_value':FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit, 'pi_def':undefined});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
@@ -367,7 +368,7 @@ function parameter (response, request, collection, url)
   if(FieldQuery.action == 'newCompField')
   {
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type':'computed', 'pi_def':FieldQuery.pi_def});
+    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type':'computed', 'pi_value': undefined, 'pi_unit': undefined, 'pi_def':FieldQuery.pi_def});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
@@ -397,6 +398,63 @@ function parameter (response, request, collection, url)
         response.end();
       }
     });
+  }
+
+  if(FieldQuery.action == 'getRef')
+  {
+    collection.find({"pi_name":"dumb"}).toArray(
+      function(error, result)
+      {
+        if(result!=null)
+        {
+          var s = "";
+          console.log(JSON.stringify(result));
+          var temp_id = result[0]._id;
+          console.log("temp_id: "+JSON.stringify(temp_id));
+          collection.find({"_id":temp_id}).toArray(
+            function(e, r)
+            {
+              if(r!=null)
+              {
+                s = JSON.stringify(r[0]);
+                console.log("\ns: "+ s);
+                response.writeHead(200, {"Content-Type": "text/plain"});
+                response.write(s);
+                response.end();
+              }
+              else
+              {
+                console.log('\nSomething has gone Terribly (2), terribly wrong (2)!!');
+                response.writeHead(200, {"Content-Type": "text/plain"});
+                response.write("Something has gone Terribly (2), terribly wrong (2)!!");
+                response.end();
+              }
+              if(error)
+              {
+                console.log("\nError: " + error);
+                response.writeHead(200, {"Content-Type": "text/plain"});
+                response.write("ERROR: " + error);
+                response.end();
+              }
+            });
+          // console.log('\n'+string);
+          
+        }
+        else
+        {
+          console.log('\nSomething has gone Terribly, terribly wrong!!');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write("Something has gone Terribly, terribly wrong!!");
+          response.end();
+        }
+        if(error)
+        {
+          console.log("\nError: " + error);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write("ERROR: " + error);
+          response.end();
+        }
+      });
   }
 
   //Parses the definition for a computed field into a user friendly, readable output text
@@ -444,18 +502,18 @@ function parameter (response, request, collection, url)
               }
             }
             // var element = JSON.parse(def_elements.shift());
-            if(element.field != null) //if this element has a field property
+            if(element.f != null) //if this element has a field property
             {
               console.log('ELEMENT: ' + JSON.stringify(element));
               //find the match in the set of fields from the db
               for(var i = 0; i < result.length; i++)
               {
                 //if we find a match
-                if(element.field == result[i].pi_name)
+                if(element.f == result[i].pi_name)
                 {
                   //determine which property was requested
                   //value or unit
-                  if(element.property == 'value')
+                  if(element.p == 'value')
                     r = result[i].pi_value;
                   else
                     r = result[i].pi_unit;
@@ -468,7 +526,7 @@ function parameter (response, request, collection, url)
               }
               //if we never find a match, stick a note in the output string for the missing element
               if(notFound)
-                Parameter.addElement('(No Match: ' + element.field + ')');
+                Parameter.addElement('(No Match: ' + element.f + ')');
             }
             //if the element doesn't possess any properties, it must be a string
             //so add the string to the output
@@ -517,6 +575,40 @@ function group(response, request, collection, url)
   {
     requestHelpers.return_html('./group.html', response);
   }
+
+  if(FieldQuery.action == 'getFieldsWithId')
+  {
+    console.log(FieldQuery.id);
+    var mongo = require('mongodb');
+    var BSON = mongo.BSONPure;
+    var o_id = new BSON.ObjectID(FieldQuery.id);
+    console.log(o_id);
+    collection.find({'_id':o_id}).toArray(
+      function(error, result)
+      {
+        if(result!=null)
+        {
+          var string = JSON.stringify(result);
+          console.log(string);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        //Otherwise, let the page know, it's empty
+        else
+        {
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('--empty--');
+          response.end();
+        }
+        //If there's an error, log it.
+        if(error)
+        {
+          console.log("\nError in 'getFieldsWithId':" + error + '\n');
+        }
+      });
+  }
+
   //This is called on every change to the db and on page load
   //This is the full list of available fields
   if(FieldQuery.action == 'getFields')
