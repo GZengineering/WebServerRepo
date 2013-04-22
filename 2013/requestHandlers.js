@@ -8,7 +8,6 @@ var querystring = require("querystring"),
     formidable = require("formidable"),
     requestHelpers = require('./requestHelpers');
 
-
 //
 function Home(response, request, collection, url) {
   console.log("\nRequest handler for 'Home' called.");
@@ -217,6 +216,12 @@ function SpecManager(response, request, collection, url) {
   }
 }
 
+//
+function ideaBacklogEntry(response, request, collection, url)
+{
+    requestHelpers.return_html('./ideaBacklogEntry.html', response);
+}
+
 //Some member variables for the parameter handler
 var Parameter = new Object();
 
@@ -262,25 +267,27 @@ function parameter (response, request, collection, url)
   // Return the main page if the page hasn't loaded yet.
   if(!FieldQuery.loaded)
   {
-    requestHelpers.return_html('./parameter.html', response);
+    requestHelpers.return_html('./param2.html', response); //changed to load Parameter Builder 2.0
   }
  
   //If there was an insertion requested, add the entry to the db, initialize its value to null.
   if(FieldQuery.action == 'newField')
   {
+    var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type' : 'fixed', 'pi_value':FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit, 'pi_def':undefined});
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Field — \'' + FieldQuery.pi_name + '\' successfully added');
+    response.write('New Field — \'' + pi.pi_name + '\' successfully added');
     response.end();
   }
 
   //If there is a removal requested, remove the field from the db if it exists
   if(FieldQuery.action == 'removeField')
   {
-    collection.findAndRemove({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_value': FieldQuery.pi_value, 'pi_unit': FieldQuery.pi_unit},
+    var pi = eval('('+FieldQuery.pi+')');
+    collection.findAndRemove({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_value': pi.pi_value, 'pi_unit': pi.pi_unit},
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -288,7 +295,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Field Removal: successful');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write(FieldQuery.pi_name + ' successfully removed');
+        response.write(pi.pi_name + ' successfully removed');
         response.end();
       }
       //otherwise, report that the field wasn't found
@@ -296,7 +303,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Field Removal: nothing to remove');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove \' '+ FieldQuery.pi_name + ' \' : Field not found.');
+        response.write('Failure to Remove \' '+ pi.pi_name + ' \' : Field not found.');
         response.end();
       }
     });
@@ -367,18 +374,20 @@ function parameter (response, request, collection, url)
   //If there was an insertion requested, add the entry to the db, initialize its value to null.
   if(FieldQuery.action == 'newCompField')
   {
+    var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_type':'computed', 'pi_value': undefined, 'pi_unit': undefined, 'pi_def':FieldQuery.pi_def});
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type':'computed', 'pi_value': undefined, 'pi_unit': undefined, 'pi_def':pi.pi_def});
     // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
     //Send the response back to the page
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Computed Field — \'' + FieldQuery.pi_name + '\' successfully added');
+    response.write('New Computed Field — \'' + pi.pi_name + '\' successfully added');
     response.end();
   }
 
   if(FieldQuery.action == 'removeCompField')
   {
-    collection.findAndRemove({'type': 'param_individual', 'pi_name': FieldQuery.pi_name, 'pi_def': FieldQuery.pi_def},
+    var pi = eval('(' + FieldQuery.pi + ')');
+    collection.findAndRemove({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_def': pi.pi_def},
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -386,7 +395,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Comp Field Removal: successful');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write(FieldQuery.pi_name + ' successfully removed');
+        response.write(pi.pi_name + ' successfully removed');
         response.end();
       }
       //otherwise, report that the field wasn't found
@@ -394,7 +403,7 @@ function parameter (response, request, collection, url)
       {
         console.log('Comp Field Removal: nothing to remove');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove \' '+ FieldQuery.pi_name + ' \' : Field not found.');
+        response.write('Failure to Remove \' '+ pi.pi_name + ' \' : Field not found.');
         response.end();
       }
     });
@@ -1188,6 +1197,7 @@ function Inventory(response, request, collection, url) {
 
 // exports.UnitClassArray = UnitClassArray; 
 exports.favicon = favicon;
+exports.ideaBacklogEntry = ideaBacklogEntry;
 exports.specReports = specReports;
 exports.viewBuilder = viewBuilder;
 exports.productBuilder = productBuilder;

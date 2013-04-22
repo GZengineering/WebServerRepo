@@ -8,7 +8,7 @@ function return_html(page, response) {
       if(err)
       {
 	     response.writeHead(404, {"Content-Type": "text/plain"});
-	     response.write(error + "\n");
+	     response.write(err + "\n");
 	     response.end();
       }
       else 

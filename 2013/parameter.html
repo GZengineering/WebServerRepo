@@ -212,7 +212,7 @@
                                 //Grid Data
                                 var data = 
                                 {
-                                  identifier: "id",
+                                  identifier: "index",
                                   items: []
                                 };
 
@@ -302,7 +302,11 @@
                                 // to control how a function executes, particularly in asynchronous operations
                                 grid.on("SelectionChanged", 
                                     lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
-                                
+
+                                window.pData = ParameterGrid.data;
+                                window.pGrid = grid;
+                                window.
+
                             }    
                         }
 

@@ -1,0 +1,1004 @@
+<!-- parameter creator 2.0-->
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<!DOCTYPE html>
+
+<html lang='en' style= 'background-color:#CC6633; padding: 0px 25px 25px'>
+	<head>
+        <title>Specs: Parameter Builder 2.0</title>
+        <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Individual </h1>
+		 <!-- Load Dojo API -->
+        
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+
+        <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #parameterGridDiv 
+        {
+            height: 52em;
+            width: 100%;
+        }
+        #CompFieldGrid
+        {
+            height: 52em;
+            width: 100%;
+        }
+        #txtBox_paramDef
+        {
+            width: 97%;
+        }
+        #txtBox_paramOutput
+        {
+            width: 97%;
+        }
+        </style>
+        
+
+        <!-- parameter creator functions -->
+        <script>
+
+        var has_loaded = false; // tells the request handler if this page has already been loaded
+        var fields = new Array(); //array to contain content returned
+
+        	require(['dojo/_base/lang',
+                "dojo/dom",
+                'dijit/registry',
+                'dijit/form/Button',
+                "dojo/_base/array",
+                'dojo/_base/xhr', 
+                'dijit/form/TextBox',
+                'dijit/InlineEditBox',
+                'dojo/data/ItemFileWriteStore',
+                'dojo/store/Observable',
+                'dojox/grid/DataGrid',
+                'dojo/store/Memory',
+                'dojo/data/ObjectStore',
+                'dojox/grid/_CheckBoxSelector',
+                'dijit/form/CheckBox',
+                'dijit/form/RadioButton',
+                'dojox/grid/cells/dijit',
+                'dijit/layout/ContentPane',
+                'dojo/domReady!'], 
+                function(lang, dom, registry, Button, baseArray, xhr, TextBox, InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
+                {
+                    /********************************     Parameter Grid      *********************************/
+
+                    //The ParameterGrid is the grid that displays all the available fields from the database.
+                    var ParameterGrid = new Object();
+
+                    //Return the set of selected fields
+                    ParameterGrid.getSelected = function()
+                    {
+                        return this.selected_fields;
+                    }
+
+                    //Get the parameters from the db
+                    ParameterGrid.getFields = function()
+                    {
+                        xhr.get(
+                        {
+                            url:'/parameter',
+                            handleAs: 'json', //grabs the xhr string and turns it into an object
+                            content:
+                            {
+                                action: 'getFields',
+                                loaded: has_loaded = true,
+                            },
+                            load:function(response)
+                            {
+                                ParameterGrid.allFields = response;
+                                ParameterGrid.buildGrid(ParameterGrid.allFields); //rebuild the dojo Grid
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: " + error);
+                                dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                            }
+                        });
+                    }
+
+                    //Gets all the data that makes up the row at the index given by id
+                    ParameterGrid.getGridItemById = function(id)
+                    {
+                        var gridItem = null;
+                        var grid = dijit.registry.byId('parameterGridDiv');
+                        // fixedMemStore.fetchItemByIdentity({
+                        //     index: id,
+                        //     onItem: function(item, request)
+                        //     { 
+                        //         gridItem=item; 
+                        //     }
+                        // });
+                        gridItem = fixedMemStore.get(id);
+                        // gridItem = fixedData[id];
+                        console.log(JSON.stringify("Grid Item: " + gridItem));
+                        return gridItem;
+                    }
+
+                    //Removes an entire parameter from the database given the id of the row
+                    //of the selected parameter
+                    ParameterGrid.deleteRow = function(id)
+                    {
+                        var sub = id.substring(4, id.length);
+                        console.log("id: " + sub);
+                        item = ParameterGrid.getGridItemById(sub);
+                        console.log('Field to delete: ' + item.pi_name);
+                        if(!item){ return alert('error deleting '+sub+' from ParameterGrid'); }
+                        if(!confirm("Are you sure you want to delete \'" + item.pi_name +"\'?"))
+                            return;
+                        else
+                        {
+                            var pi = {
+                                pi_name: item.pi_name,
+                                pi_value: item.pi_value,
+                                pi_unit: item.pi_unit,
+                            };
+                            xhr.get(
+                                {
+                                    url:"/parameter",
+                                    content: 
+                                    {
+                                        action: 'removeField',
+                                        pi: JSON.stringify(pi),  
+                                        loaded: has_loaded=true,
+                                    },
+                                    load:function(response)
+                                    {
+                                        console.log("id to remove from mem store: " + sub);
+                                        // ParameterGrid.removeID(sub);
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                    },
+                                    error:function(error)
+                                    {
+                                        console.log("There was an error: \n"+error);
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                    }
+                                });
+                            // dijit.registry.remove('bttn'+sub);
+                            fixedMemStore.remove(sub);
+                            //window.fixedGrid._refresh(); //refresh the contents of the table
+                        }
+                    }
+
+                    ParameterGrid.newField = function()
+                    {
+                        var pi = {
+                            pi_name: dom.byId('txtBox_paramName').value,
+                            pi_value: dom.byId('txtBox_paramValue').value,
+                            pi_unit: dom.byId('txtBox_paramUnit').value,
+                        };
+                        //send request to create a new parameter
+                        xhr.get(
+                        {
+                            url:"/parameter", 
+                            content: 
+                            {
+                                action: 'newField',
+                                // pi_name: dom.byId('txtBox_paramName').value,
+                                // pi_value: dom.byId('txtBox_paramValue').value,
+                                // pi_unit: dom.byId('txtBox_paramUnit').value,
+                                pi: JSON.stringify(pi),
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                var index = fixedMemStore.data.length;
+                                dijit.registry.remove('bttn'+index);
+                                fixedMemStore.put(lang.mixin(
+                                    {id: index}, 
+                                    pi, 
+                                    { delBtn: new Button({label: 'Delete', id: 'bttn'+index, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            ParameterGrid.deleteRow(this.id);
+                                        }})}));
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                window.fixedGrid._refresh();
+                                ClearTextFields();
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+
+                    ParameterGrid.addFieldValueToDefinition = function(id)
+                    {
+                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
+                        item = ParameterGrid.getGridItemById(sub); //get the item by the given id
+                        var pair = new Object();
+                        pair.field = item.pi_name[0];
+                        pair.property = 'value';
+                        ParameterGrid.def_params.push(pair);
+                        if(dom.byId('txtBox_paramDef').value == '')
+                            var pairString = JSON.stringify(pair);
+                        else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                            var pairString = JSON.stringify(pair);
+                        else    
+                            var pairString = ';' + JSON.stringify(pair);
+
+                        console.log('Pair: ' + pairString);
+
+                        var addThis = pairString; // This is the text string to add to the textbox
+                        dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                    }
+
+
+                    ParameterGrid.addFieldUnitToDefinition = function(id)
+                    {
+                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
+                        item = ParameterGrid.getGridItemById(sub); //get the item by the given id
+                        var pair = new Object();
+                        pair.field = item.pi_name[0];
+                        pair.property = 'unit';
+                        ParameterGrid.def_params.push(pair);
+                        if(dom.byId('txtBox_paramDef').value == '')
+                            var pairString = JSON.stringify(pair);
+                        else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                            var pairString = JSON.stringify(pair);
+                        else    
+                            var pairString = ';' + JSON.stringify(pair);
+
+                        console.log('Pair: ' + pairString);
+
+                        var addThis = pairString; // This is the text string to add to the textbox
+                        dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
+                    }
+
+                    ParameterGrid.getData = function()
+                    {
+                        return this.data;
+                    }
+
+                    //Build the Dojo Grid with the 
+                    ParameterGrid.buildGrid = function(fields)
+                    {
+                        ParameterGrid.selected_fields;
+                        ParameterGrid.data;
+                        ParameterGrid.def_params = new Array(); //the elements of the definition string
+                        ParameterGrid.outputElements = new Array();
+
+                        // if(fields.length < 1)
+                        //     dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
+                        // else
+                        // {
+                            //Grid Data
+                            var data = [];
+                            // {
+                              // identifier: "index",
+                              // items: []
+                            // };
+
+                            // var data_list = []; // data list to display data
+
+                            //set data list values from fields parameter
+                            // for(var i=0;i<fields.length;i++)
+                            // {
+                            //   dijit.registry.remove('bttn'+i);
+                            //   dijit.registry.remove('valu'+i);  
+                            //   dijit.registry.remove('unit'+i);  
+                            //   // data_list[i] = fields[i];
+                            //   // {
+
+                            //   // }),
+                            // }
+
+                            var layout = [[
+                              {'name': '#', 'field': 'id', 'width': '5%'},
+                              {'name': 'Parameter', 'field': 'pi_name', 'width': '45%', 'editable': true},
+                              {'name': 'Value', 'field': 'pi_value', 'width': '20%', 'editable': true},
+                              {'name': 'Get Value', 'field': 'pi_unit', 'width': '20%', 'editable':true},
+                              {'name': 'Delete', 'field': 'delBtn', 'width': '10%'}
+                            ]];
+
+                            // var rows = data_list.length; //# of rows = # of data
+                            // for(var i = 0; i < fields.length; i++)
+                            // {
+                            //     dijit.registry.remove('bttn'+i);
+                            //     data.push(lang.mixin(
+                            //         { id: i }, 
+                            //         fields[i], 
+                            //         { delBtn: new Button({label: 'Delete', id: 'bttn'+i, onClick: function()
+                            //             {
+                            //                 console.log('ID: ' + this.id);
+                            //                 ParameterGrid.deleteRow(this.id);
+                            //             }})
+                            //         }));
+                            // }
+                            var fixedMemStore = new Memory({data: data}); //set up the store
+                            fixedMemStore = Observable(fixedMemStore);
+                            var fixedDataStore = new ObjectStore({
+                                objectStore: fixedMemStore
+                            });
+
+                            //Fill the store with the retrieved DB data
+                            for(var i = 0; i < fields.length; i++)
+                            {
+                                fixedMemStore.put(lang.mixin(
+                                    { id: i }, 
+                                    fields[i], 
+                                    { delBtn: new Button({label: 'Delete', id: 'bttn'+i, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            ParameterGrid.deleteRow(this.id);
+                                        }})
+                                    }));
+                            }
+                            ParameterGrid.data = fixedMemStore.data;
+                            // console.log(ParameterGrid.data[2]);
+                            /*set up layout*/
+                            
+                            // fixedMemStore.put(lang.mixin(
+                            //         { id: fields.length }, 
+                            //         fields[fields.length-1], 
+                            //         { delBtn: new Button({label: 'Delete', id: 'bttn'+fields.length, onClick: function()
+                            //             {
+                            //                 console.log('ID: ' + this.id);
+                            //                 ParameterGrid.deleteRow(this.id);
+                            //             }})
+                            //         }));
+
+                            // dijit.registry.remove("parameterGridDiv");
+
+                            /*create a new grid*/
+                            var grid = new DataGrid({
+                                store: fixedDataStore,
+                                structure: layout}, 'parameterGridDiv');
+
+
+                            /*Call startup() to render the grid*/
+                            grid.startup();
+
+                            dojo.connect(fixedMemStore, 'notify', function(){grid._refresh();});
+
+                            //This function reports what fields are selected for the current working group
+                            function reportSelection(node)
+                                {
+                                    var items = this.selection.getSelected();
+                                    ParameterGrid.selected_fields = baseArray.map(items, function(item)
+                                    {
+                                        return item.pi_name;
+                                    }, this);
+                                    if(ParameterGrid.selected_fields.length > 0)
+                                    {
+                                        var msg = "You have selected " + ((ParameterGrid.selected_fields.length > 1) ? " ": " ");
+                                    }
+                                    else
+                                        var msg = "Nothing Selected";
+                                    node.innerHTML = msg + ParameterGrid.selected_fields.join(", ");
+                                }
+
+                            // Event for when the selections are changed, call reportselection on the dom id given
+                            // hitch() returns a function that will execute a given function in a given context. This function allows you 
+                            // to control how a function executes, particularly in asynchronous operations
+                            grid.on("SelectionChanged", 
+                                lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                            window.fixedData = fixedMemStore.data;
+                            window.fixedGrid = grid;
+                            window.fixedDataStore = fixedDataStore;
+                            window.fixedMemStore = fixedMemStore;
+                        // }    
+                    }
+
+                    /********************************     End of Parameter Grid      *********************************/
+
+                    /********************************     Computed Field Grid      *********************************/
+
+                    var CompFieldGrid = new Object();
+
+                    CompFieldGrid.getSelected = function()
+                    {
+                        return this.selected_fields;
+                    }
+
+                    //Get the parameters from the db
+                    CompFieldGrid.getFields = function()
+                    {
+                        xhr.get(
+                        {
+                            url:'/parameter',
+                            handleAs: 'json', //grabs the xhr string and turns it into an object
+                            content:
+                            {
+                                action: 'getCompFields',
+                                loaded: has_loaded = true,
+                            },
+                            load:function(response)
+                            {
+                                CompFieldGrid.allFields = response;
+                                CompFieldGrid.buildGrid(CompFieldGrid.allFields); //rebuild the dojo Grid
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: " + error);
+                                dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                            }
+                        });
+                    }
+
+                    //Gets all the data that makes up the row at the index given by id
+                    CompFieldGrid.getGridItemById = function(id)
+                    {
+                        var gridItem = null;
+                        var grid = dijit.registry.byId('CompFieldGrid');
+                        // grid.store.fetchItemByIdentity({
+                        //     index: id,
+                        //     onItem: function(item, request)
+                        //     { 
+                        //         gridItem=item; 
+                        //     }
+                        // });
+                        gridItem = compMemStore.get(id);
+                        console.log(JSON.stringify("Grid Item: " + gridItem));
+                        return gridItem;
+                    }
+
+                    //Removes an entire parameter from the database given the id of the row
+                    //of the selected parameter
+                    CompFieldGrid.deleteRow = function(id)
+                    {
+                        var sub = id.substring(9, id.length);
+                        item = CompFieldGrid.getGridItemById(sub);
+                        console.log("ID to delete: " + sub);
+                        console.log('Field to delete: ' + item.pi_name);
+                        if(!item){ return alert('error deleting '+sub+' from CompFieldGrid'); }
+                        if(!confirm("Are you sure you want to delete \'" + item.pi_name +"\'?"))
+                            return;
+                        else
+                        {
+                            var pi = {
+                                pi_name: item.pi_name,
+                                pi_def: item.pi_def,
+                            };
+                            xhr.get(
+                                {
+                                    url:"/parameter",
+                                    content: 
+                                    {
+                                        action: 'removeCompField',
+                                        pi: JSON.stringify(pi),
+                                        loaded: has_loaded=true,
+                                    },
+                                    load:function(response)
+                                    {
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                    },
+                                    error:function(error)
+                                    {
+                                        console.log("There was an error: \n"+error);
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                    }
+                                });
+                            compMemStore.remove(sub);
+                            //window.compGrid._refresh(); //refresh the contents of the table
+                        }
+                    }
+
+                    CompFieldGrid.newField = function()
+                    {
+                        var pi = {
+                            pi_name: dom.byId('txtBox_paramName').value,
+                            pi_def: dom.byId('txtBox_paramDef').value,
+                        };
+                        xhr.get(
+                        {
+                            url:"/parameter",
+                            content: 
+                            {
+                                action: 'newCompField',
+                                // pi_name: dom.byId('txtBox_paramName').value,
+                                // pi_def: dom.byId('txtBox_paramDef').value,
+                                pi: JSON.stringify(pi),
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                var index = compMemStore.data.length;
+                                dijit.registry.remove('comp_bttn'+index);
+                                compMemStore.put(lang.mixin(
+                                    {id: index}, 
+                                    pi, 
+                                    { delBtn: new Button({label: 'Delete', id: 'comp_bttn'+index, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            CompFieldGrid.deleteRow(this.id);
+                                        }})}));
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                //window.compGrid._refresh(); //refresh the contents of the table
+                                ClearTextFields();
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+
+                    CompFieldGrid.addGridDefToDefinition = function(id)
+                    {
+                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
+                        item = CompFieldGrid.getGridItemById(sub); //get the item by the given id
+                        var pair = new Object();
+                        pair.field = item.pi_name[0];
+                        pair.property = 'unit';
+                        var def = item.pi_def[0];
+                        // ParameterGrid.def_params.push(def);
+                        if(dom.byId('txtBox_paramDef').value == '')
+                            var addString = def;
+                        else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                            var addString = def;
+                        else    
+                            var addString = ';' + def;
+
+                        console.log('Copying definition: ' + def);
+
+                        dom.byId('txtBox_paramDef').value += addString; //append it to the textbox
+                    }
+
+                    //Build the Dojo Grid with the 
+                    CompFieldGrid.buildGrid = function(fields)
+                    {
+                        CompFieldGrid.selected_fields;
+                        CompFieldGrid.def_params = new Array(); //the elements of the definition string
+                        CompFieldGrid.outputElements = new Array();
+
+                        // if(fields.length < 1)
+                        //     dom.byId('CompFieldGrid').innerHTML = '<div style = "text-align: center"><b>There are no Computed Fields available</b></div>';
+                        // else
+                        // {
+                            //Grid Data
+                            var data = [];
+
+                            /*set up layout*/
+                            var layout = [[
+                              {'name': '#', 'field': 'id', 'width': '3%'},
+                              {'name': 'Name', 'field': 'pi_name', 'width': '22%', 'editable': true, },
+                              {'name': 'Definition', 'field': 'pi_def', 'width': '65%', },
+                              {'name': 'Delete', 'field': 'delBtn', 'width': '10%'}
+                            ]];
+
+                            //set data list values from fields parameter
+                            // for(var i=0;i<fields.length;i++)
+                            // {
+                            //   dijit.registry.remove('delt'+i);
+                            //   dijit.registry.remove('defi'+i);  
+                            //   data_list[i] = 
+                            //   {
+                            //     col1: 'id',
+                            //     pi_name: fields[i].pi_name,
+                            //     col3: fields[i].pi_def, 
+                            //     col4: new Button({label: 'Get', id: 'defi'+i, onClick: function()
+                            //         {
+                            //             console.log('DefinitionID: ' + this.id);
+                            //             CompFieldGrid.addGridDefToDefinition(this.id);
+                            //         }
+                            //     }) ,
+                            //     col5: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                            //         {
+                            //             console.log('ID: ' + this.id);
+                            //             CompFieldGrid.deleteRow(this.id);
+                            //         }
+                            //     }),
+                            //   }
+                            // }
+
+                            // for(var i = 0; i < fields.length; i++)
+                            // {
+                            //   dijit.registry.remove('bttn'+i);
+                            //   data.push(lang.mixin(
+                            //     { index: i }, 
+                            //     fields[i], 
+                            //     { delBtn: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
+                            //         {
+                            //             console.log('ID: ' + this.id);
+                            //             CompFieldGrid.deleteRow(this.id);
+                            //         }})
+                            //     }));
+                            // }
+
+                            var compMemStore = new Memory({data: data}); //set up the store
+                            compMemStore = Observable(compMemStore);
+                            var compDataStore = new ObjectStore({
+                                objectStore: compMemStore
+                            });
+                            CompFieldGrid.data = data;
+
+                            //Fill the store with the retrieved DB data
+                            for(var i = 0; i < fields.length; i++)
+                            {
+                                compMemStore.put(lang.mixin(
+                                    { id: i }, 
+                                    fields[i], 
+                                    { delBtn: new Button({label: 'Delete', id: 'comp_bttn'+i, onClick: function()
+                                        {
+                                            console.log('ID: ' + this.id);
+                                            CompFieldGrid.deleteRow(this.id);
+                                        }})
+                                    }));
+                            }
+                            CompFieldGrid.data = compMemStore.data;
+
+                            // console.log(data[2].pi_name);
+
+                            /*create a new grid*/
+                            var grid = new DataGrid({
+                                store: compDataStore,
+                                structure: layout}, 'CompFieldGrid');
+
+                            /*Call startup() to render the grid*/
+                            grid.startup();
+
+                            dojo.connect(compMemStore, 'notify', function(){grid._refresh();});
+
+
+                            //This function reports what fields are selected for the current working group
+                            function reportSelection(node)
+                                {
+                                    var items = this.selection.getSelected();
+                                    CompFieldGrid.selected_fields = baseArray.map(items, function(item)
+                                    {
+                                        return item.pi_name;
+                                    }, this);
+                                    if(CompFieldGrid.selected_fields.length > 0)
+                                    {
+                                        var msg = "You have selected " + ((CompFieldGrid.selected_fields.length > 1) ? " ": " ");
+                                    }
+                                    else
+                                        var msg = "Nothing Selected";
+                                    node.innerHTML = msg + CompFieldGrid.selected_fields.join(", ");
+                                }
+
+                            // Event for when the selections are changed, call reportselection on the dom id given
+                            // hitch() returns a function that will execute a given function in a given context. This function allows you 
+                            // to control how a function executes, particularly in asynchronous operations
+                            grid.on("SelectionChanged", 
+                                lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                            window.compData = data;
+                            window.compGrid = grid;
+                            window.compDataStore = compDataStore;
+                            window.compMemStore = compMemStore;
+                            
+                        // }    
+                    }
+
+                    /********************************     End of Comp Field Grid      *********************************/
+
+                    /********************************     Text Boxes, Buttons, etc      *********************************/
+
+                     //input text boxes
+                    var txtBox_paramName = registry.byId("txtBox_paramName");
+                    var txtBox_paramValue = registry.byId("txtBox_paramValue");
+                    var txtBox_paramUnit = registry.byId("txtBox_paramUnit");
+                    var txtBox_paramDef = registry.byId("txtBox_paramDef");
+                    var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
+                    document.getElementById('txtBox_paramOutput').readOnly = 'readOnly';
+
+                    var radio_fixed= new RadioButton(
+                        {
+                            checked: true,
+                            value: "fixed",
+                            name: "pi_type",
+                            onChange: function()
+                            {
+                                if(this.checked == true)
+                                {
+                                    dom.byId("fields_computed").style.display="none";
+                                    dom.byId("fields_paramProperties").style.display = "block";
+                                }
+                                else
+                                {
+                                    dom.byId("fields_computed").style.display="block";
+                                    dom.byId("fields_paramProperties").style.display = "none";
+                                }
+                            }
+
+                        }, "radio_fixed");
+
+                    var radio_computed = new RadioButton(
+                        {
+                            checked: false,
+                            value: "computed",
+                            name: "pi_type",
+                            onChange: function()
+                            {
+                                if(this.checked == true)
+                                {
+                                    dom.byId("fields_computed").style.display="block";
+                                    dom.byId("fields_paramProperties").style.display = "none";
+                                }
+                                else
+                                {
+                                    dom.byId("fields_computed").style.display="none";
+                                    dom.byId("fields_paramProperties").style.display = "block";
+                                }
+                            }
+                        }, "radio_computed");
+
+
+                     //Button to Insert new parameter
+                     var button_insertNewField = new Button(
+                     {
+                        label: 'Confirm',
+                        onClick: function()
+                        {
+                            //require the textbox to have something
+                            if(dom.byId("txtBox_paramName").value=="")
+                            {
+                                 dom.byId("serverResponse").innerHTML = "Enter a name into the name field";
+                            }
+                            else if(dom.byId("txtBox_paramValue").value=="" && radio_computed.checked == false)
+                            {
+                                 dom.byId("serverResponse").innerHTML = "Enter a value into the value field";
+                            }
+                            else if(dom.byId("txtBox_paramUnit").value=="" && radio_computed.checked == false)
+                            {
+                                 dom.byId("serverResponse").innerHTML = "Enter a unit of measure into the UOM field";
+                            }
+                            else if(radio_computed.checked == true && dom.byId('txtBox_paramDef').value == "")
+                            {
+                                 dom.byId("serverResponse").innerHTML = "Enter a definition for the computed field";
+                            }
+                            else
+                            {
+                                if(!radio_computed.checked)
+                                {
+                                    ParameterGrid.newField();
+                                }
+                                else
+                                {
+                                    CompFieldGrid.newField();
+                                }
+                            }
+                            console.log ("New Parameter Submitted.");
+                        }
+                     }, 'button_insertNewField');
+
+                    //Confirm selection button for new group
+                    //require a name for the group
+                    var button_confirmUpdate = new Button(
+                    {
+                        label: 'Confirm Changes',
+                        onClick: function()
+                        {
+                            var selectedParameter = ParameterGrid.getSelected();
+                            var selectedType = 'fixed';
+                            //store the selected group
+                            console.log('Selected Parameter: ' + selectedParameter);
+                            var data = ParameterGrid.getData();
+                            var specs = new Array();
+                            
+                            console.log('data: ' + data.items[0].pi_name);
+                            var i;
+                            console.log('Amount of Data = ' + data.items.length);
+                            for(i = 0; i<data.items.length;i++)
+                            {
+                                var spec = new Object();
+                                spec.pi_name = data[i].pi_name;
+                                spec.pi_value = data[i].pi_value;
+                                spec.pi_unit = data[i].pi_unit;
+                                console.log('Spec: parameter - ' + spec.pi_name);
+                                console.log('Spec: value - ' + spec.pi_value);
+                                console.log('Spec: unit - ' + spec.pi_unit);    
+                                
+                                specs.push(spec);
+                            }
+
+                            var specString = JSON.stringify(specs);
+                            
+                            if(!selectedParameter)
+                            {
+                                dom.byId('serverResponse').innerHTML = 'You are required to select at least one group to form a product.';
+                            }
+                            else
+                            {
+                                xhr.get(
+                                {
+                                    url:"/parameter",
+                                    content: 
+                                    {
+                                        action: 'update',
+                                        parameter_name: selectedParameter,
+                                        pi_type: selectedProductType,
+                                        specs: specString,
+                                        loaded: has_loaded=true,
+                                    },
+                                    load:function(response)
+                                    {
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                        refresh();
+                                    },
+                                    error:function(error)
+                                    {
+                                        console.log("There was an error: \n"+error);
+                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                    }
+                                });
+                            }
+                        }
+                    }, "button_confirmUpdateSpecs");    
+
+                    var button_ParseDefinition = new Button (
+                    {
+                        label: "Parse",
+                        onClick: function()
+                        {
+                            parseDefinitionFieldToOutput();
+                            // playWithRefs();
+                        }
+                    }, "button_ParseDefinition");
+
+                    function playWithRefs()
+                    {
+                        xhr.get(
+                        {
+                            url:"/parameter",
+                            handleAs: 'json',
+                            content:
+                            {
+                                action: 'getRef',
+                            },
+                            load:function(response)
+                            {
+                                console.log("Response: " + response);
+                                dom.byId('txtBox_paramOutput').value = response;
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+
+                    function parseDefinitionFieldToOutput()
+                    {
+                        var definition = dom.byId("txtBox_paramDef").value;
+                        xhr.get(
+                        {
+                            url:"/parameter",
+                            content: 
+                            {
+                                action: 'parseDef',
+                                definition: definition,
+                                loaded: has_loaded=true,
+                            },
+                            load:function(response)
+                            {
+                                console.log('Response: ' + response);
+                                dom.byId('txtBox_paramOutput').value = response;
+                            },
+                            error:function(error)
+                            {
+                                console.log("There was an error: \n"+error);
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                            }
+                        });
+                    }
+
+
+                    //Clear all the textboxes
+                    function ClearTextFields()
+                    {
+                        dom.byId("txtBox_paramDef").value = "";
+                        dom.byId("txtBox_paramOutput").value = "";
+                        dom.byId("txtBox_paramName").value = "";
+                        dom.byId("txtBox_paramValue").value = "";
+                        dom.byId("txtBox_paramUnit").value = "";
+                    }
+
+                    //OnLoad Do these
+                    function refresh()
+                    {
+                        ParameterGrid.getFields();
+                        CompFieldGrid.getFields();
+                        ClearTextFields();
+                    }
+
+                    refresh();
+
+                });
+        </script>
+    </head>
+
+    <!-- Layout --> 
+    <body class="claro"><table width = '100%' border = "1">
+        <col width = "25%">
+        <col width = "75%">
+        <tr> <!-- Labels -->
+            <td style = "text-align: center; padding: 5px">
+                <b>Create New</b>
+                    <div id = "newFieldButtonDiv" style="text-align: right">
+                        <button id="button_insertNewField"></button>
+                    </div>
+            </td>
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
+                <b>Parameter List</b>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px">
+                <table>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <div style = "padding: 2px">
+                            <input id = "radio_fixed"><label for = "radio_fixed">Fixed</label></div>
+                            <div style = "padding: 2px">
+                            <input id = "radio_computed"><label for = "radio_computed">Computed</label><br><br></div>
+                            <label for="txtBox_paramName" style = "padding: 5px">Name:</label><br>  
+                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                    </tr>
+                </table>
+                <div id = "fields_paramProperties" style = "display: block">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramValue" style = "padding: 5px">Value:</label><br>  
+                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramUnit" style = "padding: 5px">Units:</label><br>  
+                                <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <br><br>
+                <div id = "fields_computed" style = "display: none">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>
+                                <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
+                                <div id = "ParseButtonDiv" style="text-align: right; padding: 10px">
+                                    <button id="button_ParseDefinition"></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramOutput" style = "padding: 5px">Output:</label><br>  
+                                <input id = "txtBox_paramOutput" data-dojo-type="dijit/form/TextBox"></input>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+            </td>
+            <td valign = "top" style = "padding: 2px; text-align:right">
+                <table width = '100%' border = '0'>
+                    <col width = '50%'>
+                    <col width = '50%'>
+                    <tr>
+                        <td valign = "top" style = "padding: 2px;">
+                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
+                            <div id="parameterGridDiv"></div>
+                        </td>
+                        <td valign = "top" style = "padding: 2px;">
+                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
+                            <div id="CompFieldGrid"></div>
+                            <br><br>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td colspan = "100%" style = "padding: 10px">
+                <div id="serverResponse">Status: Awaiting action...</div>
+            </td>
+        </tr>
+    </table>
+    </body> 
+</html>
