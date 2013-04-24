@@ -6,7 +6,8 @@
 var querystring = require("querystring"),
     fs = require("fs"),
     formidable = require("formidable"),
-    requestHelpers = require('./requestHelpers');
+    requestHelpers = require('./requestHelpers'),
+    ObjectID = require('mongodb').ObjectID;
     // ideaBacklogEntry_script = requre('./ideaBacklogEntry')
 
 //
@@ -139,19 +140,35 @@ function parameter (response, request, collection, url)
   {
     var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined});
-    // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined},
+      function(error, doc)
+      {
+        if(doc)
+        {
+          console.log(JSON.stringify(doc));
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(JSON.stringify(doc));
+          response.end();
+        }
+        else if(error)
+        {
+          console.log('New Parameter: Failure to Add New');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('Failure to Add \' '+ pi.pi_name + ' \' .');
+          response.end();
+        }
+      }
+    );
     //Send the response back to the page
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Field — \'' + pi.pi_name + '\' successfully added');
-    response.end();
+    
   }
 
   //If there is a removal requested, remove the field from the db if it exists
   if(FieldQuery.action == 'removeField')
   {
     var pi = eval('('+FieldQuery.pi+')');
-    collection.findAndRemove({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_value': pi.pi_value, 'pi_unit': pi.pi_unit},
+    var oid = new ObjectID(pi._id);
+    collection.findAndRemove({'_id':oid}, 
     function(error, result)
     {
       //If it's found and removed successfully, report it.
@@ -374,7 +391,6 @@ function parameter (response, request, collection, url)
                 console.log('Error: ' + err);
               }
             }
-            // var element = JSON.parse(def_elements.shift());
             if(element.f != null) //if this element has a field property
             {
               console.log('ELEMENT: ' + JSON.stringify(element));
