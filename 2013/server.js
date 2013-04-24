@@ -27,12 +27,9 @@ var requestHelpers = require('./requestHelpers');
 var requestHandlers = require("./requestHandlers");
 var handle = {};
 handle["/"] = requestHandlers.Home;
-handle["/start"] = requestHandlers.start;
 handle["/upload"] = requestHandlers.upload;
 handle["/show"] = requestHandlers.show;
-handle["/Inventory"] = requestHandlers.Inventory;
 handle["/Home"] = requestHandlers.Home;
-handle["/SpecManager"] = requestHandlers.SpecManager;
 handle["/ideaBacklogEntry"] = requestHandlers.ideaBacklogEntry;
 handle["/parameter"] = requestHandlers.parameter;
 handle["/param2"] = requestHandlers.parameter;
@@ -70,17 +67,10 @@ function start(route, handle) {
 
 //route the request to the appropriate files
 function route(handle, pathname, response, request, collection, url) {
-  if (typeof handle[pathname] === 'function') {
+  if (typeof handle[pathname] === 'function') //the pathname is associated with a handler, handle it
     handle[pathname](response, request, collection, url);
-  }
-  else {
-  	//Look for the file or handle an error
+  else //Look for the file or handle an error
   	requestHelpers.return_html(pathname, response);
-    // console.log("No request handler found for " + pathname);
-    // response.writeHead(404, {"Content-Type": "text/html"});
-    // response.write("404 Not found");
-    // response.end();
-  }
 }
 
 start(route, handle);
