@@ -18,12 +18,12 @@
         </script>
 
         <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
-        #parameterGridDiv 
+        #FixedGridDiv 
         {
             height: 52em;
             width: 100%;
         }
-        #CompFieldGrid
+        #CompGrid
         {
             height: 52em;
             width: 100%;
@@ -65,19 +65,13 @@
                 'dojo/domReady!'], 
                 function(lang, dom, registry, Button, baseArray, xhr, TextBox, InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
                 {
-                    /********************************     Parameter Grid      *********************************/
+                    /********************************     Fixed PI Grid      *********************************/
 
-                    //The ParameterGrid is the grid that displays all the available fields from the database.
-                    var ParameterGrid = new Object();
-
-                    //Return the set of selected fields
-                    ParameterGrid.getSelected = function()
-                    {
-                        return this.selected_fields;
-                    }
+                    //The FixedGrid is the grid that displays all the available fields from the database.
+                    var FixedGrid = new Object();
 
                     //Get the parameters from the db
-                    ParameterGrid.getFields = function()
+                    FixedGrid.getFields = function()
                     {
                         xhr.get(
                         {
@@ -90,8 +84,8 @@
                             },
                             load:function(response)
                             {
-                                ParameterGrid.allFields = response;
-                                ParameterGrid.buildGrid(ParameterGrid.allFields); //rebuild the dojo Grid
+                                FixedGrid.allFields = response;
+                                FixedGrid.buildGrid(FixedGrid.allFields); //rebuild the dojo Grid
                             },
                             error:function(error)
                             {
@@ -101,25 +95,13 @@
                         });
                     }
 
-                    //Gets all the data that makes up the row at the index given by id
-                    ParameterGrid.getGridItemById = function(id)
-                    {
-                        var gridItem = null;
-                        var grid = dijit.registry.byId('parameterGridDiv');
-                        
-                        gridItem = fixedMemStore.get(id);
-                        console.log(JSON.stringify("Grid Item: " + gridItem));
-                        return gridItem;
-                    }
-
                     //Removes an entire parameter from the database given the id of the row
                     //of the selected parameter
-                    ParameterGrid.deleteRow = function(selected)
+                    FixedGrid.removePI = function(selected)
                     {
                         if(!selected)
                             return;
 
-                        console.log("Attempting to Delete: " + selected);
                         if(!selected[0]){ return alert('error deleting '+selected[0].pi_name+' from Parameter Grid'); }
                         if(!confirm("Are you sure you want to delete \'" + selected[0].pi_name +"\'?"))
                             return;
@@ -138,7 +120,7 @@
                                 {
                                     console.log("id to remove from mem store: " + selected[0].id);
                                     dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                    remove_from_store();
+                                    remove_from_fixed_store();
                                 },
                                 error:function(error)
                                 {
@@ -148,15 +130,14 @@
                             });
                         }
 
-                        remove_from_store = function()
+                        remove_from_fixed_store = function()
                         {
                             fixedMemStore.remove(selected[0].id);
                         }
                     }
 
-                    ParameterGrid.newField = function()
+                    FixedGrid.new_pi = function()
                     {
-                        var success = false;
                         var pi = {
                             pi_name: dom.byId('txtBox_paramName').value,
                             pi_value: dom.byId('txtBox_paramValue').value,
@@ -169,7 +150,7 @@
                             handleAs: 'json',
                             content: 
                             {
-                                action: 'newField',
+                                action: 'new_pi',
                                 pi: JSON.stringify(pi),
                                 loaded: has_loaded=true,
                             },
@@ -177,7 +158,7 @@
                             {
                                 dom.byId("serverResponse").innerHTML = "Response from server: " + pi.pi_name + " successfully added.";
                                 ClearTextFields();
-                                add_to_store(response);
+                                add_to_fixed_store(response);
                             },
                             error:function(error)
                             {
@@ -186,7 +167,7 @@
                             }
                         });
 
-                        add_to_store = function(pi)
+                        add_to_fixed_store = function(pi)
                         {
                             var pi = new Object(pi);
                             var index = fixedMemStore.data.length;
@@ -197,14 +178,12 @@
                         }
                     }
 
-                    ParameterGrid.addFieldValueToDefinition = function(id)
+                    FixedGrid.addValueToDefinition = function(pi_name)
                     {
-                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
-                        item = ParameterGrid.getGridItemById(sub); //get the item by the given id
                         var pair = new Object();
-                        pair.field = item.pi_name[0];
-                        pair.property = 'value';
-                        ParameterGrid.def_params.push(pair);
+                        pair.f = pi_name;
+                        pair.p = 'value';
+                        FixedGrid.def_params.push(pair);
                         if(dom.byId('txtBox_paramDef').value == '')
                             var pairString = JSON.stringify(pair);
                         else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
@@ -212,21 +191,17 @@
                         else    
                             var pairString = ';' + JSON.stringify(pair);
 
-                        console.log('Pair: ' + pairString);
-
                         var addThis = pairString; // This is the text string to add to the textbox
                         dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
                     }
 
 
-                    ParameterGrid.addFieldUnitToDefinition = function(id)
+                    FixedGrid.addUnitToDefinition = function(pi_name)
                     {
-                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
-                        item = ParameterGrid.getGridItemById(sub); //get the item by the given id
                         var pair = new Object();
-                        pair.field = item.pi_name[0];
-                        pair.property = 'unit';
-                        ParameterGrid.def_params.push(pair);
+                        pair.f = pi_name;
+                        pair.p = 'unit';
+                        FixedGrid.def_params.push(pair);
                         if(dom.byId('txtBox_paramDef').value == '')
                             var pairString = JSON.stringify(pair);
                         else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
@@ -234,32 +209,24 @@
                         else    
                             var pairString = ';' + JSON.stringify(pair);
 
-                        console.log('Pair: ' + pairString);
-
                         var addThis = pairString; // This is the text string to add to the textbox
                         dom.byId('txtBox_paramDef').value += addThis; //append it to the textbox
-                    }
-
-                    ParameterGrid.getData = function()
-                    {
-                        return this.data;
                     }
 
                     //Build the Dojo Grid with the 
-                    ParameterGrid.buildGrid = function(fields)
+                    FixedGrid.buildGrid = function(fields)
                     {
-                        ParameterGrid.selected_fields;
-                        ParameterGrid.data;
-                        ParameterGrid.def_params = new Array(); //the elements of the definition string
-                        ParameterGrid.outputElements = new Array();
+                        FixedGrid.selected_fields;
+                        FixedGrid.def_params = new Array(); //the elements of the definition string
+                        FixedGrid.outputElements = new Array();
 
                         var data = [];
 
                         var layout = [[
                           {'name': '#', 'field': 'id', 'width': '5%'},
-                          {'name': 'Parameter', 'field': 'pi_name', 'width': '45%', 'editable': true},
-                          {'name': 'Value', 'field': 'pi_value', 'width': '20%', 'editable': true},
-                          {'name': 'Unit', 'field': 'pi_unit', 'width': '20%', 'editable':true}
+                          {'name': 'Parameter', 'field': 'pi_name', 'width': '45%'},
+                          {'name': 'Value', 'field': 'pi_value', 'width': '20%'},
+                          {'name': 'Unit', 'field': 'pi_unit', 'width': '20%'}
                         ]];
 
                         var fixedMemStore = new Memory({data: data}); //set up the store
@@ -276,12 +243,11 @@
                                 fields[i]
                             ));
                         }
-                        ParameterGrid.data = fixedMemStore.data;
 
                         /*create a new grid*/
                         var grid = new DataGrid({
                             store: fixedDataStore,
-                            structure: layout}, 'parameterGridDiv');
+                            structure: layout}, 'FixedGridDiv');
 
                         /*Call startup() to render the grid*/
                         grid.startup();
@@ -292,10 +258,10 @@
                         function reportSelection(node)
                         {
                             var items = this.selection.getSelected();
-                            ParameterGrid.selected_fields = items;
-                            if(ParameterGrid.selected_fields.length > 0)
+                            FixedGrid.selected_fields = items;
+                            if(FixedGrid.selected_fields.length > 0)
                             {
-                                var msg = "You have selected " + ((ParameterGrid.selected_fields.length > 1) ? " ": " ");
+                                var msg = "You have selected " + ((FixedGrid.selected_fields.length > 1) ? " ": " ");
                             }
                             else
                                 var msg = "Nothing Selected";
@@ -306,33 +272,45 @@
                             }, this);
                             node.innerHTML = msg + pi_names.join(", ");
                         }
-
-                        // Event for when the selections are changed, call reportselection on the dom id given
-                        // hitch() returns a function that will execute a given function in a given context. This function     
-                        // allows you 
-                        // to control how a function executes, particularly in asynchronous operations
+                        
+                        //On selection change, call reportSelection() and pass in the response dom
                         grid.on("SelectionChanged", 
                             lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
 
+                        //On a cell double click, add the clicked property to the definition
+                        dojo.connect(grid,"onCellDblClick", function(e)
+                            {
+                                var column = e.target.cellIndex;
+                                var pi_name = fixedMemStore.get(e.rowIndex).pi_name;
+                                if(column == 2)
+                                    FixedGrid.addValueToDefinition(pi_name);
+                                else if(column == 3)
+                                    FixedGrid.addUnitToDefinition(pi_name);
+                                else
+                                    return;       
+                            });
+
+                        //make the following properties global
                         window.fixedData = fixedMemStore.data;
                         window.fixedGrid = grid;
                         window.fixedDataStore = fixedDataStore;
                         window.fixedMemStore = fixedMemStore;
                     }
 
-                    /********************************     End of Parameter Grid      *********************************/
+                    /********************************     End of Fixed PI Grid      *********************************/
 
-                    /********************************     Computed Field Grid      *********************************/
+                    /********************************     Computed PI Grid      *********************************/
 
-                    var CompFieldGrid = new Object();
+                    //The containing object for the Computed Grid
+                    var CompGrid = new Object();
 
-                    CompFieldGrid.getSelected = function()
+                    CompGrid.getSelected = function()
                     {
                         return this.selected_fields;
                     }
 
                     //Get the parameters from the db
-                    CompFieldGrid.getFields = function()
+                    CompGrid.getFields = function()
                     {
                         xhr.get(
                         {
@@ -345,8 +323,8 @@
                             },
                             load:function(response)
                             {
-                                CompFieldGrid.allFields = response;
-                                CompFieldGrid.buildGrid(CompFieldGrid.allFields); //rebuild the dojo Grid
+                                CompGrid.allFields = response;
+                                CompGrid.buildGrid(CompGrid.allFields); //rebuild the dojo Grid
                             },
                             error:function(error)
                             {
@@ -358,47 +336,46 @@
 
                     //Removes an entire parameter from the database given the id of the row
                     //of the selected parameter
-                    CompFieldGrid.deleteRow = function(id)
+                    CompGrid.removePI = function(selected)
                     {
-                        if(!id)
+                        if(!selected)
                             return;
-                        var sub = id.substring(9, id.length);
-                        item = compMemStore.get(sub);
-                        console.log("ID to delete: " + sub);
-                        console.log('Item: ' + JSON.stringify(item));
-                        if(!item){ return alert('error deleting '+sub+' from CompFieldGrid'); }
-                        if(!confirm("Are you sure you want to delete \'" + item.pi_name +"\'?"))
+                        if(!selected[0]){ return alert('error deleting '+selected[0].pi_name+' from CompGrid'); }
+                        if(!confirm("Are you sure you want to delete \'" + selected[0].pi_name +"\'?"))
                             return;
                         else
                         {
-                            var pi = {
-                                pi_name: item.pi_name,
-                                pi_def: item.pi_def,
-                            };
                             xhr.get(
+                            {
+                                url:"/parameter",
+                                content: 
                                 {
-                                    url:"/parameter",
-                                    content: 
-                                    {
-                                        action: 'removeCompField',
-                                        pi: JSON.stringify(pi),
-                                        loaded: has_loaded=true,
-                                    },
-                                    load:function(response)
-                                    {
-                                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                    },
-                                    error:function(error)
-                                    {
-                                        console.log("There was an error: \n"+error);
-                                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                                    }
-                                });
-                            compMemStore.remove(sub);
+                                    action: 'removeCompField',
+                                    pi: JSON.stringify(selected[0]),
+                                    loaded: has_loaded=true,
+                                },
+                                load:function(response)
+                                {
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                    remove_from_comp_store();
+                                },
+                                error:function(error)
+                                {
+                                    console.log("There was an error: \n"+error);
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                                }
+                            });
+                        }
+
+                        remove_from_comp_store = function()
+                        {
+                            compMemStore.remove(selected[0].id);
                         }
                     }
 
-                    CompFieldGrid.newField = function()
+                    //Called when the computed radio button is checked, the name, definition, and Output
+                    //textboxes contain text and the conirm button is pressed.
+                    CompGrid.new_pi = function()
                     {
                         var pi = {
                             pi_name: dom.byId('txtBox_paramName').value,
@@ -407,6 +384,7 @@
                         xhr.get(
                         {
                             url:"/parameter",
+                            handleAs: 'json',
                             content: 
                             {
                                 action: 'newCompField',
@@ -415,18 +393,9 @@
                             },
                             load:function(response)
                             {
-                                var index = compMemStore.data.length;
-                                dijit.registry.remove('comp_bttn'+index);
-                                compMemStore.put(lang.mixin(
-                                    {id: index}, 
-                                    pi, 
-                                    { delBtn: new Button({label: 'Delete', id: 'comp_bttn'+index, onClick: function()
-                                        {
-                                            console.log('ID: ' + this.id);
-                                            CompFieldGrid.deleteRow(this.id);
-                                        }})}));
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                                dom.byId("serverResponse").innerHTML = "Response from server: '" + pi.pi_name + "' successfully added.";
                                 ClearTextFields();
+                                add_to_comp_store(response);
                             },
                             error:function(error)
                             {
@@ -434,17 +403,22 @@
                                 dom.byId("serverResponse").innerHTML = "Response from server: " + error;
                             }
                         });
+
+                        add_to_comp_store = function(pi)
+                        {
+                            var index = compMemStore.data.length;
+                            compMemStore.put(lang.mixin(
+                                    {id: index}, 
+                                    new Object(pi)
+                            ));
+                        }
                     }
 
-                    CompFieldGrid.addGridDefToDefinition = function(id)
+                    //Called when the definition cell is double clicked or the Get Property button is pressed.
+                    CompGrid.addGridDefToDefinition = function(id)
                     {
-                        var sub = id.substring(4, id.length); //the id contains the 'valu' identifier in front, cut it off
-                        item = CompFieldGrid.getGridItemById(sub); //get the item by the given id
-                        var pair = new Object();
-                        pair.field = item.pi_name[0];
-                        pair.property = 'unit';
+                        item = compMemStore.get(id); //get the item by the given id
                         var def = item.pi_def[0];
-                        // ParameterGrid.def_params.push(def);
                         if(dom.byId('txtBox_paramDef').value == '')
                             var addString = def;
                         else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
@@ -452,17 +426,15 @@
                         else    
                             var addString = ';' + def;
 
-                        console.log('Copying definition: ' + def);
-
                         dom.byId('txtBox_paramDef').value += addString; //append it to the textbox
                     }
 
                     //Build the Dojo Grid with the 
-                    CompFieldGrid.buildGrid = function(fields)
+                    CompGrid.buildGrid = function(fields)
                     {
-                        CompFieldGrid.selected_fields;
-                        CompFieldGrid.def_params = new Array(); //the elements of the definition string
-                        CompFieldGrid.outputElements = new Array();
+                        CompGrid.selected_fields;
+                        CompGrid.def_params = new Array(); //the elements of the definition string
+                        CompGrid.outputElements = new Array();
 
                         //Grid Data
                         var data = [];
@@ -471,8 +443,7 @@
                         var layout = [[
                           {'name': '#', 'field': 'id', 'width': '3%'},
                           {'name': 'Name', 'field': 'pi_name', 'width': '22%', 'editable': true, },
-                          {'name': 'Definition', 'field': 'pi_def', 'width': '65%', },
-                          {'name': 'Delete', 'field': 'delBtn', 'width': '10%'}
+                          {'name': 'Definition', 'field': 'pi_def', 'width': '65%', }
                         ]];
 
                         var compMemStore = new Memory({data: data}); //set up the store
@@ -480,50 +451,42 @@
                         var compDataStore = new ObjectStore({
                             objectStore: compMemStore
                         });
-                        CompFieldGrid.data = data;
 
                         //Fill the store with the retrieved DB data
                         for(var i = 0; i < fields.length; i++)
                         {
                             compMemStore.put(lang.mixin(
                                 { id: i }, 
-                                fields[i], 
-                                { delBtn: new Button({label: 'Delete', id: 'comp_bttn'+i, onClick: function()
-                                    {
-                                        console.log('ID: ' + this.id);
-                                        CompFieldGrid.deleteRow(this.id);
-                                    }})
-                                }));
+                                fields[i] 
+                            ));
                         }
-                        CompFieldGrid.data = compMemStore.data;
-
 
                         /*create a new grid*/
                         var grid = new DataGrid({
                             store: compDataStore,
-                            structure: layout}, 'CompFieldGrid');
+                            structure: layout}, 'CompGrid');
 
                         /*Call startup() to render the grid*/
                         grid.startup();
-
                         dojo.connect(compMemStore, 'notify', function(){grid._refresh();});
-
 
                         //This function reports what fields are selected for the current working group
                         function reportSelection(node)
                             {
                                 var items = this.selection.getSelected();
-                                CompFieldGrid.selected_fields = baseArray.map(items, function(item)
+                                CompGrid.selected_fields = items;
+                                if(CompGrid.selected_fields.length > 0)
                                 {
-                                    return item.pi_name;
-                                }, this);
-                                if(CompFieldGrid.selected_fields.length > 0)
-                                {
-                                    var msg = "You have selected " + ((CompFieldGrid.selected_fields.length > 1) ? " ": " ");
+                                    var msg = "You have selected " + ((CompGrid.selected_fields.length > 1) ? " ": " ");
                                 }
                                 else
                                     var msg = "Nothing Selected";
-                                node.innerHTML = msg + CompFieldGrid.selected_fields.join(", ");
+
+                                var pi_names = baseArray.map(items, function(item)
+                                {
+                                    return item.pi_name;
+                                }, this);
+                                node.innerHTML = msg + pi_names.join(", ");
                             }
 
                         // Event for when the selections are changed, call reportselection on the dom id given
@@ -533,11 +496,30 @@
                         grid.on("SelectionChanged", 
                             lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
 
+                        dojo.connect(grid,"onCellDblClick", grid, function(e)
+                            {
+                                var column = e.target.cellIndex;
+                                var pi_name = compMemStore.get(e.rowIndex).pi_name;
+                                var def = e.target.textContent;
+                                if(column == 2)
+                                {
+                                    if(dom.byId('txtBox_paramDef').value == '')
+                                        var addString = def;
+                                    else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                                        var addString = def;
+                                    else    
+                                        var addString = ';' + def;
+
+                                    dom.byId('txtBox_paramDef').value += addString;
+                                }
+                                else
+                                    return; 
+                            });
+
                         window.compData = data;
                         window.compGrid = grid;
                         window.compDataStore = compDataStore;
                         window.compMemStore = compMemStore;
-                            
                     }
 
                     /********************************     End of Comp Field Grid      *********************************/
@@ -552,6 +534,7 @@
                     var txtBox_paramOutput = registry.byId("txtBox_paramOutput");
                     document.getElementById('txtBox_paramOutput').readOnly = 'readOnly';
 
+                    //Radio button that verifies entering a fixed pi
                     var radio_fixed= new RadioButton(
                         {
                             checked: true,
@@ -573,6 +556,7 @@
 
                         }, "radio_fixed");
 
+                    //Radio button that verifies entering a computed pi
                     var radio_computed = new RadioButton(
                         {
                             checked: false,
@@ -593,33 +577,95 @@
                             }
                         }, "radio_computed");
 
+                    //Button that calls the function to delete the selected Comp parameter
+                    var button_get_fixed_property = new Button(
+                    {
+                        label: 'Get Property', 
+                        onClick: function()
+                        {
+                            if(!FixedGrid.selected_fields)
+                                return alert("Select a Parameter from the grid first.\n\n\nTip:  Did you know Double Clicking a cell has the same affect?"); 
+                            get_fixed_property(FixedGrid.selected_fields);
+                        },
+                    }, 'button_get_fixed_property');
+
+                    //Gets the definition property of the selected computed pi
+                    function get_fixed_property(selected)
+                    {
+                        var column = fixedGrid.focus.cell.index;
+                        var pi_name = selected[0].pi_name;
+                        if(column == 2)
+                            FixedGrid.addValueToDefinition(pi_name);
+                        else if(column == 3)
+                            FixedGrid.addUnitToDefinition(pi_name);
+                        else
+                            return;       
+                    }
+
+                    //Button that calls the function that deletes the selected fixed parameter
                     var button_delete_fixed_pi = new Button(
                     {
                         label: 'Delete', 
-                        onClick: function(){console.log(ParameterGrid.selected_fields[0].id); delete_fixed_pi(ParameterGrid.getSelected())},
+                        onClick: function()
+                        {
+                            delete_fixed_pi(FixedGrid.selected_fields)
+                        },
                     }, 'button_delete_fixed_pi');
 
+                    //deletes the selected fixed parameter
                     function delete_fixed_pi(selected)
                     {
-                        console.log('ID of pi to Delete: ' + this.id);
-                        ParameterGrid.deleteRow(selected);
+                        FixedGrid.removePI(selected);
                     }
 
+                    //Button that calls the function to delete the selected Comp parameter
+                    var button_get_comp_property = new Button(
+                    {
+                        label: 'Get Property', 
+                        onClick: function()
+                        {
+                            if(!CompGrid.selected_fields)
+                                return alert("Select a Parameter from the grid first.\n\n\nTip:  Did you know Double Clicking a cell has the same affect?"); 
+                            get_comp_property(CompGrid.selected_fields);
+                        },
+                    }, 'button_get_comp_property');
+
+                    //Gets the definition property of the selected computed pi
+                    function get_comp_property(selected)
+                    {
+
+                        var def = selected[0].pi_def;
+                        if(dom.byId('txtBox_paramDef').value == '')
+                            var addString = def;
+                        else if (dom.byId('txtBox_paramDef').value[dom.byId('txtBox_paramDef').value.length-1] == ';')
+                            var addString = def;
+                        else    
+                            var addString = ';' + def;
+
+                        dom.byId('txtBox_paramDef').value += addString;
+                    }
+
+                    //Button that calls the function to delete the selected Comp parameter
                     var button_delete_comp_pi = new Button(
                     {
                         label: 'Delete', 
-                        onClick: function(){console.log(CompFieldGrid.getSelected()); delete_comp_pi(CompFieldGrid.getSelected())},
+                        onClick: function()
+                        {
+                            if(!CompGrid.selected_fields)
+                                return alert("Select a Parameter from the grid first.\n\n\nTip:  Did you know Double Clicking a cell has the same affect?"); 
+                            delete_comp_pi(CompGrid.selected_fields);
+                        },
                     }, 'button_delete_comp_pi');
                     
+                    //Deletes the selected computed parameter
                     function delete_comp_pi(selected)
                     {
-                        console.log('ID of pi to delete: ' + this.id);
-                        CompFieldGrid.deleteRow(selected);
+                        CompGrid.removePI(selected);
                     }
 
-                     //Button to Insert new parameter
-                     var button_insertNewField = new Button(
-                     {
+                    //Button to Insert new parameter
+                    var button_add_new_PI = new Button(
+                    {
                         label: 'Confirm',
                         onClick: function()
                         {
@@ -644,17 +690,18 @@
                             {
                                 if(!radio_computed.checked)
                                 {
-                                    ParameterGrid.newField();
+                                    FixedGrid.new_pi();
                                 }
                                 else
                                 {
-                                    CompFieldGrid.newField();
+                                    CompGrid.new_pi();
                                 }
                             }
-                            console.log ("New Parameter Submitted.");
                         }
-                     }, 'button_insertNewField');
+                    }, 'button_add_new_PI');
 
+
+                    /********  Currently Unused   ********/
                     //Confirm selection button for new group
                     //require a name for the group
                     var button_confirmUpdate = new Button(
@@ -662,26 +709,19 @@
                         label: 'Confirm Changes',
                         onClick: function()
                         {
-                            var selectedParameter = ParameterGrid.getSelected();
+                            var selectedParameter = FixedGrid.selected_fields;
                             var selectedType = 'fixed';
                             //store the selected group
-                            console.log('Selected Parameter: ' + selectedParameter);
-                            var data = ParameterGrid.getData();
+                            var data = fixedData;
                             var specs = new Array();
                             
-                            console.log('data: ' + data.items[0].pi_name);
                             var i;
-                            console.log('Amount of Data = ' + data.items.length);
                             for(i = 0; i<data.items.length;i++)
                             {
                                 var spec = new Object();
                                 spec.pi_name = data[i].pi_name;
                                 spec.pi_value = data[i].pi_value;
                                 spec.pi_unit = data[i].pi_unit;
-                                console.log('Spec: parameter - ' + spec.pi_name);
-                                console.log('Spec: value - ' + spec.pi_value);
-                                console.log('Spec: unit - ' + spec.pi_unit);    
-                                
                                 specs.push(spec);
                             }
 
@@ -719,6 +759,8 @@
                         }
                     }, "button_confirmUpdateSpecs");    
 
+                    //button that calls the method to send the definition to the
+                    //server for parsing
                     var button_ParseDefinition = new Button (
                     {
                         label: "Parse",
@@ -728,6 +770,7 @@
                         }
                     }, "button_ParseDefinition");
 
+                    //sends the definition to the server for parsing
                     function parseDefinitionFieldToOutput()
                     {
                         var definition = dom.byId("txtBox_paramDef").value;
@@ -742,7 +785,6 @@
                             },
                             load:function(response)
                             {
-                                console.log('Response: ' + response);
                                 dom.byId('txtBox_paramOutput').value = response;
                             },
                             error:function(error)
@@ -763,14 +805,15 @@
                         dom.byId("txtBox_paramUnit").value = "";
                     }
 
-                    //OnLoad Do these
+                    //Retrieve data from the database, fill the grids, clear the text fields
                     function refresh()
                     {
-                        ParameterGrid.getFields();
-                        CompFieldGrid.getFields();
+                        FixedGrid.getFields();
+                        CompGrid.getFields();
                         ClearTextFields();
                     }
 
+                    //Do this on load
                     refresh();
 
                 });
@@ -784,8 +827,8 @@
         <tr> <!-- Labels -->
             <td style = "text-align: center; padding: 5px">
                 <b>Create New</b>
-                    <div id = "newFieldButtonDiv" style="text-align: right">
-                        <button id="button_insertNewField"></button>
+                    <div id = "newPIButtonDiv" style="text-align: right">
+                        <button id="button_add_new_PI"></button>
                     </div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
@@ -850,18 +893,20 @@
                     <col width = '70%'>
                     <tr>
                         <td valign = "top" style = "padding: 2px;">
-                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
+                            <div id = "CompGridTitle" style = "text-align:center"><p><b>Fixed Parameters</b></p></div>
                             <div id = "deleteFPIdiv" style="text-align: right">
+                                <button id="button_get_fixed_property"></button>
                                 <button id="button_delete_fixed_pi"></button>
                             </div>
-                            <div id="parameterGridDiv"></div>
+                            <div id="FixedGridDiv"></div>
                         </td>
                         <td valign = "top" style = "padding: 2px;">
-                            <div id = "CompFieldGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
+                            <div id = "CompGridTitle" style = "text-align:center"><p><b>Computed Parameters</b></p></div>
                             <!-- <div id = "deleteCPIdiv" style="text-align: right"> -->
+                                <button id="button_get_comp_property"></button>
                                 <button id="button_delete_comp_pi"></button>
                             <!-- </div> -->
-                            <div id="CompFieldGrid"></div>
+                            <div id="CompGrid"></div>
                             <br><br>
                         </td>
                     </tr>

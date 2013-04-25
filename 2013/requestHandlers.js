@@ -136,18 +136,19 @@ function parameter (response, request, collection, url)
   }
  
   //If there was an insertion requested, add the entry to the db, initialize its value to null.
-  if(FieldQuery.action == 'newField')
+  if(FieldQuery.action == 'new_pi')
   {
     var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined},
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined});
+    collection.find({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined}).toArray(
       function(error, doc)
       {
         if(doc)
         {
-          console.log(JSON.stringify(doc));
+          var string = JSON.stringify(doc[0]);
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(JSON.stringify(doc));
+          response.write(string);
           response.end();
         }
         else if(error)
@@ -257,12 +258,24 @@ function parameter (response, request, collection, url)
   {
     var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type':'computed', 'pi_value': undefined, 'pi_unit': undefined, 'pi_def':pi.pi_def});
-    // collection.ensureIndex({'field_name':1, 'field_value': 1, 'field_unit':1},{unique: true, sparse: true, dropDups: true});
-    //Send the response back to the page
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.write('New Computed Field — \'' + pi.pi_name + '\' successfully added');
-    response.end();
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type':'computed', 'pi_value': undefined, 'pi_unit': undefined, 'pi_def':pi.pi_def},
+      function(error, doc)
+      {
+        if(doc)
+        {
+          console.log(JSON.stringify(doc));
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(JSON.stringify(doc));
+          response.end();
+        }
+        else if(error)
+        {
+          console.log('New Parameter: Failure to Add New');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('Failure to Add \' '+ pi.pi_name + ' \' .');
+          response.end();
+        }
+      });
   }
 
   if(FieldQuery.action == 'removeCompField')
@@ -288,63 +301,6 @@ function parameter (response, request, collection, url)
         response.end();
       }
     });
-  }
-
-  if(FieldQuery.action == 'getRef')
-  {
-    collection.find({"pi_name":"dumb"}).toArray(
-      function(error, result)
-      {
-        if(result!=null)
-        {
-          var s = "";
-          console.log(JSON.stringify(result));
-          var temp_id = result[0]._id;
-          console.log("temp_id: "+JSON.stringify(temp_id));
-          collection.find({"_id":temp_id}).toArray(
-            function(e, r)
-            {
-              if(r!=null)
-              {
-                s = JSON.stringify(r[0]);
-                console.log("\ns: "+ s);
-                response.writeHead(200, {"Content-Type": "text/plain"});
-                response.write(s);
-                response.end();
-              }
-              else
-              {
-                console.log('\nSomething has gone Terribly (2), terribly wrong (2)!!');
-                response.writeHead(200, {"Content-Type": "text/plain"});
-                response.write("Something has gone Terribly (2), terribly wrong (2)!!");
-                response.end();
-              }
-              if(error)
-              {
-                console.log("\nError: " + error);
-                response.writeHead(200, {"Content-Type": "text/plain"});
-                response.write("ERROR: " + error);
-                response.end();
-              }
-            });
-          // console.log('\n'+string);
-          
-        }
-        else
-        {
-          console.log('\nSomething has gone Terribly, terribly wrong!!');
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write("Something has gone Terribly, terribly wrong!!");
-          response.end();
-        }
-        if(error)
-        {
-          console.log("\nError: " + error);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write("ERROR: " + error);
-          response.end();
-        }
-      });
   }
 
   //Parses the definition for a computed field into a user friendly, readable output text
@@ -449,8 +405,9 @@ function parameter (response, request, collection, url)
           console.log('!!! Here !!!: 3');
           console.log("\nError in 'ParseDef':" + error + '\n');
         }
-      });
-    }
+      }
+    );
+  }
 }
 
 
