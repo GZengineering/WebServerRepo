@@ -7,8 +7,87 @@ var querystring = require("querystring"),
     fs = require("fs"),
     formidable = require("formidable"),
     requestHelpers = require('./requestHelpers'),
+    express = require('express'),
+    app = express();
     ObjectID = require('mongodb').ObjectID;
-    // ideaBacklogEntry_script = requre('./ideaBacklogEntry')
+
+
+function dojo_css (response, request, collection, url)
+{
+  requestHelpers.return_css('dojo_source_1.8.3/dojo/resources/dojo.css', response);
+}
+
+function db_data (response, request, collection, url)
+{
+  fs.readFile('./db.json', function (err, file) 
+  {
+      response.writeHead(200, {"Content-Type": "text/html"});
+      response.write(file);
+      response.end();
+  });
+}    
+
+function dump (response, request, collection, url)
+{
+  var FieldQuery = url.parse(request.url,true).query;
+  collection.find().toArray(
+      function(error, result)
+      {
+        //If there's something returned from the db, send it to the page as
+        //a JSON object
+        if(result!=null)
+        {
+          var db_as_json = '';
+          for(var i = 0; i < result.length; i++)
+          {
+            db_as_json += JSON.stringify(result[i]);
+            if(i != result.length-1)
+              db_as_json += '\n';
+          }
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(db_as_json);
+          response.end();
+          _writeFile("db.json", db_as_json);
+        }
+        //If there's an error, log it.
+        else if(error)
+        {
+          console.log("\nError in 'getFields':" + error + '\n');
+        }
+      });
+}
+
+function update_db_from_file(response, request, collection, url)
+{
+  var spawn = require('child_process').spawn,
+      mongoimport = spawn('../../../mongodb/bin/mongoimport', ['--db', 'GZ', '--collection', 'DataBase', '--file', 'db.json', '--upsert',  '--journal']);
+      
+  mongoimport.stdout.on('data', function(data)
+  {
+    console.log('stdout: ' + data);
+  });
+
+  mongoimport.stderr.on('data', function(data)
+  {
+    console.log('stderr ' + data);
+  });
+
+  mongoimport.on('close', function(code)
+  {
+    console.log('process exited with code: ' + code);
+  });
+
+  response.end();  
+}
+
+function _writeFile(filename, data)
+{
+  fs.writeFile(filename, data, function(err)
+  {
+    if (err) throw err;
+    console.log('DB file dumped');
+  })
+}
 
 //
 function Home(response, request, collection, url) {
@@ -57,15 +136,14 @@ function upload(response, request) {
 
     /* Possible error on Windows systems:
        tried to rename to an already existing file */
-    fs.rename(files.upload.path, "/tmp/test.png", function(err) {
+    fs.rename(files.upload.path, "db.json", function(err) {
       if (err) {
-        fs.unlink("/tmp/test.png");
-        fs.rename(files.upload.path, "/tmp/test.png");
+        fs.unlink("db.json");
+        fs.rename(files.upload.path, "db.json");
       }
     });
     response.writeHead(200, {"Content-Type": "text/html"});
-    response.write("received image:<br/>");
-    response.write("<img src='/show' />");
+    response.write("upload successful");
     response.end();
   });
 }
@@ -118,12 +196,19 @@ Parameter.buildOutputString = function()
   }
 }
 
+//returns the pi javascript
+function parameter_js (response, request, collection, url)
+{
+  requestHelpers.return_js('./parameter.js', response);
+}
+
+
 /*
 * This is the handler for the parameter page.  This page is used to
 * manage the lowest level of a products specs.  The user can add and
 * remove fields. There is also a live list view of the available fields.
 */
-function parameter (response, request, collection, url) 
+function individual (response, request, collection, url) 
 {
   //parse url
   console.log("\nRequest handler 'parameter'");
@@ -132,7 +217,7 @@ function parameter (response, request, collection, url)
   // Return the main page if the page hasn't loaded yet.
   if(!FieldQuery.loaded)
   {
-    requestHelpers.return_html('./param2.html', response); //changed to load Parameter Builder 2.0
+    requestHelpers.return_html('./individual.html', response); //changed to load Parameter Builder 2.0
   }
  
   //If there was an insertion requested, add the entry to the db, initialize its value to null.
@@ -140,7 +225,7 @@ function parameter (response, request, collection, url)
   {
     var pi = eval('(' + FieldQuery.pi + ')');
     //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined});
+    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':null});
     collection.find({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : 'fixed', 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':undefined}).toArray(
       function(error, doc)
       {
@@ -160,14 +245,13 @@ function parameter (response, request, collection, url)
         }
       }
     );
-    //Send the response back to the page
-    
   }
 
   //If there is a removal requested, remove the field from the db if it exists
   if(FieldQuery.action == 'removeField')
   {
     var pi = eval('('+FieldQuery.pi+')');
+    console.log(pi._id);
     var oid = new ObjectID(pi._id);
     collection.findAndRemove({'_id':oid}, 
     function(error, result)
@@ -179,14 +263,31 @@ function parameter (response, request, collection, url)
         response.writeHead(200, {"Content-Type": "text/plain"});
         response.write(pi.pi_name + ' successfully removed');
         response.end();
+        return;
       }
-      //otherwise, report that the field wasn't found
       else
       {
-        console.log('Field Removal: nothing to remove');
-        response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove \' '+ pi.pi_name + ' \' : Field not found.');
-        response.end();
+        collection.findAndRemove({'_id':pi._id},
+        function(error, result)
+        {
+          //If it's found and removed successfully, report it.
+          if(result!=null)
+          {
+            console.log('Field Removal: successful');
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write(pi.pi_name + ' successfully removed');
+            response.end();
+            return;
+          }
+          //otherwise, report that the field wasn't found
+          else
+          {
+            console.log('Field Removal: nothing to remove for name - ' + pi.pi_name + ' :: oID - ' + pi._id);
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Failure to Remove \' '+ pi.pi_name + ' \' : Field not found.');
+            response.end();
+          }
+        });
       }
     });
   }
@@ -422,112 +523,6 @@ function group(response, request, collection, url)
     requestHelpers.return_html('./group.html', response);
   }
 
-  if(FieldQuery.action == 'getFieldsWithId')
-  {
-    console.log(FieldQuery.id);
-    var mongo = require('mongodb');
-    var BSON = mongo.BSONPure;
-    var o_id = new BSON.ObjectID(FieldQuery.id);
-    console.log(o_id);
-    collection.find({'_id':o_id}).toArray(
-      function(error, result)
-      {
-        if(result!=null)
-        {
-          var string = JSON.stringify(result);
-          console.log(string);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
-          response.end();
-        }
-        //Otherwise, let the page know, it's empty
-        else
-        {
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('--empty--');
-          response.end();
-        }
-        //If there's an error, log it.
-        if(error)
-        {
-          console.log("\nError in 'getFieldsWithId':" + error + '\n');
-        }
-      });
-  }
-
-  //This is called on every change to the db and on page load
-  //This is the full list of available fields
-  if(FieldQuery.action == 'getFields')
-  {
-    //Get the list of fields from the db
-    collection.find({'type':'param_individual'}).toArray(
-      function(error, result)
-      {
-        //If there's something returned from the db, send it to the page as
-        //a JSON object
-        if(result!=null)
-        {
-          var string = JSON.stringify(result);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
-          response.end();
-        }
-        //Otherwise, let the page know, it's empty
-        else
-        {
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('--empty--');
-          response.end();
-        }
-        //If there's an error, log it.
-        if(error)
-        {
-          console.log("\nError in 'getFields':" + error + '\n');
-        }
-      });
-  }
-
-  if(FieldQuery.action == 'getFieldsOfSelectedGroup')
-  {
-    if(!FieldQuery.group_name)
-    {
-      response.writeHead(200, {"Content-Type": "text/plain"});
-      response.write('--undefined--');
-      response.end();
-    }
-    else
-    {
-      collection.find({'pg_name': FieldQuery.group_name}).toArray( 
-        function(error, result)
-        {
-          console.log("RESULT: " + result);
-          if(result.length > 0)
-          {
-            console.log("Case 1");
-            console.log(result[0].fields[0]);
-            var fieldsAsString = JSON.stringify(result[0].fields);
-            console.log(fieldsAsString);
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write(fieldsAsString);
-            response.end();
-          }
-          else
-          {
-            console.log("Case 2");
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            // response.write("empty");
-            response.end();
-          }
-          //If there's an error, log it.
-          if(error)
-          {
-            console.log("Case 3");
-            console.log("\nError in 'getGroups':" + error + '\n');
-          }
-        });
-    }
-  }
-
   if(FieldQuery.action == 'getGroups')
   {
     //Get the list of fields from the db
@@ -558,16 +553,17 @@ function group(response, request, collection, url)
       });
   }
 
-  if(FieldQuery.action == 'newGroup')
+  if(FieldQuery.action == 'new_pg')
   {
-    var group_fields = new Array();
-    for(var f in FieldQuery.group_fields)
+    var pg = eval('('+FieldQuery.pg+')');
+    var pi_ids = new Array();
+    for(var f in pg.pi_ids)
     {
-      var temp = eval('(' + FieldQuery.group_fields[f] + ')');
-      group_fields.push(temp);
+      var oid = new ObjectID(pg.pi_ids[f]);
+      pi_ids.push(oid);
     }
 
-    collection.find({'type': 'param_group', 'pg_name': FieldQuery.group_name}).toArray( 
+    collection.find({'type': 'param_group', 'pg_name': pg.pg_name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -584,78 +580,61 @@ function group(response, request, collection, url)
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'param_group', 'pg_name': FieldQuery.group_name, 'pg_type': FieldQuery.pg_type, 'fields' : group_fields});
-            collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('New Group — \'' + FieldQuery.group_name + '\' successfully added');
-            response.end();
+            collection.save({'type': 'param_group', 'pg_name': pg.pg_name, 'pg_type': pg.pg_type, 'pi_ids' : pi_ids});
+            // collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
+            collection.find({'type': 'param_group', 'pg_name': pg.pg_name, 'pg_type': pg.pg_type, 'pi_ids' : pi_ids}).toArray(
+              function(error, doc)
+              {
+                if(doc)
+                {
+                  var string = JSON.stringify(doc[0]);
+                  console.log('New pg: \'' + pg.pg_name + '\' added');
+                  response.writeHead(200, {"Content-Type": "text/plain"});
+                  response.write(string);
+                  response.end();
+                }
+                else if(error)
+                {
+                  console.log('New Group: Failure to Add - ' + pg.pg_name);
+                  response.writeHead(200, {"Content-Type": "text/plain"});
+                  response.write('Failure to Add \' '+ pg.pg_name + ' \' .');
+                  response.end();
+                }
+              }
+            );
           }
         }
       });
   }
 
-  if(FieldQuery.action == 'removeGroup')
+  if(FieldQuery.action == 'remove_pg')
   {
-    collection.findAndRemove({'pg_name' : FieldQuery.group_name},
+    var pg = eval('('+FieldQuery.pg+')');
+    console.log(pg._id);
+    var oid = new ObjectID(pg._id);
+    collection.findAndRemove({'_id':oid}, 
       function(error, result)
     {
       if(result!=null)
       {
-        console.log('Removal of Group: ' + FieldQuery.group_name + ' Succeeded');
+        console.log('Removal of Group: ' + pg.pg_name + ' Succeeded');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Group \'' + FieldQuery.group_name + '\' successfully removed');
+        response.write('Group \'' + pg.pg_name + '\' successfully removed');
         response.end();
       }
       else
       {
-        console.log('Removal of Group: ' + FieldQuery.group_name + 'Failed');
+        console.log('Removal of Group: ' + pg.pg_name + ' Failed');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove Group\' '+ FieldQuery.group_name + ' \' : Group not found.');
+        response.write('Failure to Remove Group\' '+ pg.pg_name + ' \' : Group not found.');
         response.end();
       }
     });
   }
-
-  if(FieldQuery.action == 'updateFields')
-  {
-    var fields = eval('(' + FieldQuery.fields + ')'); //parse the passed JSON string as a JSON object
-    // var specs = FieldQuery.specs;
-    for(var i = 0;i<fields.length;i++)
-    {
-      console.log('Handler Specs: ' + fields[i].pi_name);
-    }
-
-    collection.find({'pg_name': FieldQuery.group_name}).toArray( 
-      function(error, result)
-      {
-        if(error)
-        {
-          console.log('Error: ' + error);
-        }
-        else
-        {
-          if(result.length == 1)
-          {
-            console.log('specs added to db as: ' + JSON.stringify(fields));
-            collection.update({'pg_name': FieldQuery.group_name},
-              {'type':'param_group', 'pg_name':FieldQuery.group_name, 'pg_type' : FieldQuery.pg_type, 'fields' : fields});
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('Group — \'' + FieldQuery.group_name + '\' successfully updated');
-            response.end();
-          }
-          else if(result.length == 0)
-          {
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('Group with name — \'' + FieldQuery.group_name + '\' Not Found');
-            response.end();
-          }
-        }
-      });
-  }
 }
 
 //Handler for product builder page
-function productBuilder(response, request, collection, url)
+function family(response, request, collection, url)
 {
   console.log("\nRequest handler 'Product Builder'");
   var FieldQuery = url.parse(request.url,true).query;
@@ -663,15 +642,15 @@ function productBuilder(response, request, collection, url)
   // Return the main page if the page hasn't loaded yet.
   if(!FieldQuery.loaded)
   {
-    requestHelpers.return_html('./productBuilder.html', response);
+    requestHelpers.return_html('./family.html', response);
   }
 
-  if(FieldQuery.action == 'getFieldsOfSelectedGroup')
+  if(FieldQuery.action == 'getAll')
   {
-    collection.find({'pg_name': FieldQuery.group_name}).toArray( 
+    collection.find().toArray(
       function(error, result)
       {
-        if(result!=null)
+        if(result)
         {
           var objString = JSON.stringify(result);
           response.writeHead(200, {"Content-Type": "text/plain"});
@@ -684,141 +663,51 @@ function productBuilder(response, request, collection, url)
           response.write('--empty--');
           response.end();
         }
-        //If there's an error, log it.
         if(error)
         {
-          console.log("\nError in 'getFieldsOfSelectedGroup':" + error + '\n');
+          console.log("\nError in 'getAll':" + error + '\n');
         }
-      });
+
+      })
   }
 
-  if(FieldQuery.action == 'removeFamily')
+  if(FieldQuery.action == 'remove_pf')
   {
-    collection.findAndRemove({'pf_name' : FieldQuery.product_name},
+    var pf = eval('('+FieldQuery.pf+')');
+    console.log(pf._id);
+    var oid = new ObjectID(pf._id);
+    collection.findAndRemove({'_id':oid}, 
       function(error, result)
     {
       if(result!=null)
       {
-        console.log('Removal of Product: ' + FieldQuery.product_name + ' Succeeded');
+        console.log('Removal of Family: ' + pf.pf_name + ' Succeeded');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Product \'' + FieldQuery.product_name + '\' successfully removed');
+        response.write('Group \'' + pf.pf_name + '\' successfully removed');
         response.end();
       }
       else
       {
-        console.log('Removal of Product: ' + FieldQuery.product_name + 'Failed');
+        console.log('Removal of Group: ' + pf.pf_name + ' Failed');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove Group\' '+ FieldQuery.product_name + ' \' : Product not found.');
+        response.write('Failure to Remove Group\' '+ pf.pf_name + ' \' : Group not found.');
         response.end();
       }
     });
   }
 
-  if(FieldQuery.action == 'newProduct')
+  if(FieldQuery.action == 'new_pf')
   {
-    var group_field_sets = new Array();
-    var selected = eval('(' + FieldQuery.selected + ')'); //parse the passed JSON string as a JSON object
 
-    collection.find({'type': 'param_family', 'pf_name': FieldQuery.product_name}).toArray( 
-      function(error, result)
-      {
-        if(error)
-        {
-          console.log('Error: ' + error);
-        }
-        else
-        {
-          if(result.length == 1)
-          {
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('A Product with name — \'' + FieldQuery.product_name + '\' already exists');
-            response.end();
-          }
-          else if(result.length == 0)
-          {
-            var i;
-            for(i=0;i<selected.length;i++)
-            {
-              selected[i].value = 0;
-            }
-
-            collection.save({'type': 'param_family', 'pf_name': FieldQuery.product_name, 'pf_type' : FieldQuery.pf_type, 'specs' : selected});
-            collection.ensureIndex({'product_name':1},{unique: true, sparse: true, dropDups: true});
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('New Product — \'' + FieldQuery.product_name + '\' successfully added');
-            response.end();
-
-          }
-        }
-      });
-  }
-
-  if(FieldQuery.action == 'getProducts')
-  {
-    //Get the list of fields from the db
-    collection.find({'type':'param_family'}).toArray(
-      function(error, result)
-      {
-        //If there's something returned from the db, send it to the page as
-        //a JSON object
-        if(result!=null)
-        {
-          var string = JSON.stringify(result);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
-          response.end();
-        }
-        //Otherwise, let the page know, it's empty
-        else
-        {
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('--empty--');
-          response.end();
-        }
-        //If there's an error, log it.
-        if(error)
-        {
-          console.log("\nError in 'getProducts':" + error + '\n');
-        }
-      });
-  }
-
-  if(FieldQuery.action == 'getSpecs')
-  {
-    collection.find({'pf_name': FieldQuery.product_name}).toArray(
-      function(error, product)
-      {
-        if(error)
-        {
-          console.log('Error: ' + error);
-        }
-        else if(!product)
-        {
-          console.log('--Here!-- # 1: ');
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('--empty--');
-          response.end();
-        }
-        else
-        {
-          var string = JSON.stringify(product);
-          response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
-          response.end();
-        }
-      });
-  }
-
-  if(FieldQuery.action == 'updateSpecs')
-  {
-    var specs = eval('(' + FieldQuery.specs + ')'); //parse the passed JSON string as a JSON object
-    // var specs = FieldQuery.specs;
-    for(var i = 0;i<specs.length;i++)
+    var pf = eval('('+FieldQuery.pf+')');
+    var pg_ids = new Array();
+    for(var pg in pf.pg_ids)
     {
-      console.log('Handler Specs: ' + specs[i].value);
+      var oid = new ObjectID(pf.pg_ids[pg]);
+      pg_ids.push(oid);
     }
 
-    collection.find({'type': 'param_family', 'pf_name': FieldQuery.product_name}).toArray( 
+    collection.find({'type': 'param_family', 'pf_name': pf.pf_name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -829,23 +718,39 @@ function productBuilder(response, request, collection, url)
         {
           if(result.length == 1)
           {
-            console.log('specs added to db as: ' + JSON.stringify(specs));
-            collection.update({'pf_name': FieldQuery.product_name},
-              {'type' : 'param_family', 'pf_name' : FieldQuery.product_name, 'pf_type' : FieldQuery.product_type, 'specs' : specs});
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('Product — \'' + FieldQuery.product_name + '\' successfully updated');
+            response.write('A Group with name — \'' + FieldQuery.family_name + '\' already exists');
             response.end();
           }
           else if(result.length == 0)
           {
-            response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('A Product with name — \'' + FieldQuery.product_name + '\' Not Found');
-            response.end();
+            collection.save({'type': 'param_family', 'pf_name': pf.pf_name, 'pf_type': pf.pf_type, 'pg_ids' : pg_ids});
+            // collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
+            collection.find({'type': 'param_family', 'pf_name': pf.pf_name, 'pf_type': pf.pf_type, 'pg_ids' : pg_ids}).toArray(
+              function(error, doc)
+              {
+                if(doc)
+                {
+                  var string = JSON.stringify(doc[0]);
+                  console.log('New pf: \'' + pf.pf_name + '\' added');
+                  response.writeHead(200, {"Content-Type": "text/plain"});
+                  response.write(string);
+                  response.end();
+                }
+                else if(error)
+                {
+                  console.log('New Family: Failure to Add - ' + pf.pf_name);
+                  response.writeHead(200, {"Content-Type": "text/plain"});
+                  response.write('Failure to Add \' '+ pf.pf_name + ' \' .');
+                  response.end();
+                }
+              }
+            );
           }
         }
-      });
+      }
+    );
   }
-
 }
 
 function specReports(response, request, collection, url)
@@ -928,15 +833,19 @@ function viewBuilder(response, request, collection, url)
   }
 }
 
-
-// exports.UnitClassArray = UnitClassArray; 
+// exports.UnitClassArray = UnitClassArray;
+exports.dojo_css = dojo_css;
+exports.db_data = db_data;
+exports.update_db = update_db_from_file;
+exports.parameter_js = parameter_js; 
 exports.favicon = favicon;
 exports.ideaBacklogEntry = ideaBacklogEntry;
 exports.specReports = specReports;
 exports.viewBuilder = viewBuilder;
-exports.productBuilder = productBuilder;
+exports.family = family;
 exports.group = group;
-exports.parameter = parameter;
+exports.individual = individual;
 exports.upload = upload;
 exports.show = show;
 exports.Home = Home;
+exports.dump = dump;

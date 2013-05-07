@@ -27,17 +27,21 @@ var requestHelpers = require('./requestHelpers');
 var requestHandlers = require("./requestHandlers");
 var handle = {};
 handle["/"] = requestHandlers.Home;
+handle["/dump"] = requestHandlers.dump;
+handle["/update_db"] = requestHandlers.update_db;
+handle["/db_data"] = requestHandlers.db_data;
 handle["/upload"] = requestHandlers.upload;
 handle["/show"] = requestHandlers.show;
 handle["/Home"] = requestHandlers.Home;
 handle["/ideaBacklogEntry"] = requestHandlers.ideaBacklogEntry;
-handle["/parameter"] = requestHandlers.parameter;
-handle["/param2"] = requestHandlers.parameter;
+handle["/individual"] = requestHandlers.individual;
 handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
-handle["/productBuilder"] = requestHandlers.productBuilder;
+handle["/family"] = requestHandlers.family;
 handle["/specReports"] = requestHandlers.specReports;
 handle["/viewBuilder"] = requestHandlers.viewBuilder;
+handle["/parameter_js"] = requestHandlers.parameter_js;
+handle["/dojo_css"] = requestHandlers.dojo_css;
 
 
 //open the connection to the collection

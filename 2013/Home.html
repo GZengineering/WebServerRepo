@@ -15,13 +15,129 @@
         </table>
         <!-- Title Bar End -->
 
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+        <link rel="stylesheet" href="dojo_css">
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
-        
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/form/resources/FileInput.css" />
+
         <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
                         data-dojo-config="async: true, isDebug: true">
         </script>
 
+        <script>
+            require(['dojo/_base/lang',
+                'dojo/dom',
+                'dijit/registry',
+                'dijit/form/Button',
+                'dojo/_base/array',
+                'dojo/_base/xhr', 
+                'dijit/form/TextBox',
+                'dijit/InlineEditBox',
+                'dojo/data/ItemFileWriteStore',
+                'dojo/store/Observable',
+                'dojox/grid/DataGrid',
+                'dojo/store/Memory',
+                'dojo/data/ObjectStore',
+                'dojox/grid/_CheckBoxSelector',
+                'dojox/form/FileInputAuto',
+                'dijit/form/CheckBox',
+                'dijit/form/RadioButton',
+                'dojox/grid/cells/dijit',
+                'dijit/layout/ContentPane',
+                'dojo/domReady!'], 
+                function(lang, dom, registry, Button, baseArray, xhr, TextBox, InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, FileInput, CheckBox, RadioButton, cells, CP)
+                {
+                    var download_button = new Button(
+                    {
+                        label: 'Download',
+                        onClick: function()
+                        {
+                            window.location = '/db_data';
+                        }
+                    }, "download_button");
+
+                    var update_button = new Button(
+                    {
+                        label: 'Update',
+                        onClick: function()
+                        {
+                            update_db();
+                        }
+                    }, "update_button");
+
+                    function update_db()
+                    {
+                        xhr.post(
+                        {
+                            url: '/update_db',
+                            load:function(response)
+                            {
+                                console.log('update successful');
+                            },
+                            error:function(error)
+                            {
+                                console.log('update failed: ' + error);
+                            }
+                        });
+                    }
+
+                    var upload_button = new Button(
+                    {
+                        label: 'Upload',
+                        onClick: function()
+                        {
+                            upload();
+                        }
+                    }, "upload_button");
+
+                    function upload()
+                    {
+                        xhr.post(
+                        {
+                            handleAs: 'form',
+                            url: '/upload',
+                            form: 'upload_form',
+                            load:function(response)
+                            {
+                                alert('Upload successful');
+                            },
+                            error:function(error)
+                            {
+                                alert('Error uploading: ' + error);
+                            }
+                        })
+                    }
+
+                    xhr.post(
+                        {
+                            url: '/dump',
+                            load:function(response)
+                            {
+                                console.log('dump successful');
+                            },
+                            error:function(error)
+                            {
+                                console.log('dump failed: ' + error);
+                            }
+                        });
+                });
+        </script>    
+
     </head>
+        <body class = "claro">
+            Download database as text file
+            <button id = "download_button"></button>
+            <button id = "update_button"></button>
+            <form method="post" action="/upload" id="upload_form"
+            enctype="multipart/form-data" class="claro" >
+                <fieldset>
+                    <legend>Upload</legend>
+                    <input id='NameBox' type="text" name="Name" />
+                    <input class="claro" name="uploadedfile" multiple="true"
+                        type="file" data-dojo-type="dojox.form.Uploader"
+                        data-dojo-props='label:"Select Some Files"' id="uploader" />
+                    <input type="submit" label="Submit" data-dojo-type="dijit/form/Button"></input>
+                </fieldset>
+            </form>
+        </body>
 </html>

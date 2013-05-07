@@ -2,7 +2,7 @@
 // This code was written by Alex Stout for Goal Zero, LLC private
 //April 2013
 
- var fs = require("fs");
+var fs = require("fs");
 
 function return_html(page, response) 
 {
@@ -42,6 +42,46 @@ function return_js(file, response)
     });
 }
 
+function return_json(file, response) 
+{
+  fs.readFile(file, function (err, json) 
+    {
+      if(err)
+      {
+       response.writeHead(404, {"Content-Type": "text/html"});
+       response.write(err + "\n");
+       response.end();
+      }
+      else 
+      {
+        response.writeHead(200, {"Content-Type": "file/json"});       
+        response.write(json);
+        response.end();
+      }
+    });
+}
+
+function return_css(file, response) 
+{
+  fs.readFile(file, function (err, css) 
+    {
+      if(err)
+      {
+       response.writeHead(404, {"Content-Type": "text/html"});
+       response.write(err + "\n");
+       response.end();
+      }
+      else 
+      {
+        response.writeHead(200, {"Content-Type": "text/css"});       
+        response.write(css);
+        response.end();
+      }
+    });
+}
+
 
 exports.return_html = return_html;
+exports.return_json = return_json;
 exports.return_js = return_js;    
+exports.return_css = return_css;    

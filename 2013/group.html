@@ -2,17 +2,21 @@
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
 <html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
 <head>
-    <title>Specs: Group Builder</title>
+    <title>Parameter: Group</title>
     <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Group </h1>
 
 
-    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    <link rel="stylesheet" href="dojo_css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
         
-    <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/claro/claro.css"> -->
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
-        #parameterGridDiv 
+        #FixedGridDiv 
+        {
+            height: 46em;
+            width: 100%;
+        }
+        #CompGrid 
         {
             height: 46em;
             width: 100%;
@@ -22,10 +26,14 @@
             height: 55em;
             width: 100%;
         }
-        #groupGrid 
+        #GroupGridDiv 
         {
             height: 55em;
             width: 100%;
+        }
+        .dojoxGridMasterView
+        {
+            font-size: 8pt;
         }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
@@ -42,204 +50,23 @@
         'dojox/grid/_CheckBoxSelector',
         'dijit/form/RadioButton',
         'dijit/form/Select',
-        "dijit/form/Button", 
+        "dijit/form/Button",
+        'dojo/store/Observable',
+        'dojo/store/Memory',
+        'dojo/data/ObjectStore',
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RadioButton, Select, Button, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RadioButton, Select, Button, Observable, Memory, ObjectStore, dom)
         {
             var fields = new Array();
             var has_loaded = false;
 
-            /********************************     Group Grid      *********************************/
 
+            /********************************     Group Grid      *********************************/
 
             var GroupGrid = new Object();
 
-            // GroupGrid.data = new Object();
-            //Build the Dojo Grid for groups
-            GroupGrid.buildGroupGrid = function(groups)
-            {
-                GroupGrid.data;
-                GroupGrid.selectedGroup;
-                //Grid Data
-                var data = 
-                {
-                  identifier: "id",
-                  items: []
-                };
-
-                var data_list = []; // data list to display data
-
-                //set data list values from fields parameter
-                for(i=0;i<groups.length;i++)
-                {
-                    dijit.registry.remove('delt'+i);
-                    data_list[i] = 
-                    {
-                        col1: 'id', 
-                        col2: groups[i].pg_name,
-                        col3: groups[i].pg_type,
-                        col4: new Button({label: 'Delete', id: 'delt'+i, onClick: function()
-                            {
-                                GroupGrid.deleteRow(this.id);
-                            }
-                        })
-                    }
-                }
-
-                var rows = data_list.length; //# of rows = # of data
-                for(var i = 0; i < rows; i++)
-                {
-                  data.items.push(lang.mixin({ id: i }, data_list[i]));
-                }
-                GroupGrid.data = data;
-                var groupStore = new ItemFileWriteStore({data: data}); //set up the store
-
-                /*set up layout*/
-                var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '5%'},
-                  {'name': 'Group', 'field': 'col2', 'width': '60%'},
-                  {'name': 'Type', 'field': 'col3', 'width': '20%'},
-                  {'name': 'Delete', 'field': 'col4', 'width': '15%'}
-                ]];
-
-                //Remove the group grid if it already exists
-                dijit.registry.remove("groupGrid");
-
-                /*create a new grid*/
-                var groupGrid = new DataGrid({
-                    store: groupStore,
-                    structure: layout,
-                    autoHeigth: true}, "groupGrid");
-
-                groupGrid.selection.setSelected(groupGrid.selection.selectedIndex, false);
-
-                /*Call startup() to render the grid*/
-                groupGrid.startup();
-
-                //store the currently selected group.
-                function noteSelected()
-                {
-                    var items = this.selection.getSelected();
-                    // GroupGrid._data = items;
-                    GroupGrid.selectedGroupType = items[0].col3;
-                    GroupGrid.selectedGroup = items[0].col2;
-                }
-
-                //When the group selection changes, update the SelectedGrid
-                //and store which group is currently selected.
-                groupGrid.on("SelectionChanged",
-                        lang.hitch(groupGrid, noteSelected, true));
-                groupGrid.on("SelectionChanged",
-                        lang.hitch(groupGrid, GroupGrid.getFieldsOfSelectedGroup, true));
-            }
-
-            //Gets all the data that makes up the row at the index given by id
-            GroupGrid.getGridItemById = function(id)
-            {
-                var gridItem = null;
-                var grid = dijit.registry.byId('groupGrid');
-                grid.store.fetchItemByIdentity({
-                    identity: id,
-                    onItem: function(item, request)
-                    { 
-                        gridItem=item; 
-                    }
-                });
-                return gridItem;
-            }
-
-            //deletes the from the db and updates the grid
-            GroupGrid.deleteRow = function(id)
-            {
-                var sub = id.substring(4, id.length);
-                item = GroupGrid.getGridItemById(sub);
-                if(!item){ return alert('error deleting '+sub+' from GroupGrid'); }
-                if(!confirm("Are you sure you want to delete \'" + item.col2 +"\'?"))
-                    return;
-                else
-                {
-                    xhr.get(
-                        {
-                            url:"/group",
-                            content: 
-                            {
-                                action: 'removeGroup',
-                                group_name: item.col2,
-                                loaded: has_loaded=true,
-                            },
-                            load:function(response)
-                            {
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                            },
-                            error:function(error)
-                            {
-                                console.log("There was an error: \n"+error);
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                            }
-                        });
-                    SelectionGrid.buildSelectionGrid(new Array());
-                    GroupGrid.getGroups(); //refresh the contents of the table
-                }
-            }
-
-            //Getter for the currently selected group
-            GroupGrid.getSelected = function()
-            {
-                return this.selectedGroup;
-            }
-
-            //Getter for the currently selected group type
-            GroupGrid.getSelectedType = function()
-            {
-                return this.selectedGroupType;
-            }
-
-            //get the fields of the selected group from the database.
-            GroupGrid.getFieldsOfSelectedGroup = function()
-            {
-                //get the selected items from the parameter grid
-                var selectedGroup = GroupGrid.selectedGroup;
-                if(!selectedGroup)
-                    return;
-                else
-                {
-                    xhr.get(
-                    {
-                        url:'/group',
-                        handleAs: 'json', //grabs the xhr string and turns it into an object
-                        content:
-                        {
-                            action: 'getFieldsOfSelectedGroup',
-                            group_name: selectedGroup,
-                            loaded: has_loaded = true,
-                        },
-                        load:function(response)
-                        {
-                            if(response == null)
-                                SelectionGrid.buildSelectionGrid(new Array());
-                            else
-                                SelectionGrid.buildSelectionGrid(response);
-                        },
-                        error:function(error)
-                        {
-                            var e_string = '' + error;
-                            if(e_string.indexOf('empty') > 0)
-                            {
-                                SelectionGrid.buildSelectionGrid(new Array());
-                                dom.byId("serverResponse").innerHTML = 'Response: Selection Refreshed';
-                            }
-                            else
-                            {
-                                console.log("There was an error: " + error);
-                                dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                            }
-                        }
-                    });
-                }
-            }
-
-            //Gets all the groups from the db
+            //Get the parameters from the db
             GroupGrid.getGroups = function()
             {
                 xhr.get(
@@ -253,8 +80,8 @@
                     },
                     load:function(response)
                     {
-                        this.groups = response;
-                        GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
+                        GroupGrid.allGroups = response;
+                        GroupGrid.buildGrid(GroupGrid.allGroups); //rebuild the dojo Grid
                     },
                     error:function(error)
                     {
@@ -264,24 +91,266 @@
                 });
             }
 
-
-            /********************************     Parameter Grid      *********************************/
-
-            //The ParameterGrid is the grid that displays all the available fields from the database.
-            var ParameterGrid = new Object();
-
-            //Return the set of selected fields
-            ParameterGrid.getSelected = function()
+            //Build the Dojo Grid with the retrieved data
+            GroupGrid.buildGrid = function(groups)
             {
-                return this.selected_fields;
+                GroupGrid.selected_groups;
+
+                var data = [];
+
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Group', 'field': 'pg_name', 'width': '70%'},
+                  {'name': 'Type', 'field': 'pg_type', 'width': '25%'}
+                ]];
+
+                var GroupMemStore = new Memory({data: data}); //set up the store
+                GroupMemStore = Observable(GroupMemStore);
+                var GroupDataStore = new ObjectStore({
+                    objectStore: GroupMemStore
+                });
+
+                //Fill the store with the retrieved DB data
+                for(var i = 0; i < groups.length; i++)
+                {
+                    GroupMemStore.put(lang.mixin(
+                        { id: i }, 
+                        groups[i]
+                    ));
+                }
+
+                /*create a new grid*/
+                var grid = new DataGrid({
+                    store: GroupDataStore,
+                    structure: layout}, 'GroupGridDiv');
+
+                /*Call startup() to render the grid*/
+                grid.startup();
+
+                dojo.connect(GroupMemStore, 'notify', function(){grid._refresh()});
+                
+
+                //UPDATE THE GROUP SELECTION AND DISPLAY IT IN THE RESPONSE DIV
+                function reportSelection(node)
+                {
+                    //STORE THE SELECTED ITEMS
+                    var groups = this.selection.getSelected();
+                    GroupGrid.selected_groups = groups;
+
+                    //GET THE PIs OF THE SELECTED GROUP & REBUILD THE SELECTION STORE
+                    var pis = GroupGrid.getFieldsOfGroups(groups);
+                    SelectionGrid.rebuildStore(pis);
+
+                    /*  DISPLAY WHAT'S SELECTED IN THE PROMPT  */
+                    if(groups.length < 1)
+                        return;
+
+                    var msg = "You have selected " + ((groups.length > 1) ? " ": " ");
+                    //FOR EACH PG IN GROUPS, GET THE PG_NAME AND PUT IT IN AN ARRAY 
+                    var pg_names = [];
+                    for(var i = 0; i < groups.length; i++)
+                        pg_names.push(groups[i].pg_name);
+
+                    //UPDATE RESPONSE DIV
+                    node.innerHTML = msg + pg_names.join(", ");
+                }
+                
+                //On selection change, call reportSelection() and pass in the response dom
+                grid.on("SelectionChanged", 
+                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                //make the following properties global
+                window.GroupData = GroupMemStore.data;
+                window.groupGrid = grid;
+                window.GroupDataStore = GroupDataStore;
+                window.GroupMemStore = GroupMemStore;
             }
 
+            //Gets all the data that makes up the row at the index given by id
+            GroupGrid.getGridItemById = function(id)
+            {
+
+                var gridItem = null;
+                var grid = dijit.registry.byId('groupGrid');
+                gridItem = groupMemStore.get(id);
+                return gridItem;
+            }
+
+            GroupGrid.new_pg = function()
+            {
+                var pg_type = 'report';
+                if(radio_product.checked)
+                    pg_type = 'product';
+
+                var pis = FixedGrid.selected_fields.concat(CompGrid.selected_fields);
+                console.log(pis);
+
+                var pi_ids = [];
+                for(var i = 0; i < pis.length; i++)
+                {
+                    pi_ids.push(pis[i]._id)
+                }
+
+                var pg = {
+                    pg_name: dom.byId('txtBox_groupName').value,
+                    pg_type: pg_type,
+                    pi_ids: pi_ids
+                };
+                //send request to create a new parameter
+                xhr.get(
+                {
+                    url:"/group", 
+                    handleAs: 'json',
+                    content: 
+                    {
+                        action: 'new_pg',
+                        pg: JSON.stringify(pg),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + pg.pg_name + " successfully added.";
+                        ClearTextFields();
+                        add_to_group_store(response);
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+
+                add_to_group_store = function(pg)
+                {
+                    var pg = new Object(pg);
+                    var index = GroupMemStore.data.length;
+                    GroupMemStore.put(lang.mixin(
+                        {id: index}, 
+                        pg
+                    )); 
+                }
+            }
+
+            //Removes an entire group from the database given the id of the row
+            //of the selected group
+            GroupGrid.removePG = function(selected)
+            {
+                if(!selected)
+                    return;
+
+                if(!selected[0]){ return alert('error deleting '+selected[0].pg_name+' from Parameter Grid'); }
+                if(!confirm("Are you sure you want to delete \'" + selected[0].pg_name +"\'?"))
+                    return;
+                else
+                {
+                    xhr.get(
+                    {
+                        url:"/group",
+                        content: 
+                        {
+                            action: 'remove_pg',
+                            pg: JSON.stringify(selected[0]),
+                            loaded: has_loaded=true,
+                        },
+                        load:function(response)
+                        {
+                            console.log("id to remove from mem store: " + selected[0].id);
+                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+                            remove_from_Group_store();
+                        },
+                        error:function(error)
+                        {
+                            console.log("There was an error: \n"+error);
+                            dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                        }
+                    });
+                }
+
+                remove_from_Group_store = function()
+                {
+                    GroupMemStore.remove(selected[0].id);
+                }
+            }
+
+            //Getter for the currently selected group
+            GroupGrid.getSelected = function()
+            {
+                return this.selected_groups[0];
+            }
+
+            //GETS AND RETURNS ALL THE PIs OF THE GIVEN PGs
+            GroupGrid.getFieldsOfGroups = function(pgs)
+            {
+                //IF THE GIVEN ARRAY IS EMPTY, RETURN AN EMPTY ARRAY
+                if(pgs.length < 1)
+                {
+                    return new Array();
+                }
+
+                //CREATE AN ARRAY TO STORE REALIZED PIs
+                var pis = [];
+
+                //FOR EACH GROUP IN THE GIVEN PGs, MATCH THE PI IDs TO IDs IN THE STORE
+                //IF A MATCH IS FOUND, ADD IT TO THE STORE AND MOVE TO THE NEXT PI
+                for(var h = 0; h < pgs.length; h++)
+                {   
+                    //STORE THE CURRENT PG
+                    var pg = pgs[h];
+
+                    //IF THE PG IS NULL, BAIL
+                    if(!pg)
+                        return;
+
+                    for(var i = 0; i < pg.pi_ids.length; i++)
+                    {
+                        //FLAGS IF A MATCH IS FOUND
+                        var matched = false;
+                        for(var j = 0; j < fixedMemStore.data.length; j++)
+                        {
+                            if(matched)
+                                break;
+                            //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
+                            if(pg.pi_ids[i] == fixedMemStore.data[j]._id)
+                            {
+                                //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
+                                pis.push(fixedMemStore.data[j]);
+                                matched = true;
+                            }
+                        }
+                        if(!matched)
+                        {
+                            //IF NO MATCH IS FOUND FOR THE CURRENT PI_ID, CHECK THE COMPUTED PI STORE
+                            for(var j = 0; j < compMemStore.data.length; j++)
+                            {
+                                if(matched)
+                                    break;
+                                if(pg.pi_ids[i] == compMemStore.data[j]._id)
+                                {
+                                    pis.push(compMemStore.data[j]);
+                                    matched = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return pis;
+            }
+
+            /********************************      End Group Grid      ********************************/
+
+            /********************************  **  **  **  **  **  **  ********************************/
+
+            /********************************       Fixed PI Grid      ********************************/
+
+            //The FixedGrid is the grid that displays all the available fields from the database.
+            var FixedGrid = new Object();
+
             //Get the parameters from the db
-            ParameterGrid.getFields = function()
+            FixedGrid.getFields = function()
             {
                 xhr.get(
                 {
-                    url:'/group',
+                    url:'/individual',
                     handleAs: 'json', //grabs the xhr string and turns it into an object
                     content:
                     {
@@ -290,8 +359,8 @@
                     },
                     load:function(response)
                     {
-                        fields = response;
-                        ParameterGrid.buildParameterGrid(fields); //rebuild the dojo Grid
+                        FixedGrid.allFields = response;
+                        FixedGrid.buildGrid(FixedGrid.allFields); //rebuild the dojo Grid
                     },
                     error:function(error)
                     {
@@ -302,223 +371,289 @@
             }
 
             //Build the Dojo Grid with the 
-            ParameterGrid.buildParameterGrid = function(fields)
+            FixedGrid.buildGrid = function(fields)
             {
-                ParameterGrid.selected_fields;
-
-                if(fields.length < 1)
-                    dom.byId('parameterGridDiv').innerHTML = '<b>There are no Parameters available</b>';
-                else
-                {
-                    //Grid Data
-                    var data = 
-                    {
-                      identifier: "index",
-                      items: []
-                    };
-
-                    var data_list = []; // data list to display data
-
-                    //set data list values from fields parameter
-                    for(i=0;i<fields.length;i++)
-                    {
-                        if(fields[i].pi_type == "computed")
-                        {
-                            data_list[i] = 
-                              {
-                                col1: 'index', 
-                                pi_name: fields[i].pi_name,
-                                pi_type: fields[i].pi_type,
-                                pi_type_display: fields[i].pi_type.substring(0,1),
-                                pi_value: fields[i].pi_value,
-                                pi_unit: fields[i].pi_unit,
-                                pi_def: fields[i].pi_def,
-                                id: fields[i]._id,
-                                pi_value_display:  "...",
-                                pi_unit_display:  "..."
-                              }
-                        }
-                        else
-                        {
-                            data_list[i] = 
-                              {
-                                col1: 'index', 
-                                pi_name: fields[i].pi_name,
-                                pi_type: fields[i].pi_type,
-                                pi_type_display: fields[i].pi_type.substring(0,1),
-                                pi_value: fields[i].pi_value,
-                                pi_unit: fields[i].pi_unit,
-                                pi_def: fields[i].pi_def,
-                                id:fields[i]._id,
-                                pi_value_display:  fields[i].pi_value,
-                                pi_unit_display:  fields[i].pi_unit
-                              }
-                        }
-                      
-                    }
-
-                    var rows = data_list.length; //# of rows = # of data
-                    for(var i = 0; i < rows; i++)
-                    {
-                      data.items.push(lang.mixin({ index: i }, data_list[i]));
-                    }
-                    var parameterStore = new ItemFileWriteStore({data: data}); //set up the store
-
-                    /*set up layout*/
-                    var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                      {'name': '#', 'field': 'index', 'width': '4%'},
-                      {'name': 'Parameters', 'field': 'pi_name', 'width': '50%'},
-                      {'name': 'Type', 'field': 'pi_type_display', 'width': '11%'},
-                      {'name': 'Value', 'field': 'pi_value_display', 'width':'20%'},
-                      {'name': 'Unit', 'field':'pi_unit_display','width':'15%'}
-                    ]];
-
-                    dijit.registry.remove("parameterGridDiv");
-
-                    /*create a new grid*/
-                    var grid = new DataGrid({
-                        store: parameterStore,
-                        structure: layout,
-                        autoHeigth: true}, 'parameterGridDiv');
-
-
-                    /*Call startup() to render the grid*/
-                    grid.startup();
-
-                    //This function reports what fields are selected for the current working group
-                    function reportSelection(node)
-                        {
-                            var items = this.selection.getSelected();
-                            ParameterGrid.selected_fields = baseArray.map(items, function(item)
-                            {
-                                return item;
-                            }, this);
-                        }
-
-                    // Event for when the selections are changed, call reportselection on the dom id given
-                    // hitch() returns a function that will execute a given function in a given context. This function allows you 
-                    // to control how a function executes, particularly in asynchronous operations
-                    grid.on("SelectionChanged",
-                        lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
-                }    
-            }
-
-            /********************************     Selection Grid      *********************************/
-
-            //Selection Grid contains a function to build a fresh version of itself
-            //and a getter for the the selected items from the parameter grid
-            var SelectionGrid = new Object();
-            
-            //Builds the grid of selected parameters for the working group
-            SelectionGrid.buildSelectionGrid = function(selectedArray)
-            {
-                var fields = new Array();
-                for(var i = 0;i < selectedArray.length;i++)
-                {
-                    console.log(selectedArray[i].id);
-                    xhr.get(
-                    {
-                        url:'/group',
-                        handleAs: 'json', //grabs the xhr string and turns it into an object
-                        content:
-                        {
-                            action: 'getFieldsWithId',
-                            id: selectedArray[i].id,
-                            loaded: has_loaded = true,
-                        },
-                        load:function(response)
-                        {
-                            var field = response;
-                            // ParameterGrid.buildParameterGrid(fields); //rebuild the dojo Grid
-                            fields.push(field);
-                        },
-                        error:function(error)
-                        {
-                            console.log("There was an error: " + error);
-                            dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                        }
-                    });
-                }
-                selectedArray = fields;
-
-                console.log("Selection Size: " + selectedArray.length);
-
-                SelectionGrid.data;
-                if(selectedArray[0])
-                    console.log(selectedArray[0]);
-                var data = 
-                {
-                  identifier: "index",
-                  items: []
-                };
-                var data_list = [];
-                for(var i=0;i<selectedArray.length;i++)
-                {
-                  var s = '' + selectedArray[i].pi_type;
-                  if(s == "computed")
-                  {
-                      data_list[i] = 
-                      {
-                        col1: 'index', 
-                        pi_name: selectedArray[i].pi_name,
-                        pi_type: selectedArray[i].pi_type,
-                        pi_value: selectedArray[i].pi_value,
-                        pi_unit: selectedArray[i].pi_unit,
-                        pi_def: selectedArray[i].pi_def,
-                        pi_type_display: s.substring(0,1),
-                        pi_value_display: "...",
-                        pi_unit_display: "...",
-                      }
-                  }  
-                  else
-                  {
-                      data_list[i] = 
-                      {
-                        col1: 'index', 
-                        pi_name: selectedArray[i].pi_name,
-                        pi_type: selectedArray[i].pi_type,
-                        pi_value: selectedArray[i].pi_value,
-                        pi_unit: selectedArray[i].pi_unit,
-                        pi_def: selectedArray[i].pi_def,
-                        pi_type_display: s.substring(0,1),
-                        pi_value_display: selectedArray[i].pi_value,
-                        pi_unit_display: selectedArray[i].pi_unit,
-                      }
-                  }
-                }
-                var rows = data_list.length;
-                for(var i = 0; i < rows; i++)
-                {
-                  data.items.push(lang.mixin({ index: i }, data_list[i]));
-                }
-                SelectionGrid.data = data;
-                var selectionStore = new ItemFileWriteStore({data: data});
-
-                /*set up layout*/
-                var layout = [[
-                  {'name': '#', 'field': 'index', 'width': '5%'},
-                  {'name': 'Parameters', 'field': 'pi_name', 'width': '50%'},
-                  {'name': ' ', 'field': 'pi_type_display', 'width':'5%', 'editable': true},
-                  {'name': 'Value', 'field': 'pi_value_display', 'width':'25%', 'editable': true},
-                  {'name': 'Unit', 'field': 'pi_unit_display', 'width':'15%', 'editable': true},
+                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Parameter', 'field': 'pi_name', 'width': '45%'},
+                  {'name': 'Value', 'field': 'pi_value', 'width': '20%'},
+                  {'name': 'Unit', 'field': 'pi_unit', 'width': '20%'}
                 ]];
 
-                //remove the old selectionGrid from the dom
-                dijit.registry.remove("selectionGrid");
+                var fixedMemStore = new Memory({data: new Array()}); //set up the store
+                fixedMemStore = Observable(fixedMemStore);
+                var fixedDataStore = new ObjectStore({
+                    objectStore: fixedMemStore
+                });
+
+                //Fill the store with the retrieved DB data
+                for(var i = 0; i < fields.length; i++)
+                {
+                    fixedMemStore.put(lang.mixin(
+                        { id: i }, 
+                        fields[i]
+                    ));
+                }
 
                 /*create a new grid*/
-                var selectionGrid = new DataGrid({
-                    store: selectionStore,
-                    structure: layout,
-                    autoHeigth: true}, "selectionGrid");
+                var grid = new DataGrid({
+                    store: fixedDataStore,
+                    structure: layout}, 'FixedGridDiv');
 
                 /*Call startup() to render the grid*/
-                selectionGrid.startup();
+                grid.startup();
+
+                dojo.connect(fixedMemStore, 'notify', function(){grid._refresh()});
+
+                //This function reports what fields are selected for the current working group
+                function reportSelection(node)
+                {
+                    var items = this.selection.getSelected();
+                    FixedGrid.selected_fields = items;
+                    if(FixedGrid.selected_fields.length > 0)
+                    {
+                        var msg = "You have selected " + ((FixedGrid.selected_fields.length > 1) ? " ": " ");
+                    }
+                    else
+                        return;
+                    
+                    var pi_names = baseArray.map(items, function(item)
+                    {
+                        return item.pi_name;
+                    }, this);
+                    node.innerHTML = msg + pi_names.join(", ");
+                }
+                
+                //On selection change, call reportSelection() and pass in the response dom
+                grid.on("SelectionChanged", 
+                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+
+                //make the following properties global
+                window.fixedData = fixedMemStore.data;
+                window.fixedGrid = grid;
+                window.fixedDataStore = fixedDataStore;
+                window.fixedMemStore = fixedMemStore;
             }
 
-            SelectionGrid.getData = function()
+            /********************************     End of Fixed PI Grid      *********************************/
+
+
+            /********************************     Computed PI Grid      *********************************/
+
+            //The containing object for the Computed Grid
+            var CompGrid = new Object();
+
+            //Get the parameters from the db
+            CompGrid.getFields = function()
             {
-                return this.data;
+                xhr.get(
+                {
+                    url:'/individual',
+                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    content:
+                    {
+                        action: 'getCompFields',
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        CompGrid.allFields = response;
+                        CompGrid.buildGrid(CompGrid.allFields); //rebuild the dojo Grid
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: " + error);
+                        dom.byId("serverResponse").innerHTML = 'Response: Error obtaining fields:' + error;
+                    }
+                });
+            }
+
+
+            //Build the Dojo Grid with the 
+            CompGrid.buildGrid = function(fields)
+            {
+                /*set up layout*/
+                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                  {'name': '#', 'field': 'id', 'width': '3%'},
+                  {'name': 'Name', 'field': 'pi_name', 'width': '22%'},
+                  {'name': 'Definition (truncated)', 'field': 'pi_def_trunc', 'width': '65%'}
+                ]];
+
+                var compMemStore = new Memory({data: new Array()}); //set up the store
+                compMemStore = Observable(compMemStore);
+                var compDataStore = new ObjectStore({
+                    objectStore: compMemStore
+                });
+
+                //Fill the store with the retrieved DB data
+                for(var i = 0; i < fields.length; i++)
+                {
+                    compMemStore.put(lang.mixin(
+                        { id: i }, 
+                        fields[i] 
+                    ));
+                    //truncate the definitions
+                    var def = compMemStore.data[i].pi_def;
+                    compMemStore.data[i].pi_def_trunc = def.substring(0, 20) + ' ... ' + def.substring(def.length-20, def.length);
+                }
+
+                /*create a new grid*/
+                var grid = new DataGrid({
+                    store: compDataStore,
+                    structure: layout}, 'CompGrid');
+
+                /*Call startup() to render the grid*/
+                grid.startup();
+                dojo.connect(compMemStore, 'notify', function(){grid._refresh();});
+
+                //This function reports what fields are selected for the current working group
+                function reportSelection(node)
+                    {
+                        var items = this.selection.getSelected();
+                        CompGrid.selected_fields = items;
+                        if(CompGrid.selected_fields.length > 0)
+                        {
+                            var msg = "You have selected " + ((CompGrid.selected_fields.length > 1) ? " ": " ");
+                        }
+                        else
+                            return;
+
+                        var pi_names = baseArray.map(items, function(item)
+                        {
+                            return item.pi_name;
+                        }, this);
+                        node.innerHTML = msg + pi_names.join(", ");
+                    }
+
+                //CONNECT THE SELECTION_CHANGED EVENT TO THE REPORT SELECTION METHOD
+                grid.on("SelectionChanged", 
+                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN A DIV ELEMENT  */
+                dojo.connect(grid, "onRowMouseOver", function(e)
+                {
+                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
+                    var def_display = grid.store.getValue(grid.getItem(e.rowIndex), 'pi_def');
+                    if(!def_display) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                        def_display = 'Not defined for fixed parameters';
+                    //UPDATE THE DIV ELEMENT FOR THE USER
+                    dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+                });
+
+
+                /*  GLOBALIZE THE GRID PROPERTIES  */
+                window.compData = compMemStore.data;
+                window.compGrid = grid;
+                window.compDataStore = compDataStore;
+                window.compMemStore = compMemStore;
+            }
+
+            /********************************     End of Computed PI Grid      *********************************/
+
+
+            /*******************************    BEGIN SELECTION GRID    ******************************/
+
+            //OBJECT TO ASSOCIATE ALL FUNCTIONS AND PROPERTIES OF THE SELECTION GRID
+            var SelectionGrid = new Object();
+            
+            /*  BUILD THE GRID GIVEN THE PIs AS A PARAMETER  */
+            SelectionGrid.buildGrid = function(pis)
+            {
+                /*  DEFINE LAYOUT  */
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Parameters', 'field': 'pi_name', 'width': '47%'},
+                  {'name': 'type', 'field': 'pi_type_display', 'width':'8%'},
+                  {'name': 'Value', 'field': 'pi_value_display', 'width':'25%'},
+                  {'name': 'Unit', 'field': 'pi_unit_display', 'width':'15%'},
+                ]];
+
+                /*  SET UP DATA STORE  */
+                var selectionMemStore = new Memory({data: new Array()});
+                selectionMemStore = Observable(selectionMemStore);
+                var selectionDataStore = new ObjectStore({
+                    objectStore: selectionMemStore
+                });
+
+                // /*  FILL THE STORE WITH THE NEW DATA */
+                var rowCount = 0;
+                for(var i = 0; i < pis.length; i++)
+                {
+                    console.log(pis[i]);
+                    var row = {};
+                    var pi = pis[i];
+                    row.id = rowCount++; //reset id's
+                    row.pi_name = pi.pi_name;
+                    row.pi_def = pi.pi_def;
+                    row.pi_value_display = pi.pi_value;
+                    row.pi_unit_display = pi.pi_unit;
+                    if(pi.pi_type == 'computed')
+                    {
+                        row.pi_value_display = '...';
+                        row.pi_unit_display = '...';
+                    }
+                    row.pi_type_display = pi.pi_type.substring(0,1);
+                    selectionMemStore.put(row);
+                }
+
+                /*  CREATE THE DOJO GRID AND RENDER IT  */
+                var selectionGrid = new DataGrid({
+                    store: selectionDataStore,
+                    structure: layout,
+                    autoHeigth: true}, "selectionGrid");
+                selectionGrid.startup();
+
+                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN A DIV ELEMENT  */
+                dojo.connect(selectionGrid, "onRowMouseOver", function(e)
+                {
+                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
+                    var def_display = selectionGrid.store.getValue(selectionGrid.getItem(e.rowIndex), 'pi_def');
+                    if(!def_display) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                        def_display = 'Not defined for fixed parameters';
+                    //UPDATE THE DIV ELEMENT FOR THE USER
+                    dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+                });
+
+                /*  GLOBALIZE GRID PROPERTIES  */
+                window.selectionData = selectionMemStore.data;
+                window.selectionGrid = selectionGrid;
+                window.selectionDataStore = selectionDataStore;
+                window.selectionMemStore = selectionMemStore;
+            }
+
+            /*  ON SELECTION CHANGE OF THE GROUP GRID, THE SELECTION GRID STORE IS REPOPULATED  */
+            SelectionGrid.rebuildStore = function(pis)
+            {
+                //IF THERE ARE NO PIs, GET OUT
+                if(!pis)
+                    return;
+
+                //CLEAR THE STORE
+                selectionMemStore.data = new Array();
+
+                // /*  FILL THE STORE WITH THE NEW DATA */
+                var rowCount = 0;
+                for(var i = 0; i < pis.length; i++)
+                {
+                    console.log(pis[i]);
+                    var row = {};
+                    var pi = pis[i];
+                    row.id = rowCount++;
+                    row.pi_name = pi.pi_name;
+                    row.pi_def = pi.pi_def;
+                    row.pi_value_display = pi.pi_value;
+                    row.pi_unit_display = pi.pi_unit;
+                    if(pi.pi_type == 'computed')
+                    {
+                        row.pi_value_display = '...';
+                        row.pi_unit_display = '...';
+                    }
+                    row.pi_type_display = pi.pi_type.substring(0,1);
+                    selectionMemStore.put(row);
+                }
+                console.log(selectionGrid.store);
+                selectionGrid._refresh();
             }
 
             /********************************     End Selection Grid      *********************************/
@@ -535,202 +670,67 @@
                     checked: true,
                     value: "product",
                     name: "pg-type",
-                    onChange: function()
-                    {
-                        if(this.checked == true)
-                        {
-                            //do something
-                        }
-                        else
-                        {
-                            //do something
-                        }
-                    }
 
                 }, "radio_product");
+
 
             var radio_report = new RadioButton(
                 {
                     checked: false,
                     value: "report",
                     name: "pg-type",
-                    onChange: function()
-                    {
-                        if(this.checked == true)
-                        {
-                            //do something
-                        }
-                        else
-                        {
-                            //do something
-                        }
-                    }
                 }, "radio_report");
 
-            var select_groupType = new Select({
-                options:
-                [
-                    {label: "Product Group", value: "product"},
-                    {label: "View Group", value: "view"}
-                ]}, "select_groupType");
 
             //Confirm selection button for new group
             //require a name for the group
-            var button_confirmSelection = new Button(
+            var button_newPG = new Button(
             {
                 label: 'Confirm',
                 onClick: function()
                 {
-                    var selected_fields = ParameterGrid.getSelected();
-                    var allFields = new Array();
-                    for(var i = 0; i < selected_fields.length; i++)
-                    {
-                        var temp = JSON.stringify(selected_fields[i], function(key, val)
-                            {
-                                if(typeof val == "object")
-                                {
-                                    if(allFields.indexOf(val) >= 0)
-                                        return undefined;
-                                    var field = new Object();
-                                    // field.pi_name = val.pi_name;
-                                    // field.pi_type = val.pi_type;
-                                    // field.pi_value = val.pi_value;
-                                    // field.pi_unit = val.pi_unit;
-                                    // field.pi_def = val.pi_def;
-                                    field.id = val.id;
-
-                                    allFields.push(JSON.stringify(field));
-                                }
-                            });
-                        // allFields.push(temp);
-                    }
-                    for(var i = 0; i < selected_fields.length; i++)
-                    {
-                        console.log(allFields[i]);
-                    }
-                    console.log('selected fields size: ' + selected_fields.length);
-                    console.log('selected before submit ' + selected_fields[0].id);
-                    if(!selected_fields)
-                    {
-                        dom.byId('serverResponse').innerHTML = 'You are required to select at least one parameter to form a group';
-                    }
-                    else if(dom.byId('txtBox_groupName').value == '')
-                        dom.byId('serverResponse').innerHTML = 'You are required to provide a name for the new group';
-                    else 
-                    {
-                        if(radio_report.checked == true)
-                            var pg_type = 'report';
-                        else
-                            var pg_type = 'product';
-                        xhr.get(
-                        {
-                            url:"/group",
-                            content: 
-                            {
-                                action: 'newGroup',
-                                group_name: dom.byId('txtBox_groupName').value,
-                                pg_type: pg_type,
-                                group_fields: allFields,
-                                loaded: has_loaded=true,
-                            },
-                            load:function(response)
-                            {
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                GroupGrid.getGroups();
-                                ParameterGrid.getFields();
-                                dom.byId('txtBox_groupName').value = '';
-                            },
-                            error:function(error)
-                            {
-                                console.log("There was an error: \n"+error);
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                            }
-                        });
-                    }
-                }
-            }, "button_confirmSelection");
-
-            //Confirm selection button for new group
-            //require a name for the group
-            var button_confirmUpdateSpecs = new Button(
-            {
-                label: 'Confirm Changes',
-                onClick: function()
-                {
-                    var selectedGroup = GroupGrid.getSelected();
-                    var selectedGroupType = GroupGrid.getSelectedType();
-                    //store the selected group
-                    console.log('Selected Group: ' + selectedGroup);
-                    var data = SelectionGrid.getData();
-                    var specs = new Array();
-                    // console.log(JSON.stringify(data));
-                    console.log('data: ' + data.items[0].pi_name);
-                    var i;
-                    console.log('Amount of Data = ' + data.items.length);
-                    for(i = 0; i<data.items.length;i++)
-                    {
-                        var spec = new Object();
-                        spec.pi_name = data.items[i].pi_name;
-                        spec.pi_value = data.items[i].pi_value;
-                        spec.pi_unit = data.items[i].pi_unit;
-                        // console.log('Spec: Group Name - ' + spec.group_name);
-                        console.log('Spec: parameter - ' + spec.pi_name);
-                        console.log('Spec: value - ' + spec.pi_value);
-                        console.log('Spec: unit - ' + spec.pi_unit);    
-                        
-                        specs.push(spec);
-                    }
-
-                    var specString = JSON.stringify(specs);
-                    
-                    if(!selectedGroup)
-                    {
-                        dom.byId('serverResponse').innerHTML = 'You are required to select at least one group to make changes.';
-                    }
+                    if(dom.byId('txtBox_groupName').value.length < 1)
+                        alert('A name is required for the new group.');
                     else
-                    {
-                        xhr.get(
-                        {
-                            url:"/group",
-                            content: 
-                            {
-                                action: 'updateFields',
-                                group_name: selectedGroup,
-                                pg_type: selectedGroupType,
-                                fields: specString,
-                                loaded: has_loaded=true,
-                            },
-                            load:function(response)
-                            {
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                                clearAll();
-                            },
-                            error:function(error)
-                            {
-                                console.log("There was an error: \n"+error);
-                                dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                            }
-                        });
-                    }
+                        GroupGrid.new_pg();
                 }
-            }, "button_confirmUpdateSpecs");      
+            }, "button_newPG");
+
+
+            //button to delete a selected group
+            var button_delete_group = new Button(
+                {
+                    label: 'Delete', 
+                    onClick: function()
+                    {
+                        GroupGrid.removePG(GroupGrid.selected_groups);
+                    }
+                }, "button_delete_group");
+
+
 
         /* On load events */
         //Build an empty grid of selected items on load
-        SelectionGrid.buildSelectionGrid(new Array());
+        SelectionGrid.buildGrid(new Array());
         //Get the parameters and groups from the db
-        ParameterGrid.getFields();
-        // GroupGrid.buildGroupGrid(new Array());
         GroupGrid.getGroups();
+        FixedGrid.getFields();
+        CompGrid.getFields();
 
         function clearAll()
         {
             //Build an empty grid of selected items on load
             SelectionGrid.buildSelectionGrid(new Array());
             //Get the parameters and groups from the db
-            ParameterGrid.getFields();
-            // GroupGrid.buildGroupGrid(new Array());
+            // ParameterGrid.getFields();
+            FixedGrid.getFields();
+            CompGrid.getFields();
             GroupGrid.getGroups();
+        }
+
+        function ClearTextFields()
+        {
+            dom.byId('txtBox_groupName').value = '';
         }
 
         });
@@ -740,20 +740,20 @@
 <!-- Layout -->
 <body class="claro">
     <table width = '100%' border = "1">
-        <col width = "33%">
-        <col width = "34%">
-        <col width = "33%">
+        <col width = "45%">
+        <col width = "18%">
+        <col width = "35%">
         <tr> <!-- Labels -->
             <td style = "text-align: center; padding: 5px">
-                <b>Create New</b>
-                <div id= "button_div" style="text-align: right"><button id = "button_confirmSelection"></button></div>
+                <b>PG creator - Creates a New PG</b>
+                <div style="text-align: right"><button id = "button_newPG"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
-                <b>Group List</b>
+                <b>PG lister - Lists All PGs</b>
+                <div style="text-align: right"><button id="button_delete_group"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
-                <b>Group Viewer</b>
-                <div style = "text-align: right"><button id = "button_confirmUpdateSpecs"></button></div>
+                <b>PG Viewer - Shows Selected PG</b>
             </td>
         </tr>
         <tr> <!-- Grids -->
@@ -762,25 +762,37 @@
                 <input id = "radio_product"><label for = "radio_product">Product</label></div>
                 <div style = "padding: 2px">
                 <input id = "radio_report"><label for = "radio_report">Report</label><br><br></div>
-                <!-- <label for="select_groupType" style = "padding: 5px">Type:</label> -->
                 <label for="txtBox_groupName" style = "padding: 5px">Name:</label><br>  
-                <!-- <div id="select_groupType" style ="width: 50%;"></div> -->
                 <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
-                
                 <br><br>
-                <div style = "padding 5px"><b>Parameters</b></div>
-                <div id="parameterGridDiv"></div>
+                <table width='100%'>
+                    <col width='35%'>
+                    <col width='65%'>
+                    <tr>
+                        <td style = 'padding: 2px'>
+                        <div style = "padding 5px" align='center'><b>Fixed Parameters</b></div>
+                            <div id="FixedGridDiv"></div>
+                        </td>
+                        <td style = 'padding: 2px'>
+                        <div style = "padding 5px" align='center'><b>Computed Parameters</b></div>
+                            <div id="CompGrid"></div>
+                        </td>
+                    </tr>
+                </table>
             </td>
             <td valign = "top" style = "padding: 5px; text-align:right">
-                <div id="groupGrid"></div>
+                <div id="GroupGridDiv"></div>
             </td>
             <td valign ="top" style = "padding: 5px">
-                <div id= "selectionGrid"></div>
+                <div id="selectionGrid"></div>
             </td>
         </tr>
         <tr>
-            <td colspan = "100%" style = "padding: 10px">
+            <td style = "padding: 10px">
                 <div id="serverResponse">Awaiting Action...</div>
+            </td>
+            <td colspan = '2' style="padding: 10px">
+                <div id="defDisplay">Definition of highlighted Parameter: (Nothing highlighted)</div>
             </td>
         </tr>
     </table>
