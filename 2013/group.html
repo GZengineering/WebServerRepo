@@ -404,6 +404,7 @@
             //Build the Dojo Grid with the 
             FixedGrid.buildGrid = function(fields)
             {
+                FixedGrid.selected_fields = [];
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
                   {'name': '#', 'field': 'id', 'width': '5%'},
                   {'name': 'Parameter', 'field': 'pi_name', 'width': '45%'},
@@ -477,6 +478,7 @@
             //Build the Dojo Grid with the 
             CompGrid.buildGrid = function(fields)
             {
+                CompGrid.selected_fields = [];
                 /*set up layout*/
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
                   {'name': '#', 'field': 'id', 'width': '3%'},
@@ -533,11 +535,22 @@
                 dojo.connect(grid, "onRowMouseOver", function(e)
                 {
                     //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
-                    var def_display = grid.store.getValue(grid.getItem(e.rowIndex), 'pi_def');
-                    if(!def_display) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                    var definition = grid.store.getValue(grid.getItem(e.rowIndex), 'pi_def');
+                    var parse_display = '';
+                    var def_display = '';
+                    if(!definition) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                    {
+                        parse_display = 'Not defined for fixed parameters';
                         def_display = 'Not defined for fixed parameters';
+                    }
+                    else
+                    {
+                        parse_display = parseDefinitionFieldToOutput(definition);
+                        def_display = definition;
+                    }
                     //UPDATE THE DIV ELEMENT FOR THE USER
                     dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+                    dom.byId("parseDisplay").innerHTML = "Parsed Definition: " + parse_display;
                 });
 
 
