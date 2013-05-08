@@ -38,6 +38,7 @@ handle["/individual"] = requestHandlers.individual;
 handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
 handle["/family"] = requestHandlers.family;
+handle["/global"] = requestHandlers.global;
 handle["/specReports"] = requestHandlers.specReports;
 handle["/viewBuilder"] = requestHandlers.viewBuilder;
 handle["/parameter_js"] = requestHandlers.parameter_js;

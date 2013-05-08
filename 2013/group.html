@@ -35,6 +35,10 @@
         {
             font-size: 8pt;
         }
+        .dojoxGridMasterHeader
+        {
+            font-size: 8pt;
+        }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
     </script>
@@ -61,55 +65,117 @@
             var fields = new Array();
             var has_loaded = false;
 
+            /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
+            var fullDbMemStore = new Memory({data: new Array()});
+                fullDbMemStore = Observable(fullDbMemStore);
+                var fullDataStore = new ObjectStore({
+                    objectStore: fullDbMemStore
+                });
+            window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
+
+            /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            GetFullDbStore = function()
+            {
+                xhr.get(
+                {
+                    url:'/global',
+                    handleAs: 'json',
+                    content:
+                    {
+                        action: 'getAll',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        fullDbMemStore.data = response;
+                        allocateStores();
+                    },
+                    error: function(error)
+                    {
+                        var msg = 'There was an error getting the db. Error: ' + error;
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
+                        console.log(msg);
+                    }
+                });
+            }
+
+            /*  FILL THE SUBSTORES FOR THE PIS AND BUILD THE GRIDS  */
+            function allocateStores()
+            {
+                /**  ALLOCATE GLOBAL FIXED PI MEMORY STORE  **/
+
+                var fixedMemStore = new Memory({data: new Array()});
+                fixedMemStore = Observable(fixedMemStore);
+                var fixedDataStore = new ObjectStore({
+                    objectStore: fixedMemStore
+                });
+
+                /**  ALLOCATE GLOBAL COMPUTED PI MEMORY STORE  **/
+
+                var compMemStore = new Memory({data: new Array()});
+                compMemStore = Observable(compMemStore);
+                var compDataStore = new ObjectStore({
+                    objectStore: compMemStore
+                });
+
+                //QUERY THE GLOBAL DB STORE FOR COMPUTED PIS
+
+                /*  GLOBALIZE THE SUB-STORES  */
+                window.fixedMemStore = fixedMemStore;
+                window.fixedDataStore = fixedDataStore;
+                window.compMemStore = compMemStore;
+                window.compDataStore = compDataStore;
+
+                /*  BUILD ALL THE GRIDS  */
+                BuildGrids();
+            }
+
+            /*  BUILDS THE GRIDS USING THE COLLECTED AND ORGANIZED DATA  */
+            function BuildGrids()
+            {
+                var groups = GroupGrid.getGroups();
+                GroupGrid.buildGrid(groups);
+
+                var fixed_PIs = FixedGrid.getFields();
+                FixedGrid.buildGrid(fixed_PIs);
+
+                var comp_PIs = CompGrid.getFields();
+                CompGrid.buildGrid(comp_PIs);
+
+                SelectionGrid.buildGrid(new Array());
+                
+                dom.byId('txtBox_groupName').value = '';
+            }
+
 
             /********************************     Group Grid      *********************************/
 
             var GroupGrid = new Object();
 
-            //Get the parameters from the db
+            //GET AND RETURN THE GROUPS FROM THE STORE
             GroupGrid.getGroups = function()
             {
-                xhr.get(
-                {
-                    url:'/group',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
-                    content:
-                    {
-                        action: 'getGroups',
-                        loaded: has_loaded = true,
-                    },
-                    load:function(response)
-                    {
-                        GroupGrid.allGroups = response;
-                        GroupGrid.buildGrid(GroupGrid.allGroups); //rebuild the dojo Grid
-                    },
-                    error:function(error)
-                    {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                    }
-                });
+                var groups = fullDbMemStore.query({type: 'param_group'});
+                return groups;
             }
 
-            //Build the Dojo Grid with the retrieved data
+            //BUILD THE DOJO GRID WITH THE GIVEN ARRAY OF GROUPS
             GroupGrid.buildGrid = function(groups)
             {
-                GroupGrid.selected_groups;
-
-                var data = [];
-
+                //DEFINE THE LAYOUT
                 var layout = [[
                   {'name': '#', 'field': 'id', 'width': '5%'},
                   {'name': 'Group', 'field': 'pg_name', 'width': '70%'},
                   {'name': 'Type', 'field': 'pg_type', 'width': '25%'}
                 ]];
 
-                var GroupMemStore = new Memory({data: data}); //set up the store
+                //ALLOCATE THE STORE
+                var GroupMemStore = new Memory({data: new Array()}); //set up the store
                 GroupMemStore = Observable(GroupMemStore);
                 var GroupDataStore = new ObjectStore({
                     objectStore: GroupMemStore
                 });
-
+                
                 //Fill the store with the retrieved DB data
                 for(var i = 0; i < groups.length; i++)
                 {
@@ -123,9 +189,7 @@
                 var grid = new DataGrid({
                     store: GroupDataStore,
                     structure: layout}, 'GroupGridDiv');
-
-                /*Call startup() to render the grid*/
-                grid.startup();
+                grid.startup(); //RENDER
 
                 dojo.connect(GroupMemStore, 'notify', function(){grid._refresh()});
                 
@@ -166,15 +230,6 @@
                 window.GroupMemStore = GroupMemStore;
             }
 
-            //Gets all the data that makes up the row at the index given by id
-            GroupGrid.getGridItemById = function(id)
-            {
-
-                var gridItem = null;
-                var grid = dijit.registry.byId('groupGrid');
-                gridItem = groupMemStore.get(id);
-                return gridItem;
-            }
 
             GroupGrid.new_pg = function()
             {
@@ -196,7 +251,7 @@
                     pg_type: pg_type,
                     pi_ids: pi_ids
                 };
-                //send request to create a new parameter
+                //send request to create a new PG
                 xhr.get(
                 {
                     url:"/group", 
@@ -222,11 +277,11 @@
 
                 add_to_group_store = function(pg)
                 {
-                    var pg = new Object(pg);
+                    var _pg = new Object(pg);
                     var index = GroupMemStore.data.length;
                     GroupMemStore.put(lang.mixin(
                         {id: index}, 
-                        pg
+                        _pg
                     )); 
                 }
             }
@@ -254,7 +309,6 @@
                         },
                         load:function(response)
                         {
-                            console.log("id to remove from mem store: " + selected[0].id);
                             dom.byId("serverResponse").innerHTML = "Response from server: " + response;
                             remove_from_Group_store();
                         },
@@ -272,11 +326,6 @@
                 }
             }
 
-            //Getter for the currently selected group
-            GroupGrid.getSelected = function()
-            {
-                return this.selected_groups[0];
-            }
 
             //GETS AND RETURNS ALL THE PIs OF THE GIVEN PGs
             GroupGrid.getFieldsOfGroups = function(pgs)
@@ -345,29 +394,11 @@
             //The FixedGrid is the grid that displays all the available fields from the database.
             var FixedGrid = new Object();
 
-            //Get the parameters from the db
+            //GET THE FIXED PIs FROM THE GLOBAL STORE
             FixedGrid.getFields = function()
             {
-                xhr.get(
-                {
-                    url:'/individual',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
-                    content:
-                    {
-                        action: 'getFields',
-                        loaded: has_loaded = true,
-                    },
-                    load:function(response)
-                    {
-                        FixedGrid.allFields = response;
-                        FixedGrid.buildGrid(FixedGrid.allFields); //rebuild the dojo Grid
-                    },
-                    error:function(error)
-                    {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                    }
-                });
+                var fixed_PIs = fullDbMemStore.query({pi_type: 'fixed'}); 
+                return fixed_PIs;
             }
 
             //Build the Dojo Grid with the 
@@ -380,11 +411,6 @@
                   {'name': 'Unit', 'field': 'pi_unit', 'width': '20%'}
                 ]];
 
-                var fixedMemStore = new Memory({data: new Array()}); //set up the store
-                fixedMemStore = Observable(fixedMemStore);
-                var fixedDataStore = new ObjectStore({
-                    objectStore: fixedMemStore
-                });
 
                 //Fill the store with the retrieved DB data
                 for(var i = 0; i < fields.length; i++)
@@ -399,9 +425,7 @@
                 var grid = new DataGrid({
                     store: fixedDataStore,
                     structure: layout}, 'FixedGridDiv');
-
-                /*Call startup() to render the grid*/
-                grid.startup();
+                grid.startup(); //RENDER
 
                 dojo.connect(fixedMemStore, 'notify', function(){grid._refresh()});
 
@@ -432,8 +456,6 @@
                 //make the following properties global
                 window.fixedData = fixedMemStore.data;
                 window.fixedGrid = grid;
-                window.fixedDataStore = fixedDataStore;
-                window.fixedMemStore = fixedMemStore;
             }
 
             /********************************     End of Fixed PI Grid      *********************************/
@@ -444,29 +466,11 @@
             //The containing object for the Computed Grid
             var CompGrid = new Object();
 
-            //Get the parameters from the db
+            //GET THE COMP PIs FROM THE GLOBAL STORE
             CompGrid.getFields = function()
             {
-                xhr.get(
-                {
-                    url:'/individual',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
-                    content:
-                    {
-                        action: 'getCompFields',
-                        loaded: has_loaded = true,
-                    },
-                    load:function(response)
-                    {
-                        CompGrid.allFields = response;
-                        CompGrid.buildGrid(CompGrid.allFields); //rebuild the dojo Grid
-                    },
-                    error:function(error)
-                    {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: Error obtaining fields:' + error;
-                    }
-                });
+                var comp_PIs = fullDbMemStore.query({pi_type: 'computed'});
+                return comp_PIs;
             }
 
 
@@ -480,11 +484,6 @@
                   {'name': 'Definition (truncated)', 'field': 'pi_def_trunc', 'width': '65%'}
                 ]];
 
-                var compMemStore = new Memory({data: new Array()}); //set up the store
-                compMemStore = Observable(compMemStore);
-                var compDataStore = new ObjectStore({
-                    objectStore: compMemStore
-                });
 
                 //Fill the store with the retrieved DB data
                 for(var i = 0; i < fields.length; i++)
@@ -545,8 +544,6 @@
                 /*  GLOBALIZE THE GRID PROPERTIES  */
                 window.compData = compMemStore.data;
                 window.compGrid = grid;
-                window.compDataStore = compDataStore;
-                window.compMemStore = compMemStore;
             }
 
             /********************************     End of Computed PI Grid      *********************************/
@@ -613,6 +610,17 @@
                         def_display = 'Not defined for fixed parameters';
                     //UPDATE THE DIV ELEMENT FOR THE USER
                     dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+
+                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
+                    var definition = selectionGrid.store.getValue(selectionGrid.getItem(e.rowIndex), 'pi_def');
+                    var parse_display = '';
+                    if(!definition) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                        parse_display = 'Not defined for fixed parameters';
+                    else
+                        parse_display = parseDefinitionFieldToOutput(definition);
+
+                    //UPDATE THE DIV ELEMENT FOR THE USER
+                    dom.byId("parseDisplay").innerHTML = "Parsed Definition: " + parse_display;
                 });
 
                 /*  GLOBALIZE GRID PROPERTIES  */
@@ -654,6 +662,125 @@
                 }
                 console.log(selectionGrid.store);
                 selectionGrid._refresh();
+            }
+
+            //PARSE THE GIVEN DEFINITION STRING
+            function parseDefinitionFieldToOutput(definition)
+            {
+                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                var def_elements = definition.split(";");
+
+                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                var output_elements = [];
+
+                //QUERY THE STORE FOR ALL PIs
+                var pis = fullDbMemStore.query({type: 'param_individual'});
+
+                //STRING FOR FINAL OUTPUT
+                var output = '';
+
+                //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
+                //REPORT AN ERROR
+                if(pis.length < 1 || pis == null)
+                {
+                    output = 'There was a problem acquiring the parameters';
+                    console.log('Parse Error: ' + output);
+                    return output;
+                } 
+                //WHILE ELEMENTS REMAIN
+                while(def_elements.length > 0)
+                {
+                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                    var not_found = true;
+                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+                    var temp_property;
+
+                    //GET THE NEXT ELEMENT FROM THE ARRAY
+                    var element = def_elements.shift();
+
+                    //TRY TO PARSE THE ELEMENT TO A JSON OBJECT
+                    try
+                    {
+                        element = eval("("+element+")");
+                    }
+                    catch(error) //CATCH ANY ERRORS
+                    {
+                        //IF THE ERROR IS A SYNTAX ERROR, THAT'S NORMAL,
+                        //ADD THE ELEMENT TO THE OUTPUT AND CONTINUE
+                        if(error = SyntaxError)
+                        {
+                            output_elements = add_element(output_elements, element);
+                            continue;
+                        }
+                        else //OTHERWISE, REPORT THE ERROR
+                        {
+                            console.log('Error:' + error);
+                        }
+                    }
+
+                    //IF THE ELEMENT HAS AN 'f' PROPERTY
+                    if(element.f != null)
+                    {
+                        //FOR EVERY PI, TRY TO MATCH THE 'f' PROPERTY TO A PI NAME
+                        for(var i = 0; i < pis.length; i++)
+                        {
+                            //IF A MATCH IS FOUND, CHECK WHICH PROPERTY WE'RE LOOKING FOR
+                            //AND GET THE APPROPRIATE VALUE FROM THE MATCHED PI
+                            if(element.f == pis[i].pi_name)
+                            {
+                                if(element.p == 'value')
+                                    temp_property = pis[i].pi_value;
+                                else
+                                    temp_property = pis[i].pi_unit;
+                                //ADD THE PROPERTY TO THE OUTPUT
+                                output_elements = add_element(output_elements, temp_property);
+
+                                //FLAG THAT WE FOUND A MATCH AND BREAK THE LOOP
+                                not_found = false;
+                                break;
+                            }
+                        }
+                        //IF WE GET HERE AND THERE'S NO MATCH, IT DOESN'T EXIST IN THE STORE
+                        //ADD A 'NO MATCH' TO THE OUTPUT
+                        if(not_found)
+                        {
+                            output_elements = add_element(output_elements, '(No Match for: ' + element.f + ')');
+                        }
+                    }
+                    else //IF IT IS NULL, ADD IT ANYWAY SO THE USER CAN SEE IT
+                    {
+                        output_elements = add_element(output_elements, element);
+                    }
+                }
+                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                if(def_elements.length < 1)
+                {
+                    output = build_output_string(output_elements);
+                    return output;
+                }
+                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                {
+                    output = 'An unknown error occurred parsing the definition.';
+                    console.log(output);
+                    alert(output);
+                    return output;
+                }
+            }
+
+            //ADD THE GIVEN ELEMENT TO THE GIVEN OUTPUT ARRAY
+            function add_element(output_elements, element)
+            {
+                output_elements.push(element);
+                return output_elements;       
+            }
+
+            //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
+            function build_output_string(output_elements)
+            {
+                var output_string = '';
+                for (var i = 0; i < output_elements.length; i++)
+                    output_string += output_elements[i];
+                return output_string
             }
 
             /********************************     End Selection Grid      *********************************/
@@ -707,32 +834,15 @@
                     }
                 }, "button_delete_group");
 
-
-
-        /* On load events */
-        //Build an empty grid of selected items on load
-        SelectionGrid.buildGrid(new Array());
-        //Get the parameters and groups from the db
-        GroupGrid.getGroups();
-        FixedGrid.getFields();
-        CompGrid.getFields();
-
-        function clearAll()
-        {
-            //Build an empty grid of selected items on load
-            SelectionGrid.buildSelectionGrid(new Array());
-            //Get the parameters and groups from the db
-            // ParameterGrid.getFields();
-            FixedGrid.getFields();
-            CompGrid.getFields();
-            GroupGrid.getGroups();
-        }
-
+        //CLEAR TEXT FIELDS AND GRID SELECTIONS
         function ClearTextFields()
         {
             dom.byId('txtBox_groupName').value = '';
+            fixedGrid.selection.clear();
+            compGrid.selection.clear();
         }
 
+        GetFullDbStore();
         });
 </script>
 </head>
@@ -770,11 +880,11 @@
                     <col width='65%'>
                     <tr>
                         <td style = 'padding: 2px'>
-                        <div style = "padding 5px" align='center'><b>Fixed Parameters</b></div>
+                        <div style = "padding 2px" align='center'><b>Fixed Parameters</b></div>
                             <div id="FixedGridDiv"></div>
                         </td>
                         <td style = 'padding: 2px'>
-                        <div style = "padding 5px" align='center'><b>Computed Parameters</b></div>
+                        <div style = "padding 2px" align='center'><b>Computed Parameters</b></div>
                             <div id="CompGrid"></div>
                         </td>
                     </tr>
@@ -792,7 +902,8 @@
                 <div id="serverResponse">Awaiting Action...</div>
             </td>
             <td colspan = '2' style="padding: 10px">
-                <div id="defDisplay">Definition of highlighted Parameter: (Nothing highlighted)</div>
+                <div id="defDisplay" style = "padding: 2px">Definition of highlighted Parameter: (Nothing highlighted)</div>
+                <div id="parseDisplay" style = "padding: 2px">Parsed Definition: (Nothing highlighted)</div>
             </td>
         </tr>
     </table>
