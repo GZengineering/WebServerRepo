@@ -31,6 +31,7 @@ var has_loaded = false; // tells the request handler if this page has already be
             
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            
             GetFullDbStore = function()
             {
                 xhr.get(
