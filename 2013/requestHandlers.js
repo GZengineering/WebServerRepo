@@ -14,7 +14,7 @@ var querystring = require("querystring"),
 
 function dojo_css (response, request, collection, url)
 {
-  requestHelpers.return_css('dojo_source_1.8.3/dojo/resources/dojo.css', response);
+  requestHelpers.return_css('../../../dojo_source_1.8.3/dojo/resources/dojo.css', response);
 }
 
 function db_data (response, request, collection, url)

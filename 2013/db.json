@@ -1,0 +1,5 @@
+{"type":"param_individual","pi_name":"Pack Capacity","pi_type":"fixed","pi_value":"11","pi_unit":"Wh","pi_def":null,"_id":"518ac648bf98fc8c4400000e"}
+{"type":"param_individual","pi_name":"Serial Number","pi_type":"fixed","pi_value":"G10-15B","pi_unit":null,"pi_def":null,"_id":"518ac076bf98fc8c44000007"}
+{"type":"param_individual","pi_name":"Cell Voltage Nominal","pi_type":"fixed","pi_value":"1.2","pi_unit":"V","pi_def":null,"_id":"518ac1c3bf98fc8c44000008"}
+{"type":"param_individual","pi_name":"Cell Capacity","pi_type":"fixed","pi_value":"2.3","pi_unit":"Wh","pi_def":null,"_id":"518ac24fbf98fc8c44000009"}
+{"type":"param_individual","pi_name":"Cells In Series","pi_type":"fixed","pi_value":"4","pi_unit":null,"pi_def":null,"_id":"518ac624bf98fc8c4400000d"}
