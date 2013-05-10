@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+<head>
+    <title>Parameter: Family</title>
+    <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Family </h1>
+
+    <link rel="stylesheet" href="dojo_css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        
+    <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #FamilyGrid
+        {
+            height: 51em;
+            width: 100%;
+        }
+        #selectionGrid 
+        {
+            height: 42em;
+            width: 100%;
+        }
+        #GroupGridDiv 
+        {
+            height: 42em;
+            width: 100%;
+        }
+        #FamilyViewerGrid
+        {
+            height: 51em;
+            width: 100%;
+        }
+        .dojoxGridMasterView
+        {
+            font-size: 8pt;
+        }.dojoxGridMasterHeader
+        {
+            font-size: 8pt;
+        }
+    </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
+    </script>
+
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
+        'dojox/grid/DataGrid' , 
+        'dojo/data/ItemFileWriteStore' ,
+        "dojo/_base/array",
+        'dijit/registry',
+        'dojo/_base/xhr', 
+        'dijit/form/RadioButton',
+        'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button", 
+        'dojo/store/Observable',
+        'dojo/store/Memory',
+        'dojo/data/ObjectStore',
+        'dojo/dom' , 
+        'dojo/domReady!'],
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, Observable, Memory, ObjectStore, dom)
+        {
+            /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
+            var has_loaded = false;
+
+            /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
+            var fullDbMemStore = new Memory({data: new Array()});
+                fullDbMemStore = Observable(fullDbMemStore);
+                var fullDataStore = new ObjectStore({
+                    objectStore: fullDbMemStore
+                });
+            window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
+
+            /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            GetFullDbStore = function()
+            {
+                xhr.get(
+                {
+                    url:'/global',
+                    handleAs: 'json',
+                    content:
+                    {
+                        action: 'getAll',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        fullDbMemStore.data = response;
+                        allocateStores();
+                    },
+                    error: function(error)
+                    {
+                        var msg = 'There was an error getting the db. Error: ' + error;
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
+                        console.log(msg);
+                    }
+                });
+            }
+
+            /*  FILL THE SUBSTORES FOR THE PIS AND BUILD THE GRIDS  */
+            function allocateStores()
+            {
+                /**  ALLOCATE GLOBAL FIXED PI MEMORY STORE  **/
+
+                var fixedMemStore = new Memory({data: new Array()});
+                fixedMemStore = Observable(fixedMemStore);
+                var fixedDataStore = new ObjectStore({
+                    objectStore: fixedMemStore
+                });
+
+                //QUERY THE GLOBAL STORE OF THE DB FOR FIXED PIS
+                var fixed_PIs = fullDbMemStore.query({pi_type: 'fixed'}); 
+
+                /* PLUG IN THE DATA */
+                for(var i = 0; i < fixed_PIs.length; i++)
+                {
+                    fixedMemStore.put(fixed_PIs[i]);
+                }
+
+                /**  ALLOCATE GLOBAL COMPUTED PI MEMORY STORE  **/
+
+                var compMemStore = new Memory({data: new Array()});
+                compMemStore = Observable(compMemStore);
+                var compDataStore = new ObjectStore({
+                    objectStore: compMemStore
+                });
+
+                //QUERY THE GLOBAL DB STORE FOR COMPUTED PIS
+                var comp_PIs = fullDbMemStore.query({pi_type: 'computed'});
+
+                /*  PLUG IN THE DATA  */
+                for(var i = 0; i < comp_PIs.length; i++)
+                {
+                    compMemStore.put(comp_PIs[i]);
+                }
+
+                /*  GLOBALIZE THE SUB-STORES  */
+                window.fixedMemStore = fixedMemStore;
+                window.compMemStore = compMemStore;
+
+                /*  BUILD ALL THE GRIDS  */
+                BuildGrids();
+            }
+
+            /*  BUILDS THE GRIDS USING THE COLLECTED AND ORGANIZED DATA  */
+            function BuildGrids()
+            {
+                var groups = GroupGrid.getGroups();
+                GroupGrid.buildGrid(groups);
+
+                var families = FamilyGrid.getFamilies();
+                FamilyGrid.buildGrid(families);
+
+                SelectionGrid.buildGrid(new Array());
+
+                FamilyViewerGrid.buildGrid(new Array());
+
+                //clear name text field
+                dom.byId('txtBox_familyName').value = '';
+            }
+
+
+            /********************************     Group Grid      *********************************/
+
+
+            //GLOBAL OBJECT TO ASSOCIATE ALL GROUP GRID FUNCTIONS & PROPERTIES
+            var GroupGrid = new Object();
+
+            /*  QUERY THE GLOBAL STORE FOR PGs, RETURN PGs  */
+            GroupGrid.getGroups = function()
+            {
+                var groups = fullDbMemStore.query({type: 'param_group'});
+                return groups;
+            }
+
+            /*  BUILD GRID GIVEN THE GROUPS  */
+            GroupGrid.buildGrid = function(groups)
+            {
+                //DEFINE THE LAYOUT, ADD CHECKBOX SELECTORS
+                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Group', 'field': 'pg_name', 'width': '55%'},
+                  {'name': 'Type', 'field': 'pg_type', 'width': '40%'}
+                ]];
+
+                //CREATE THE GROUP DATA STORE
+                var GroupMemStore = new Memory({data: new Array()}); //set up the store
+                GroupMemStore = Observable(GroupMemStore);
+                var GroupDataStore = new ObjectStore({
+                    objectStore: GroupMemStore
+                });
+
+                //FILL THE STORE
+                for(var i = 0; i < groups.length; i++)
+                {
+                    GroupMemStore.put(lang.mixin(
+                        { id: i }, 
+                        groups[i]
+                    ));
+                }
+
+                /*  CREATE THE DOJO GRID AND RENDER IT  */
+                var grid = new DataGrid({
+                    store: GroupDataStore,
+                    structure: layout}, 'GroupGridDiv');
+                grid.startup();
+
+                //REFRESH THE GRID WHEN THE MEMORY STORE 'NOTIFY' EVENT HAPPENS
+                dojo.connect(GroupMemStore, 'notify', function(){grid._refresh()});
+                
+
+                //UPDATE THE GROUP SELECTION AND DISPLAY IT IN THE RESPONSE DIV
+                function reportSelection(node)
+                {
+                    //STORE THE SELECTED ITEMS
+                    var groups = this.selection.getSelected();
+                    GroupGrid.selected_groups = groups;
+
+                    //GET THE PIs OF THE SELECTED GROUP & REBUILD THE SELECTION STORE
+                    var pis = GroupGrid.getFieldsOfGroups(groups);
+                    SelectionGrid.rebuildStore(pis);
+
+                    /*  DISPLAY WHAT'S SELECTED IN THE PROMPT  */
+                    if(groups.length < 1)
+                        return;
+
+                    var msg = "You have selected " + ((groups.length > 1) ? " ": " ");
+                    //FOR EACH PG IN GROUPS, GET THE PG_NAME AND PUT IT IN AN ARRAY 
+                    var pg_names = [];
+                    for(var i = 0; i < groups.length; i++)
+                        pg_names.push(groups[i].pg_name);
+
+                    //UPDATE RESPONSE DIV
+                    node.innerHTML = msg + pg_names.join(", ");
+                }
+
+                //REGISTER THE SELECTION_CHANGED EVENT WITH THIS GRID TO THE REPORTSELECTION FUNCTION
+                //AND PASS IT THE SERVER RESPONSE DIV                
+                grid.on("SelectionChanged", 
+                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                /*  GLOBALIZE GROUP GRID PROPERTIES  */
+                window.GroupMemStore = GroupMemStore;
+                window.GroupData = GroupMemStore.data;
+                window.groupGrid = grid;
+                window.GroupDataStore = GroupDataStore;
+            }
+
+            //GETS AND RETURNS ALL THE PIs OF THE GIVEN PGs
+            GroupGrid.getFieldsOfGroups = function(pgs)
+            {
+                //IF THE GIVEN ARRAY IS EMPTY, RETURN AN EMPTY ARRAY
+                if(pgs.length < 1)
+                {
+                    return new Array();
+                }
+
+                //CREATE AN ARRAY TO STORE REALIZED PIs
+                var pis = [];
+
+                //FOR EACH GROUP IN THE GIVEN PGs, MATCH THE PI IDs TO IDs IN THE STORE
+                //IF A MATCH IS FOUND, ADD IT TO THE STORE AND MOVE TO THE NEXT PI
+                for(var h = 0; h < pgs.length; h++)
+                {   
+                    //STORE THE CURRENT PG
+                    var pg = pgs[h];
+
+                    //IF THE PG IS NULL, BAIL
+                    if(!pg)
+                        return;
+
+                    for(var i = 0; i < pg.pi_ids.length; i++)
+                    {
+                        //FLAGS IF A MATCH IS FOUND
+                        var matched = false;
+                        for(var j = 0; j < fixedMemStore.data.length; j++)
+                        {
+                            if(matched)
+                                break;
+                            //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
+                            if(pg.pi_ids[i] == fixedMemStore.data[j]._id)
+                            {
+                                //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
+                                pis.push(fixedMemStore.data[j]);
+                                matched = true;
+                            }
+                        }
+                        if(!matched)
+                        {
+                            //IF NO MATCH IS FOUND FOR THE CURRENT PI_ID, CHECK THE COMPUTED PI STORE
+                            for(var j = 0; j < compMemStore.data.length; j++)
+                            {
+                                if(matched)
+                                    break;
+                                if(pg.pi_ids[i] == compMemStore.data[j]._id)
+                                {
+                                    pis.push(compMemStore.data[j]);
+                                    matched = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return pis;
+            }
+
+
+            /********************************      END GROUP GRID      ********************************/
+
+
+            /*******************************    BEGIN SELECTION GRID    ******************************/
+
+            //OBJECT TO ASSOCIATE ALL FUNCTIONS AND PROPERTIES OF THE SELECTION GRID
+            var SelectionGrid = new Object();
+            
+            /*  BUILD THE GRID GIVEN THE PIs AS A PARAMETER  */
+            SelectionGrid.buildGrid = function(pis)
+            {
+                /*  DEFINE LAYOUT  */
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Parameter', 'field': 'pi_name', 'width': '45%'},
+                  {'name': 'Type', 'field': 'pi_type_display', 'width':'10%'},
+                  {'name': 'Value', 'field': 'pi_value_display', 'width':'25%'},
+                  {'name': 'Unit', 'field': 'pi_unit_display', 'width':'15%'},
+                ]];
+
+                /*  SET UP DATA STORE  */
+                var selectionMemStore = new Memory({data: new Array()});
+                selectionMemStore = Observable(selectionMemStore);
+                var selectionDataStore = new ObjectStore({
+                    objectStore: selectionMemStore
+                });
+
+                // /*  FILL THE STORE WITH THE NEW DATA */
+                var rowCount = 0;
+                for(var i = 0; i < pis.length; i++)
+                {
+                    console.log(pis[i]);
+                    var row = {};
+                    var pi = pis[i];
+                    row.id = rowCount++; //reset id's
+                    row.pi_name = pi.pi_name;
+                    row.pi_def = pi.pi_def;
+                    row.pi_value_display = pi.pi_value;
+                    row.pi_unit_display = pi.pi_unit;
+                    if(pi.pi_type == 'computed')
+                    {
+                        row.pi_value_display = '...';
+                        row.pi_unit_display = '...';
+                    }
+                    row.pi_type_display = pi.pi_type.substring(0,1);
+                    selectionMemStore.put(row);
+                }
+
+                /*  CREATE THE DOJO GRID AND RENDER IT  */
+                var selectionGrid = new DataGrid({
+                    store: selectionDataStore,
+                    structure: layout,
+                    autoHeigth: true}, "selectionGrid");
+                selectionGrid.startup();
+
+                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN A DIV ELEMENT  */
+                dojo.connect(selectionGrid, "onRowMouseOver", function(e)
+                {
+                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
+                    var definition = selectionGrid.store.getValue(selectionGrid.getItem(e.rowIndex), 'pi_def');
+                    var parse_display = '';
+                    var def_display = '';
+                    if(!definition) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                    {
+                        parse_display = 'Not defined for fixed parameters';
+                        def_display = 'Not defined for fixed parameters';
+                    }
+                    else
+                    {
+                        parse_display = parseDefinitionFieldToOutput(definition);
+                        def_display = definition;
+                    }
+                    //UPDATE THE DIV ELEMENT FOR THE USER
+                    dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+                    dom.byId("parseDisplay").innerHTML = "Parsed Definition: " + parse_display;
+                });
+
+                /*  GLOBALIZE GRID PROPERTIES  */
+                window.selectionData = selectionMemStore.data;
+                window.selectionGrid = selectionGrid;
+                window.selectionDataStore = selectionDataStore;
+                window.selectionMemStore = selectionMemStore;
+            }
+
+            /*  ON SELECTION CHANGE OF THE GROUP GRID, THE SELECTION GRID STORE IS REPOPULATED  */
+            SelectionGrid.rebuildStore = function(pis)
+            {
+                //IF THERE ARE NO PIs, BAIL
+                if(!pis)
+                    return;
+
+                //CLEAR THE STORE
+                selectionMemStore.data = new Array();
+
+                // /*  FILL THE STORE WITH THE NEW DATA */
+                var rowCount = 0;
+                for(var i = 0; i < pis.length; i++)
+                {
+                    console.log(pis[i]);
+                    var row = {};
+                    var pi = pis[i];
+                    row.id = rowCount++;
+                    row.pi_name = pi.pi_name;
+                    row.pi_def = pi.pi_def;
+                    row.pi_value_display = pi.pi_value;
+                    row.pi_unit_display = pi.pi_unit;
+                    if(pi.pi_type == 'computed')
+                    {
+                        row.pi_value_display = '...';
+                        row.pi_unit_display = '...';
+                    }
+                    row.pi_type_display = pi.pi_type.substring(0,1);
+                    selectionMemStore.put(row);
+                }
+                console.log(selectionGrid.store);
+                selectionGrid._refresh();
+            }
+
+            /********************************     End Selection Grid      *********************************/
+
+            /********************************     Family Grid      *********************************/
+
+
+            /*  OBJECT TO ASSOCIATE ALL FUNCTIONS AND PROPERTIES OF THE FAMILY GRID  */
+            var FamilyGrid = new Object();
+
+            /*  QUERY THE GLOBAL DB STORE FOR FAMILY OBJECTS AND RETURN THE RESULT  */
+            FamilyGrid.getFamilies = function()
+            {
+                var families = fullDbMemStore.query({type: 'param_family'});
+                return families;
+            }
+
+            //DEFINE AND BUILD THE GRID GIVEN A SET OF FAMILY OBJECTS
+            FamilyGrid.buildGrid = function(families)
+            {
+                //DEFINE THE LAYOUT
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Family', 'field': 'pf_name', 'width': '55%'},
+                  {'name': 'Type', 'field': 'pf_type', 'width': '40%'}
+                ]];
+
+                //CREATE THE DATA STORE FOR THE FAMILY OBJECTS
+                var FamilyMemStore = new Memory({data: new Array()}); //set up the store
+                FamilyMemStore = Observable(FamilyMemStore);
+                var FamilyDataStore = new ObjectStore({
+                    objectStore: FamilyMemStore
+                });
+
+                //FILL THE STORE WITH THE FAMILY OBJECTS
+                for(var i = 0; i < families.length; i++)
+                {
+                    FamilyMemStore.put(lang.mixin(
+                        { id: i }, 
+                        families[i]
+                    ));
+                }
+
+
+                //CREATE THE DOJO GRID AND RENDER IT
+                var grid = new DataGrid({
+                    store: FamilyDataStore,
+                    structure: layout}, 'FamilyGrid');
+                grid.startup(); //RENDER
+
+
+                //ON MEMORY STORE EVENT 'NOTIFY', REFRESH THE GRID
+                dojo.connect(FamilyMemStore, 'notify', function(){grid._refresh()});
+
+
+                //UPDATE THE SELECTION PROPERTY AND THE DIV ELEMENT                
+                function reportSelection(node)
+                {
+                    //UPDATE SELECTED PROPERTY
+                    var families = this.selection.getSelected();
+                    FamilyGrid.selected_families = families;
+
+                    //GET THE PGs OF THE SELECTED PFs
+                    var pgs = FamilyGrid.getGroupsOfFamily(families);
+                    //REBUILD THE VIEWER STORE
+                    FamilyViewerGrid.rebuildStore(pgs);
+
+                    //IF NOTHING IS SELECTED, BAIL
+                    if(families.length < 1)
+                        return;
+
+                    //UPDATE THE DIV ELEMENT TO DISPLAY SELECTED
+                    var msg = "You have selected " + ((FamilyGrid.selected_families.length > 1) ? " ": " ");
+                    
+                    //BUILD AN ARRAY OF THE NAMES OF SELECTED PFs
+                    var pf_names = [];
+                    for(var i = 0; i <families.length;i++)
+                        pf_names.push(families[i].pf_name);
+
+                    //SET THE DIV ELEMENT VALUE TO THE NEW MESSAGE
+                    node.innerHTML = msg + pf_names.join(", ");
+                }
+
+                //REGISTER THE REPORT_SELECTION METHOD WITH THE SELECTION_CHANGED EVENT                
+                grid.on("SelectionChanged", 
+                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
+
+                //GLOBALIZE THE FAMILY GRID DATA PROPERTIES
+                window.FamilyData = FamilyMemStore.data;
+                window.FamilyGrid = grid;
+                window.FamilyMemStore = FamilyMemStore;
+                window.FamilyDataStore = FamilyDataStore;
+            }
+
+            /*  CREATES A NEW PF BY GETTING THE NAME FROM THE TEXTBOX AND GRABBING THE SELECTED GROUPS  */
+            FamilyGrid.new_pf = function()
+            {
+                var pf_type = 'report';
+                if(radio_product.checked)
+                    pf_type = 'product';
+
+                var pgs = GroupGrid.selected_groups;
+
+                //CREATE AN ARRAY OF THE IDs OF THE SELECTED GROUPS
+                var pg_ids = [];
+                for(var i = 0; i < pgs.length; i++)
+                    pg_ids.push(pgs[i]._id)
+
+                //DEFINE THE NEW PF AS A NEW OBJECT
+                var pf = {
+                    pf_name: dom.byId('txtBox_familyName').value,
+                    pf_type: pf_type,
+                    pg_ids: pg_ids
+                };
+                
+                //TELL THE SERVER TO ADD NEW PF AND SEND THE NEW PF OBJECT                
+                xhr.get(
+                {
+                    url:"/family", 
+                    handleAs: 'json',
+                    content: 
+                    {
+                        action: 'new_pf',
+                        pf: JSON.stringify(pf),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        //UPDATE THE SERVER RESPONSE
+                        dom.byId("serverResponse").innerHTML = "Response from server: "+pf.pf_name+" successfully added.";
+                        dom.byId("txtBox_familyName").value = '';
+                        console.log(response);
+
+                        //CLEAR GRID SELECTION
+                        groupGrid.selection.clear();
+
+                        //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
+                        //ADD THE OBJECT TO THE STORE
+                        add_to_family_store(response);
+                    },
+                    error:function(error)
+                    {
+                        //IF THERE WAS AN ERROR, REPORT IT IN THE CONSOLE AND TO THE USER
+                        console.log("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+
+                /*  ADD THE GIVEN PF TO THE FAMILY STORE  */
+                add_to_family_store = function(pf)
+                {
+                    //WRAP THE PF IN AN OBJECT
+                    var pf = new Object(pf);
+                    var index = FamilyMemStore.data.length; //NEW INDEX = SIZE OF STORE
+                    
+                    //COMBINE INDEX AND PF OBJECT INTO ONE OBJECT AND ADD IT TO THE STORE
+                    FamilyMemStore.put(lang.mixin(
+                        {id: index}, 
+                        pf
+                    )); 
+                }
+            }
+
+            /*  REMOVES A PF FROM THE DATABASE GIVEN THE SELECTED PF  */
+            FamilyGrid.removePF = function(selected)
+            {
+                //IF NOTHING IS SELECTED, NOTIFY AND BAIL
+                if(!selected)
+                {
+                    alert('Select a Family to Remove.');
+                    return;
+                }
+
+                //IF THE DATA CAN'T BE RETRIEVED FROM THE SELECTED OBJECT, NOTIFY
+                if(!selected[0]){ return alert('error deleting '+selected[0].pf_name+'\''); }
+                //IF THE USER DOESN'T CONFIRM THAT THEY WANT TO DELETE THE SELECTED PF, BAIL
+                if(!confirm("Are you sure you want to delete \'" + selected[0].pf_name +"\'?"))
+                    return;
+
+                //SEND THE SERVER A REQUEST TO REMOVE THE PF AND SEND THE PF OBJECT
+                xhr.get(
+                {
+                    url:"/family",
+                    content: 
+                    {
+                        action: 'remove_pf',
+                        pf: JSON.stringify(selected[0]),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        //TELL THE USER AND LOG THE RESPONSE
+                        console.log("id to remove from mem store: " + selected[0].id);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
+
+                        //REMOVE THE ITEM FROM THE STORE
+                        remove_from_family_store();
+                    },
+                    error:function(error)
+                    {
+                        //NOTIFY THE USER AND LOG THE ERROR
+                        console.log("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+
+                /*  REMOVES THE FIRST ELEMENT OF THE SELECTED PFs  */
+                remove_from_family_store = function()
+                {
+                    FamilyMemStore.remove(selected[0].id);
+                }
+            }
+
+
+            //GETS THE GROUPS OF THE GIVEN FAMILIES
+            FamilyGrid.getGroupsOfFamily = function(families)
+            {
+                //IF THE GIVEN ARRAY IS EMPTY, RETURN AN EMPTY ARRAY
+                if(families.length < 1)
+                    return new Array();
+
+                //CREATE AN ARRAY TO STORE THE GRABBED PGs
+                var pgs = [];
+
+                //FOR EACH FAMILY IN FAMILIES, REALIZE THE GROUPS AND PUT THEM IN THE ARRAY
+                for(var h = 0; h < families.length; h++)
+                {   
+                    //GET THE CURRENT PF
+                    var pf = families[h];
+                    //IF THE PF ISN'T DEFINED, BAIL
+                    if(!pf)
+                        return;
+
+                    //GET THE IDS OF THE CURRENT PF AND REALIZE THEM
+                    for(var i = 0; i < pf.pg_ids.length; i++)
+                    {
+                        //FLAGS WHEN THERE'S A MATCH FOUND
+                        var matched = false;
+                        //TRY TO MATCH THE CURRENT ID TO IDS IN THE GROUP STORE
+                        for(var j = 0; j < GroupMemStore.data.length; j++)
+                        {
+                            if(matched)
+                                break;
+                            //IF WE FIND A MATCH, PUT THE OBJECT FROM THE STORE INTO THE ARRAY
+                            if(pf.pg_ids[i] == GroupMemStore.data[j]._id)
+                            {
+                                pgs.push(GroupMemStore.data[j]);
+                                matched = true;
+                            }
+                        }
+                    }
+                }
+                //RETURN THE ARRAY OF REALIZED GROUP OBJECTS
+                return pgs;
+            }
+
+            /********************************      End Family Grid      ********************************/
+
+
+            /****************************   Begin Family Viewer Grid  *********************************/
+
+
+            /*  AN OBJECT TO ASSOCIATE ALL FAMILY VIEWER FUNCTIONS AND PROPERTIES  */
+            var FamilyViewerGrid = new Object();
+
+            /*  DEFINE AND BUILD A GRID OF THE PROPERTIES OF A SELECTED FAMILY'S GIVEN PGs  */
+            FamilyViewerGrid.buildGrid = function(pgs)
+            {
+                /*  DEFINE LAYOUT  */
+                var layout = [[
+                  {'name': '#', 'field': 'id', 'width': '5%'},
+                  {'name': 'Group', 'field':'pg_name', 'width': '16%'},
+                  {'name': 'Parameter', 'field': 'pi_name', 'width': '39%'},
+                  {'name': 'Type', 'field': 'pi_type_display', 'width':'10%'},
+                  {'name': 'Value', 'field': 'pi_value_display', 'width':'18%'},
+                  {'name': 'Unit', 'field': 'pi_unit_display', 'width':'12%'},
+                ]];
+
+                /*  SET UP STORE  */
+                var FamilyViewerMemStore = new Memory({data: new Array()});
+                FamilyViewerMemStore = Observable(FamilyViewerMemStore);
+                var FamilyViewerDataStore = new ObjectStore({
+                    objectStore: FamilyViewerMemStore
+                });
+
+                /*  POPULATE THE STORE  */
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    var pg = pgs[i];
+                    //CREATE AN ARRAY TO CONTAIN PG TO SATISFY PARAMETERS OF GETFIELDSOFGROUPS(PGS[])
+                    var _pg = [];
+                    _pg.push(pg);
+
+                    //GET PIs OF CURRENT PG
+                    var pis = GroupGrid.getFieldsOfGroups(_pg);
+
+                    //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
+                    for(var j = 0; j<pis.length; j++)
+                    {
+                        var row = {};
+                        var pi = pis[j];
+                        row.id = rowCount++;
+                        row.pg_name = pg.pg_name;
+                        row.pi_name = pi.pi_name;
+                        row.pi_def = pi.pi_def;
+                        row.pi_value_display = pi.pi_value;
+                        row.pi_unit_display = pi.pi_unit;
+                        if(pi.pi_type == 'computed')
+                        {
+                            row.pi_value_display = '...';
+                            row.pi_unit_display = '...';
+                        }
+                        row.pi_type_display = pi.pi_type.substring(0,1);
+                        FamilyViewerMemStore.put(row);
+                        FamilyViewerMemStore.data;
+                    }
+                }
+
+                /*  CREATE THE GRID AND RENDER IT  */
+                var familyViewerGrid = new DataGrid({
+                    store: FamilyViewerDataStore,
+                    structure: layout,
+                    autoHeigth: true}, "FamilyViewerGrid");
+                familyViewerGrid.startup(); //RENDER
+
+                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN THE DIV  */
+                dojo.connect(familyViewerGrid, "onRowMouseOver", function(e)
+                {
+                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
+                    var definition = familyViewerGrid.store.getValue(familyViewerGrid.getItem(e.rowIndex), 'pi_def');
+                    var parse_display = '';
+                    var def_display = '';
+                    if(!definition) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
+                    {
+                        parse_display = 'Not defined for fixed parameters';
+                        def_display = 'Not defined for fixed parameters';
+                    }
+                    else
+                    {
+                        parse_display = parseDefinitionFieldToOutput(definition);
+                        def_display = definition;
+                    }
+                    //UPDATE THE DIV ELEMENT FOR THE USER
+                    dom.byId("defDisplay").innerHTML = "Definition of highlighted Parameter: " + def_display;
+                    dom.byId("parseDisplay").innerHTML = "Parsed Definition: " + parse_display;
+                });
+
+                /*  GLOBALIZE GRID PROPERTIES  */
+                window.FamilyViewerData = FamilyViewerMemStore.data;
+                window.familyViewerGrid = familyViewerGrid;
+                window.FamilyViewerDataStore = FamilyViewerDataStore;
+                window.FamilyViewerMemStore = FamilyViewerMemStore;
+            }
+
+            /*  ON SELECTION CHANGE OF THE FAMILY GRID, THE FAMILY VIEW GRID STORE IS REPOPULATED  */
+            FamilyViewerGrid.rebuildStore = function(pgs)
+            {
+                //IF THE PASSED PGs IS EMPTY, BAIL
+                if(!pgs)
+                    return;
+
+                //CLEAR THE STORE
+                FamilyViewerMemStore.data = new Array();
+
+                //INDEXING COUNT
+                var rowCount = 0;
+
+                /*  POPULATE THE STORE  */
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    var pg = pgs[i];
+                    //CREATE AN ARRAY TO CONTAIN PG TO SATISFY PARAMETERS OF GETFIELDSOFGROUPS(PGS[])
+                    var _pg = [];
+                    _pg.push(pg);
+
+                    //GET PIs OF CURRENT PG
+                    var pis = GroupGrid.getFieldsOfGroups(_pg);
+
+                    //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
+                    for(var j = 0; j<pis.length; j++)
+                    {
+                        var row = {};
+                        var pi = pis[j];
+                        row.id = rowCount++;
+                        row.pg_name = pg.pg_name;
+                        row.pi_name = pi.pi_name;
+                        row.pi_def = pi.pi_def;
+                        row.pi_value_display = pi.pi_value;
+                        row.pi_unit_display = pi.pi_unit;
+                        if(pi.pi_type == 'computed')
+                        {
+                            row.pi_value_display = '...';
+                            row.pi_unit_display = '...';
+                        }
+                        row.pi_type_display = pi.pi_type.substring(0,1);
+                        FamilyViewerMemStore.put(row);
+                        FamilyViewerMemStore.data;
+                    }
+                }
+                //REFRESH THE GRID
+                familyViewerGrid._refresh();
+            }
+
+            //PARSE THE GIVEN DEFINITION STRING
+            function parseDefinitionFieldToOutput(definition)
+            {
+                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                var def_elements = definition.split(";");
+
+                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                var output_elements = [];
+
+                //QUERY THE STORE FOR ALL PIs
+                var pis = fullDbMemStore.query({type: 'param_individual'});
+
+                //STRING FOR FINAL OUTPUT
+                var output = '';
+
+                //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
+                //REPORT AN ERROR
+                if(pis.length < 1 || pis == null)
+                {
+                    output = 'There was a problem acquiring the parameters';
+                    console.log('Parse Error: ' + output);
+                    return output;
+                } 
+                //WHILE ELEMENTS REMAIN
+                while(def_elements.length > 0)
+                {
+                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                    var not_found = true;
+                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+                    var temp_property;
+
+                    //GET THE NEXT ELEMENT FROM THE ARRAY
+                    var element = def_elements.shift();
+
+                    //TRY TO PARSE THE ELEMENT TO A JSON OBJECT
+                    try
+                    {
+                        element = eval("("+element+")");
+                    }
+                    catch(error) //CATCH ANY ERRORS
+                    {
+                        //IF THE ERROR IS A SYNTAX ERROR, THAT'S NORMAL,
+                        //ADD THE ELEMENT TO THE OUTPUT AND CONTINUE
+                        if(error = SyntaxError)
+                        {
+                            output_elements = add_element(output_elements, element);
+                            continue;
+                        }
+                        else //OTHERWISE, REPORT THE ERROR
+                        {
+                            console.log('Error:' + error);
+                        }
+                    }
+
+                    //IF THE ELEMENT HAS AN 'f' PROPERTY
+                    if(element.f != null)
+                    {
+                        //FOR EVERY PI, TRY TO MATCH THE 'f' PROPERTY TO A PI NAME
+                        for(var i = 0; i < pis.length; i++)
+                        {
+                            //IF A MATCH IS FOUND, CHECK WHICH PROPERTY WE'RE LOOKING FOR
+                            //AND GET THE APPROPRIATE VALUE FROM THE MATCHED PI
+                            if(element.f == pis[i].pi_name)
+                            {
+                                if(element.p == 'value')
+                                    temp_property = pis[i].pi_value;
+                                else
+                                    temp_property = pis[i].pi_unit;
+                                //ADD THE PROPERTY TO THE OUTPUT
+                                output_elements = add_element(output_elements, temp_property);
+
+                                //FLAG THAT WE FOUND A MATCH AND BREAK THE LOOP
+                                not_found = false;
+                                break;
+                            }
+                        }
+                        //IF WE GET HERE AND THERE'S NO MATCH, IT DOESN'T EXIST IN THE STORE
+                        //ADD A 'NO MATCH' TO THE OUTPUT
+                        if(not_found)
+                        {
+                            output_elements = add_element(output_elements, '(No Match for: ' + element.f + ')');
+                        }
+                    }
+                    else //IF IT IS NULL, ADD IT ANYWAY SO THE USER CAN SEE IT
+                    {
+                        output_elements = add_element(output_elements, element);
+                    }
+                }
+                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                if(def_elements.length < 1)
+                {
+                    output = build_output_string(output_elements);
+                    return output;
+                }
+                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                {
+                    output = 'An unknown error occurred parsing the definition.';
+                    console.log(output);
+                    alert(output);
+                    return output;
+                }
+            }
+
+            //ADD THE GIVEN ELEMENT TO THE GIVEN OUTPUT ARRAY
+            function add_element(output_elements, element)
+            {
+                output_elements.push(element);
+                return output_elements;       
+            }
+
+            //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
+            function build_output_string(output_elements)
+            {
+                var output_string = '';
+                for (var i = 0; i < output_elements.length; i++)
+                    output_string += output_elements[i];
+                return output_string
+            }
+
+
+            /****************************   TextBoxes / Button / Etc  *********************************/
+
+
+            //Family Name Textbox
+            var txtBox_familyName = registry.byId("txtBox_familyName");
+
+            /*  RADIO BUTTONS  */
+
+            //PRODUCT RADIO BUTTON, IS DEFAULT SELECTED
+            var radio_product= new RadioButton(
+                {
+                    checked: true,
+                    value: "product",
+                }, "radio_product");
+
+            //REPORT RADIO BUTTON, NOT DEFAULT
+            var radio_report = new RadioButton(
+                {
+                    checked: false,
+                    value: "report",
+                }, "radio_report");
+
+
+            //CREATE NEW PF BUTTON
+            //REQUIRES A NAME
+            var button_confirmNewPF = new Button(
+            {
+                label: 'Confirm',
+                onClick: function()
+                {
+                    if(dom.byId('txtBox_familyName').value.length < 1)
+                        alert('A name is required for the new family.');
+                    else
+                        FamilyGrid.new_pf();
+                }
+            }, "button_confirmNewPF");
+
+            //DELETE PF BUTTON
+            var button_delete_pf = new Button(
+                {
+                    label: 'Delete', 
+                    onClick: function()
+                    {
+                        FamilyGrid.removePF(FamilyGrid.selected_families);
+                    }
+                }, "button_delete_pf");
+
+
+            //ON LOAD, GET THE FULL DB AND PUT IT IN A GLOBAL STORE   
+            GetFullDbStore();
+        });
+    </script>
+</head>
+
+<!-- Layout -->
+<body class="claro">
+    <table width = '100%' border = "1">
+        <col width = '47%'>
+        <col width = '18%'>
+        <col width = '35%'>
+        <tr>
+            <td style = "text-align: center; padding: 5px">
+                <b>PF Creator - Creates a New PF</b>
+                <div id= "button_confirmDiv" style = "text-align: right"><button id = "button_confirmNewPF"></button></div>
+            </td>
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
+                <b>PF Lister - Lists All PFs</b>
+                <div style="text-align:right"><button id="button_delete_pf"></button></div>
+            </td>
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
+                <b>PF Viewer - Shows Selected PF</b>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px">
+                <div style = "padding: 2px">
+                <input id = "radio_product"><label for = "radio_product">Product</label></div>
+                <div style = "padding: 2px">
+                <input id = "radio_report"><label for = "radio_report">Report</label><br><br></div>
+                <label for="txtBox_familyName">Name:</label><br>
+                <input id="txtBox_familyName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
+                <table width = '100%'>
+                    <col width = '35%'>
+                    <col width = '65%'>
+                    <tr>
+                        <td>
+                            <div style = "padding: 5px" align='center'><b>Groups</b><div>
+                        </td>
+                        <td>
+                            <div style = "padding: 5px" align='center'><b>Preview</b><div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div id="GroupGridDiv"></div>
+                        </td>
+                        <td>
+                            <div id= "selectionGrid"></div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="FamilyGrid"></div>
+            </td>
+            <td valign = "top" style = "padding: 5px; text-align:right">
+                <div id="FamilyViewerGrid"></div>
+            </td>
+        </tr>
+        <tr>
+            <table id='consoleTable' border = '1' width='100%'>
+                <col width="18%">
+                <col width="82%">
+                <tr>
+                    <td style = "padding: 10px">
+                        <div id="serverResponse">Awaiting Action...</div>
+                    </td>
+                    <td>
+                        <div id="defDisplay" style = "padding: 2px">Definition of highlighted Parameter: (Nothing highlighted)</div>
+                        <div id = "parseDisplay" style = "padding: 2px">Parsed Definition: (Nothing Selected)</div>
+                    </td>
+                </tr>
+            </table id='consoleTable'>
+        </tr>
+    </table>
+</body>
+</html>

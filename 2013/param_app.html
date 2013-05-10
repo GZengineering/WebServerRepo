@@ -1,0 +1,84 @@
+<!-- Parameter app -->
+
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+	<head>
+        <title>Parameter App</title>
+        <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter App </h1>
+		 <!-- Load Dojo API -->
+        <link rel="stylesheet" href="dojo_css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        <link rel="icon" href="favicon.ico">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+
+        <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        </style>
+
+		<script type="text/javascript">
+			require([
+			"dijit/layout/ContentPane",
+			"dijit/MenuBar",
+			"dijit/PopupMenuBarItem",
+			"dijit/MenuItem",
+			"dijit/Menu",
+			"dijit/layout/BorderContainer",
+			'dojo/_base/lang', 
+			'dojox/grid/DataGrid', 
+			"dojo/_base/array",
+			'dijit/registry',
+			'dojo/_base/xhr', 
+			'dijit/form/RadioButton',
+			'dojox/grid/_CheckBoxSelector',
+			"dijit/form/Button", 
+			'dojo/store/Observable',
+			'dojo/store/Memory',
+			'dojo/data/ObjectStore',
+			'dojo/dom' , 
+			'dojo/domReady!'
+			],
+			function(ContentPane, MenuBar, PopupMenuBarItem, MenuItem, Menu, BorderContainer, lang, DataGrid, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, Observable, Memory, ObjectStore, dom)
+			{
+				var outerContainer = new BorderContainer(
+				{
+					persist: false,
+					gutters: true,
+					style: "min-width: 1em; min-height: 1px; z-index: 0; width: 100%; height: 100%;",
+				}, "outerContainer");
+
+				var i = 0;
+
+				//CREATE NEW PF BUTTON
+	            //REQUIRES A NAME
+	            var button_confirmNewPF = new Button(
+	            {
+	                label: "Don't touch me",
+	                onClick: function()
+	                {
+	                	if(i < 2)
+	                		alert("Hi there");
+	                	else
+	                    	alert("stop it.");
+	                	i++;
+
+	                }
+	            }, "butt");
+
+	            outerContainer.buildRendering();
+			});
+
+
+
+		</script>
+<script type="text/javascript"></script>
+</head>
+<body class = "claro">
+ <div id = "outerContainer">
+ 	<button id = 'butt'></button>
+ </div>
+</body>
+</html>

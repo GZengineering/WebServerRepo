@@ -42,6 +42,7 @@ handle["/global"] = requestHandlers.global;
 handle["/specReports"] = requestHandlers.specReports;
 handle["/viewBuilder"] = requestHandlers.viewBuilder;
 handle["/parameter_js"] = requestHandlers.parameter_js;
+handle["/main"] = requestHandlers.param_app;
 handle["/dojo_css"] = requestHandlers.dojo_css;
 
 

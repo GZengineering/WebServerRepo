@@ -126,6 +126,11 @@ function favicon(response, request, collection, url)
   });
 }
 
+function param_app(response, request, collection, url)
+{
+  requestHelpers.return_html('./param_app.html', response);
+}
+
 function upload(response, request) {
   console.log("\nRequest handler 'upload' was called.");
 
@@ -571,6 +576,7 @@ exports.db_data = db_data;
 exports.update_db = update_db_from_file;
 exports.parameter_js = parameter_js; 
 exports.favicon = favicon;
+exports.param_app = param_app;
 exports.ideaBacklogEntry = ideaBacklogEntry;
 exports.specReports = specReports;
 exports.viewBuilder = viewBuilder;

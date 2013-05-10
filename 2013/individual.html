@@ -1,0 +1,162 @@
+<!-- PI Page -->
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<!DOCTYPE html>
+<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+	<head>
+        <title>Parameter: Individual</title>
+        <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Individual </h1>
+		 <!-- Load Dojo API -->
+        <link rel="stylesheet" href="dojo_css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        <link rel="icon" href="favicon.ico">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
+                        data-dojo-config="async: true, isDebug: true">
+        </script>
+
+        <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
+        #FixedGridDiv 
+        {
+            height: 52em;
+            width: 100%;
+        }
+        #CompGrid
+        {
+            height: 52em;
+            width: 100%;
+        }
+        #txtBox_paramDef
+        {
+            width: 97%;
+        }
+        #txtBox_paramOutput
+        {
+            width: 97%;
+        }
+        .dojoxGridMasterHeader
+        {
+            font-size: 11px;
+        }
+        .dojoxGridMasterView
+        {
+            font-size: 10px;
+        }
+        </style>
+
+        <!-- parameter creator functions -->
+        <script type="text/javascript", src="parameter_js">
+
+        </script>
+    </head>
+
+    <!-- Layout --> 
+    <body class="claro"><table width = '100%' border = "1">
+        <col width = "25%">
+        <col width = "75%">
+        <tr> <!-- Labels -->
+            <td style = "text-align: center; padding: 5px">
+                <b>PI creator - Creates a New PI</b>
+                    <div id = "newPIButtonDiv" style="text-align: right">
+                        <button id="button_add_new_PI"></button>
+                    </div>
+            </td>
+            <td style = "text-align: center; vertical-align: top; padding: 5px">
+                <b>PI lister - Lists All PIs</b>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px">
+                <table>
+                    <tr>
+                        <td style = "padding: 5px">
+                            <div style = "padding: 2px">
+                            <input id = "radio_fixed"><label for = "radio_fixed">Fixed</label></div>
+                            <div style = "padding: 2px">
+                            <input id = "radio_computed"><label for = "radio_computed">Computed</label><br><br></div>
+                            <label for="txtBox_paramName" style = "padding: 5px">Name:</label><br>  
+                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
+                        </td>
+                    </tr>
+                </table>
+                <div id = "fields_paramProperties" style = "display: block">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramValue" style = "padding: 5px">Value:</label><br>  
+                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramUnit" style = "padding: 5px">Units:</label><br>  
+                                <input id ='txtBox_paramUnit' data-dojo-type="dijit/form/TextBox"> </input><br>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <br><br>
+                <div id = "fields_computed" style = "display: none">
+                    <table width = '100%' border = '0'>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramDef" style = "padding: 5px">Definition:</label><br>
+                                <input id = "txtBox_paramDef" data-dojo-type="dijit/form/TextBox"></input>
+                                <div id = "ParseButtonDiv" style="text-align: right; padding: 10px">
+                                    <button id="button_ParseDefinition"></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style = "padding: 5px">
+                                <label for="txtBox_paramOutput" style = "padding: 5px">Output:</label><br>  
+                                <input id = "txtBox_paramOutput" data-dojo-type="dijit/form/TextBox"></input>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td valign = "top">
+                <table width = '100%' border = '1'>
+                    <col width = '30%'>
+                    <col width = '70%'>
+                    <tr>
+                        <td style = "text-align:center; vertical-align:top">
+                            <div style = "padding: 5px"><b>Fixed Parameters</b></div>
+                            <div style="text-align: right">
+                                <button id="button_get_fixed_property"></button>
+                                <button id="button_delete_fixed_pi"></button>
+                            </div>
+                        </td>
+                        </td>
+                        <td style = "text-align:center; vertical-align:top">
+                            <div style = "padding: 5px"><b>Computed Parameters</b></div>
+                            <div style="text-align: right">
+                                <button id="button_get_comp_property"></button>
+                                <button id="button_delete_comp_pi"></button>
+                            </div>
+                        </td>
+                        <tr>
+                            <td>
+                                <div id="FixedGridDiv"></div>
+                            </td>
+                            <td>
+                                <div id="CompGrid"></div>
+                            </td>
+                        </tr>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style = "padding: 10px">
+                <div id="serverResponse">Status: Awaiting action...</div>
+            </td>
+            <td>
+                <div id = "defDisplay" style = "padding: 2px">Definition of highlighted Parameter: (Nothing highlighted)</div>
+                <div id = "parseDisplay" style = "padding: 2px">Parsed Definition: (Nothing Selected)</div>
+            </td>
+        </tr>
+    </table>
+    </body> 
+</html>
