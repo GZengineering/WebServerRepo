@@ -45,17 +45,32 @@
 			{
 				var outerContainer = new BorderContainer(
 				{
+					design: 'headline',
 					persist: false,
 					gutters: true,
-					style: "min-width: 1em; min-height: 1px; z-index: 0; width: 100%; height: 100%;",
 				}, "outerContainer");
+
+				var CreatorPane = new ContentPane(
+				{
+					extractContent: true,
+					region: "left",
+					splitter: true,
+					width: "33%",
+					height: "100%",
+					href: '/individual',
+					style: "padding 10px",
+				}, "CreatorPane");
+
+
+				outerContainer.addChild(CreatorPane);
 
 				var i = 0;
 
 				//CREATE NEW PF BUTTON
 	            //REQUIRES A NAME
-	            var button_confirmNewPF = new Button(
+	            var button_butt = new Button(
 	            {
+	            	region: "right",
 	                label: "Don't touch me",
 	                onClick: function()
 	                {
@@ -68,17 +83,17 @@
 	                }
 	            }, "butt");
 
-	            outerContainer.buildRendering();
+	            outerContainer.addChild(button_butt);
+
+	            outerContainer.startup();
 			});
-
-
 
 		</script>
 <script type="text/javascript"></script>
 </head>
 <body class = "claro">
- <div id = "outerContainer">
- 	<button id = 'butt'></button>
+ <div id = "outerContainer" style="min-width: 5em; min-height: 700px; width: 100%; height: 100%;">
+ 	<!-- <button id = 'butt'></button> -->
  </div>
 </body>
 </html>

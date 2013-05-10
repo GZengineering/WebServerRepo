@@ -200,39 +200,67 @@ function individual (response, request, collection, url)
   }
  
   //If there was an insertion requested, add the entry to the db, initialize its value to null.
-  if(FieldQuery.action == 'new_pi')
+  if(FieldQuery.action == 'new_param_class')
   {
-    var pi = eval('(' + FieldQuery.pi + ')');
-    //Save the new field to the db only if it's a unique name, don't allow duplicates
-    collection.save({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : pi.pi_type, 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':pi.pi_def});
-    collection.find({'type': 'param_individual', 'pi_name': pi.pi_name, 'pi_type' : pi.pi_type, 'pi_value':pi.pi_value, 'pi_unit': pi.pi_unit, 'pi_def':pi.pi_def}).toArray(
+    var param_class = eval('(' + FieldQuery.param_class + ')');
+    collection.find({'type': 'param_class', 'name': param_class.name}).toArray(
       function(error, doc)
       {
-        if(doc)
+        if(doc.length > 0)
         {
-          var string = JSON.stringify(doc[0]);
+          console.log('Attempted to add existing Parameter Class: \'' + param_class.name + '\'');
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
+          response.write(JSON.stringify(new Object()));
           response.end();
         }
         else if(error)
         {
-          console.log('New Parameter: Failure to Add New');
+          console.log('New Parameter Class: Failure to Add New');
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write('Failure to Add \' '+ pi.pi_name + ' \' .');
+          response.write('Failure to Add \' '+ param_class.name + ' \' .');
           response.end();
+        }
+        else
+        {
+          console.log('Attempting to add new Parameter Class: \'' + param_class.name + '\'');
+          collection.save({'type': 'param_class', 'name': param_class.name, 'members' : [ {} ]});
+          collection.find({'type': 'param_class', 'name': param_class.name}).toArray(
+          function(error, result)
+          {
+            if(result)
+            {
+              console.log('Parameter Class \'' + param_class.name + '\' saved successfully');
+              var s = JSON.stringify(result[0]);
+              response.writeHead(200, {"Content-Type": "text/plain"});
+              response.write(s);
+              response.end();
+            }
+            else if(error)
+            {
+              response.writeHead(200, {"Content-Type": "text/plain"});
+              response.write('ERROR');
+              response.write(error);
+              response.end();
+            }
+            else
+            {
+              console.log('Error: There might be more than 1\'' + param_class.name + '\' in the db');
+              response.writeHead(200, {"Content-Type": "text/plain"});
+              response.write('UNKOWN ERROR');
+              response.end();
+            }
+          });
         }
       }
     );
   }
 
   //If there is a removal requested, remove the field from the db if it exists
-  if(FieldQuery.action == 'remove_pi')
+  if(FieldQuery.action == 'remove_param_class')
   {
-    var pi = eval('('+FieldQuery.pi+')');
-    console.log(pi._id);
-    console.log('is this where I am?')
-    var oid = new ObjectID(pi._id);
+    var param_class = eval('('+FieldQuery.param_class+')');
+    console.log(param_class._id);
+    var oid = new ObjectID(param_class._id);
     collection.findAndRemove({'_id':oid}, 
     function(error, result)
     {
@@ -241,13 +269,13 @@ function individual (response, request, collection, url)
       {
         console.log('Field Removal: successful');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write(pi.pi_name + ' successfully removed');
+        response.write(param_class.name + ' successfully removed');
         response.end();
         return;
       }
       else
       {
-        collection.findAndRemove({'_id':pi._id},
+        collection.findAndRemove({'_id':param_class._id},
         function(error, result)
         {
           //If it's found and removed successfully, report it.
@@ -255,16 +283,16 @@ function individual (response, request, collection, url)
           {
             console.log('Field Removal: successful');
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write(pi.pi_name + ' successfully removed');
+            response.write(param_class.name + ' successfully removed');
             response.end();
             return;
           }
           //otherwise, report that the field wasn't found
           else
           {
-            console.log('Field Removal: nothing to remove for name - ' + pi.pi_name + ' :: oID - ' + pi._id);
+            console.log('Field Removal: nothing to remove for name - ' + param_class.name + ' :: oID - ' + param_class._id);
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('Failure to Remove \' '+ pi.pi_name + ' \' : Field not found.');
+            response.write('Failure to Remove \' '+ param_class.name + ' \' : Field not found.');
             response.end();
           }
         });
