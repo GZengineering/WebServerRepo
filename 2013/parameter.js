@@ -64,20 +64,17 @@ var has_loaded = false; // tells the request handler if this page has already be
                 });
             }
 
-            function addToFullStore(object)
+            function addToParamStore(object)
             {
-                console.log('Adding:');
-                console.log(object);
-                fullDbMemStore.put(object);
-                console.log(fullDbMemStore.data);
-                paramStore.idProperty = 'name';
-                var parameters = fullDbMemStore.query({type: 'param_class'});
-                paramStore.setData(parameters); 
-                paramGrid._refresh();
+                var o = new Object(object);
+                paramStore.put(lang.mixin(
+                    {id: paramStore.data.length},
+                    o,
+                    {memberValue: object.members.value}));
             }
 
 
-            /********************************     Fixed PI Grid      *********************************/
+            /********************************     Parameter Grid      *********************************/
 
             //OBJECT TO ASSOCIATE ALL FUNCTIONS AND PROPERTIES FOR THE FIXED PI GRID
             var ParamGrid = new Object();
@@ -87,17 +84,28 @@ var has_loaded = false; // tells the request handler if this page has already be
             {
                 //DEFINE THE LAYOUT
                 var layout = [[
-                  {'name': 'Parameter', 'field': 'name', 'width': '100%'},
+                  {'name': 'Parameter', 'field': 'name', 'width': '50%', editable: true},
+                  {'name': 'Value', 'field': 'memberValue', 'width': '50%', editable: true},
                 ]];
 
                 var parameters = fullDbMemStore.query({type: 'param_class'});
-                paramStore.setData(parameters);
+                for(var i = 0; i < parameters.length; i++)
+                {
+                    paramStore.put(lang.mixin(
+                        { id: i},
+                        parameters[i],
+                        {memberValue: parameters[i].members.value}
+                        ));
+                }
+
+                registry.remove('ParamGrid');
 
                 //CREATE THE DOJO GRID AND RENDER IT
                 var grid = new DataGrid({
                     store: paramDataStore,
                     structure: layout,
-                selectionMode: 'single'}, 'ParamGrid');
+                    selectionMode: 'single',
+                    singleClickEdit: true}, 'ParamGrid');
                 grid.startup(); //RENDER
 
                 //REGISTER NOTIFY EVENT TO REFRESH THE GRID
@@ -124,35 +132,130 @@ var has_loaded = false; // tells the request handler if this page has already be
                 grid.on("SelectionChanged", 
                     lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
 
+                //REGISTER THE DELETE AND BACKSPACE KEYS TO DELETE BUTTON
+                dojo.connect(grid,"onKeyUp", function(e)
+                {
+                    if(e.keyCode == 46)
+                    {
+                        button_delete_param_class.onClick();
+                    }
+                });
+
                 //REGISTER DOUBLE CLICK EVENT WITH THE DEFINED FUNCTION
                 //THE FUNCTION GETS PI NAME OF THE DOUBLE CLICKED ROW AND PASSES
                 //IT TO A FUNCTION TO ADD ADD A PROPERTY TO THE DEFINITION
-                // dojo.connect(grid,"onCellDblClick", function(e)
-                //     {
-                //         var column = e.target.cellIndex;
-                //         var pi_name = paramStore.get(e.rowIndex).pi_name;
-                //         if(column == 2)
-                //             FixedGrid.addValueToDefinition(pi_name);
-                //         else if(column == 3)
-                //             FixedGrid.addUnitToDefinition(pi_name);
-                //         else
-                //             return;       
-                //     });
+                dojo.connect(grid,"onCellDblClick", function(e)
+                    {
+                        button_add_param_to_value.onClick();
+                    });
+
 
                 //GLOBALIZE STORE DATA AND THE GRID
                 window.paramGrid = grid;
             }
 
-            /********************************     End of Fixed PI Grid      *********************************/
+            /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
+            ParamGrid.analyzeChanges = function()
+            {
+                var parameters = paramStore.data;
+
+                for(var i = 0; i < parameters.length; i++)
+                {
+                    var p = parameters[i];
+                    p.members.value = p.memberValue;
+                    delete p.__isDirty;
+                    delete p.id;
+                    delete p.memberValue;
+                    parameters[i] = p;
+                }
+                console.log(parameters);
+                ParamGrid.commitChanges(parameters);
+            }
+
+            ParamGrid.commitChanges = function(parameters)
+            {
+                //TELL THE SERVER TO ADD NEW PF AND SEND THE NEW PF OBJECT                
+                xhr.get(
+                {
+                    url:"/individual", 
+                    content: 
+                    {
+                        action: 'change_parameters',
+                        parameters: JSON.stringify(parameters),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        //UPDATE THE SERVER RESPONSE
+                        dom.byId("serverResponse").innerHTML = "Response from server: All Changes succesful";
+                        alert("Changes were successful");
+                        dom.byId("txtBox_paramName").value = '';
+                        dom.byId("txtBox_paramValue").value = '';
+                        console.log(response);
+
+                        //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
+                        //ADD THE OBJECT TO THE STORE
+                        GetFullDbStore();
+                    },
+                    error:function(error)
+                    {
+                        //IF THERE WAS AN ERROR, REPORT IT IN THE CONSOLE AND TO THE USER
+                        alert("Failure: Changes were unsuccesful");
+                        console.log("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+            }
+
+            /********************************     END PARAMETER GRID      *********************************/
 
 
             /********************************     Text Boxes, Buttons, etc      *********************************/
 
             /*  TEXT BOXES  */
-            var txtBox_paramName = registry.byId("txtBox_paramName");
-            var txtBox_paramValue = registry.byId("txtBox_paramValue");
-            document.getElementById('txtBox_paramValue').readOnly = 'readOnly';
-            
+            var txtBox_paramName = new TextBox({},"txtBox_paramName");
+            var txtBox_paramValue = new TextBox({},"txtBox_paramValue");
+
+            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE NAME TEXTBOX
+            dojo.connect(txtBox_paramName, "onKeyUp", function(e)
+            {
+                if(e.keyCode == 13)
+                    button_add_new_param_class.onClick();
+            });
+
+            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE VALUE TEXTBOX
+            dojo.connect(txtBox_paramValue, "onKeyUp", function(e)
+            {
+                if(e.keyCode == 13)
+                    button_add_new_param_class.onClick();
+            });
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_add_param_to_value = new Button(
+            {
+                label: 'Add To Value', 
+                onClick: function()
+                {
+                    var selected = ParamGrid.selected_fields[0];
+                    if(!selected)
+                    {
+                        alert('Select a Parameter to Copy.');
+                        return;
+                    }
+                    add_param_to_value(selected);
+                },
+            }, 'button_add_param_to_value');
+
+            var add_param_to_value = function(selected)
+            {
+                var name = selected.name;
+                if(dom.byId("txtBox_paramValue").value == "")
+                    dom.byId("txtBox_paramValue").value = name; 
+                else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
+                    dom.byId("txtBox_paramValue").value += name;
+                else
+                    dom.byId("txtBox_paramValue").value += ';' + name;   
+            }
 
             //BUTTON TO REMOVE A FIXED PI
             var button_delete_param_class = new Button(
@@ -166,10 +269,22 @@ var has_loaded = false; // tells the request handler if this page has already be
             }, 'button_delete_param_class');
 
 
+            //COMMIT CHANGES BUTTON
+            var button_commitChanges = new Button(
+                {
+                    label: 'Commit Changes', 
+                    onClick: function()
+                    {
+                        ParamGrid.analyzeChanges();
+                    }
+                }, "button_commitChanges");
+
+
+
             //BUTTON TO SUBMIT A NEW PI            
             var button_add_new_param_class = new Button(
             {
-                label: 'Submit New',
+                label: 'Commit',
                 onClick: function()
                 {
                     //REQUIREMENTS FOR A VALID NEW PI
@@ -180,8 +295,10 @@ var has_loaded = false; // tells the request handler if this page has already be
                     }
 
                     var param_class = {};
+                    param_class.type = 'param_class';
                     param_class.name = dom.byId("txtBox_paramName").value;
-                    param_class.value = null;
+                    param_class.members = {};
+                    param_class.members.value = dom.byId("txtBox_paramValue").value;
                     new_param_class(param_class);
                 }
             }, 'button_add_new_param_class');
@@ -193,9 +310,12 @@ var has_loaded = false; // tells the request handler if this page has already be
             {
                 if(!param_class) //IF THE PI IS NULL, SOMETHING IS WRONG.
                 {
-                    alert('There was an error adding the new PI.');
+                    alert('There was an error adding the new parameter class.');
                     return;
                 }
+
+                paramDataStore.save();
+
                 //SEND THE NEW PI TO THE SERVER
                 xhr.get(
                 {
@@ -219,8 +339,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                         //UPDATE THE SERVER RESPONSE DIV, CLEAR FIELDS, AND ADD THE OBJECT TO THE STORE
                         dom.byId("serverResponse").innerHTML = "Response from server: \'" + param_class.name + "\' successfully added.";
                         ClearTextFields();
-                        addToFullStore(response);
-                        console.log(response);
+                        addToParamStore(response);
                     },
                     error:function(error)
                     {
@@ -235,8 +354,11 @@ var has_loaded = false; // tells the request handler if this page has already be
             //SEND REQUEST TO SERVER TO REMOVE THE GIVEN PI
             remove_param_class = function(selected)
             {
-                if(!selected)
+                if(!selected || selected.length < 1)
+                {
+                    alert("Select something to delete");
                     return;
+                }
                 var param_class = selected[0];
 
                 if(!param_class){ return alert('error deleting \''+param_class.name+'\''); }
@@ -269,11 +391,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                 //REMOVE THE PI FROM THE FIXED STORE
                 remove_from_db_store = function(param_class)
                 {
-                    var id = fullDbMemStore.getIdentity(param_class);
-                    fullDbMemStore.remove(id);
-                    var parameters = fullDbMemStore.query({type: 'param_class'});
-                    // paramStore.data = new Array();
-                    paramStore.setData(parameters); 
+                    var id = param_class.id;
+                    paramStore.remove(id);
                     paramGrid._refresh();
                 }
             }

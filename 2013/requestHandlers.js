@@ -11,7 +11,6 @@ var querystring = require("querystring"),
     app = express();
     ObjectID = require('mongodb').ObjectID;
 
-
 function dojo_css (response, request, collection, url)
 {
   requestHelpers.return_css('../../../dojo_source_1.8.3/dojo/resources/dojo.css', response);
@@ -223,17 +222,30 @@ function individual (response, request, collection, url)
         else
         {
           console.log('Attempting to add new Parameter Class: \'' + param_class.name + '\'');
-          collection.save({'type': 'param_class', 'name': param_class.name, 'members' : [ {} ]});
-          collection.find({'type': 'param_class', 'name': param_class.name}).toArray(
+          collection.save(param_class);
+          collection.find(param_class).toArray(
           function(error, result)
           {
             if(result)
             {
               console.log('Parameter Class \'' + param_class.name + '\' saved successfully');
               var s = JSON.stringify(result[0]);
-              response.writeHead(200, {"Content-Type": "text/plain"});
-              response.write(s);
-              response.end();
+              if(!typeof(s) == 'string')
+              {
+                s = {name: param_class.name};
+                s = JSON.stringify(s);
+                response.writeHead(200, {"Content-Type": "text/plain"});
+                response.write(s);
+                response.end();
+              }
+              else
+              {
+                console.log(s);
+                response.writeHead(200, {"Content-Type": "text/plain"});
+                response.write(s);
+                response.end();
+              }
+              
             }
             else if(error)
             {
@@ -253,6 +265,54 @@ function individual (response, request, collection, url)
         }
       }
     );
+  }
+
+  if(FieldQuery.action == 'change_parameters')
+  {
+    console.log(FieldQuery.parameters);
+    var parameters = eval('('+FieldQuery.parameters+')');
+    var saved = [];
+    var errorCount = 0;
+
+    response.writeHead(200, {"Content-Type": "text/plain"});
+
+
+    while(parameters.length > 0)
+    {
+      var doc = parameters.shift()
+      var s = JSON.stringify(doc);
+      console.log(s);
+
+      var oid = new ObjectID(doc._id);
+      doc._id = oid;
+
+      collection.save(doc);
+      collection.find(doc).toArray(
+        function(error, result)
+        {
+          console.log(result[0]);
+          if(error)
+          {
+            console.log("Error saving '"+doc.name+"' :: " + error);
+            response.write("Error saving '"+doc.name+"' :: " + error);
+            errorCount++;
+          }
+          else if(result[0])
+          {
+            saved.push(result[0]);
+            console.log("Doc '"+doc.name+"' Saved successfully");
+            response.write("'"+doc.name+"' Saved successfully");
+            finish();
+          }
+        }
+      );
+    }
+    function finish()
+    {
+      console.log("::DONE::\n"+saved.length+" documents successfully saved. :: "+errorCount+" failures.\n");
+      response.write('DONE');
+      response.end();
+    }
   }
 
   //If there is a removal requested, remove the field from the db if it exists
@@ -316,14 +376,14 @@ function group(response, request, collection, url)
   if(FieldQuery.action == 'new_pg')
   {
     var pg = eval('('+FieldQuery.pg+')');
-    var pi_ids = new Array();
-    for(var f in pg.pi_ids)
+    var p_ids = new Array();
+    for(var f in pg.p_ids)
     {
-      var oid = new ObjectID(pg.pi_ids[f]);
-      pi_ids.push(oid);
+      var oid = new ObjectID(pg.p_ids[f]);
+      p_ids.push(oid);
     }
 
-    collection.find({'type': 'param_group', 'pg_name': pg.pg_name}).toArray( 
+    collection.find({'type': 'param_group', 'name': pg.name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -335,29 +395,29 @@ function group(response, request, collection, url)
           if(result.length == 1)
           {
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('A Group with name — \'' + FieldQuery.group_name + '\' already exists');
+            response.write(new Object());
             response.end();
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'param_group', 'pg_name': pg.pg_name, 'pg_type': pg.pg_type, 'pi_ids' : pi_ids});
+            collection.save({'type': 'param_group', 'name': pg.name, 'members' : pg.members});
             // collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
-            collection.find({'type': 'param_group', 'pg_name': pg.pg_name, 'pg_type': pg.pg_type, 'pi_ids' : pi_ids}).toArray(
+            collection.find({'type': 'param_group', 'name': pg.name, 'members' : pg.members}).toArray(
               function(error, doc)
               {
                 if(doc)
                 {
                   var string = JSON.stringify(doc[0]);
-                  console.log('New pg: \'' + pg.pg_name + '\' added');
+                  console.log('New pg: \'' + pg.name + '\' added');
                   response.writeHead(200, {"Content-Type": "text/plain"});
                   response.write(string);
                   response.end();
                 }
                 else if(error)
                 {
-                  console.log('New Group: Failure to Add - ' + pg.pg_name);
+                  console.log('New Group: Failure to Add - ' + pg.name);
                   response.writeHead(200, {"Content-Type": "text/plain"});
-                  response.write('Failure to Add \' '+ pg.pg_name + ' \' .');
+                  response.write('Failure to Add \' '+ pg.name + ' \' .');
                   response.end();
                 }
               }
@@ -377,16 +437,16 @@ function group(response, request, collection, url)
     {
       if(result!=null)
       {
-        console.log('Removal of Group: ' + pg.pg_name + ' Succeeded');
+        console.log('Removal of Group: ' + pg.name + ' Succeeded');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Group \'' + pg.pg_name + '\' successfully removed');
+        response.write('Group \'' + pg.name + '\' successfully removed');
         response.end();
       }
       else
       {
-        console.log('Removal of Group: ' + pg.pg_name + ' Failed');
+        console.log('Removal of Group: ' + pg.name + ' Failed');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove Group\' '+ pg.pg_name + ' \' : Group not found.');
+        response.write('Failure to Remove Group\' '+ pg.name + ' \' : Group not found.');
         response.end();
       }
     });
@@ -415,33 +475,67 @@ function family(response, request, collection, url)
     {
       if(result!=null)
       {
-        console.log('Removal of Family: ' + pf.pf_name + ' Succeeded');
+        console.log('Removal of Family: ' + pf.name + ' Succeeded');
         response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Group \'' + pf.pf_name + '\' successfully removed');
+        response.write('Family \'' + pf.name + '\' successfully removed');
         response.end();
       }
       else
       {
-        console.log('Removal of Group: ' + pf.pf_name + ' Failed');
-        response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove Group\' '+ pf.pf_name + ' \' : Group not found.');
-        response.end();
+        collection.findAndRemove({'_id':pf._id},
+          function(err, doc)
+          {
+            if(doc!=null)
+            {
+              console.log('Removal of Family: ' + pf.name + ' Succeeded');
+              response.writeHead(200, {"Content-Type": "text/plain"});
+              response.write('Family \'' + pf.name + '\' successfully removed');
+              response.end();
+            }
+            else
+            {
+              console.log('Removal of Family: ' + pf.name + ' Failed');
+              response.writeHead(200, {"Content-Type": "text/plain"});
+              response.write('Failure to Remove Family\' '+ pf.name + ' \' : Family not found.');
+              response.end();
+            }
+          }
+        );
       }
     });
   }
 
+  if(FieldQuery.action == 'change_pf')
+  {
+    var pf = eval('('+FieldQuery.pf+')');
+    collection.save(pf);
+    collection.find(pf).toArray(
+      function(error, doc)
+      {
+        if(doc)
+        {
+          var string = JSON.stringify(doc[0]);
+          console.log('pf: \'' + pf.name + '\' Updated');
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write(string);
+          response.end();
+        }
+        else if(error)
+        {
+          console.log('Failure to Update - ' + pf.name);
+          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.write('Failure to Update \' '+ pf.name + ' \' .');
+          response.end();
+        }
+      }
+    );
+  }
+
   if(FieldQuery.action == 'new_pf')
   {
-
     var pf = eval('('+FieldQuery.pf+')');
-    var pg_ids = new Array();
-    for(var pg in pf.pg_ids)
-    {
-      var oid = new ObjectID(pf.pg_ids[pg]);
-      pg_ids.push(oid);
-    }
 
-    collection.find({'type': 'param_family', 'pf_name': pf.pf_name}).toArray( 
+    collection.find({'type': 'pgf', 'name': pf.name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -452,30 +546,33 @@ function family(response, request, collection, url)
         {
           if(result.length == 1)
           {
+            //if one is found, return an empty object
+            //an empty object signifies nothing was added
+            var s = {};
+            s = JSON.stringify(s);
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write('A Group with name — \'' + FieldQuery.family_name + '\' already exists');
+            response.write(s);
             response.end();
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'param_family', 'pf_name': pf.pf_name, 'pf_type': pf.pf_type, 'pg_ids' : pg_ids});
-            // collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
-            collection.find({'type': 'param_family', 'pf_name': pf.pf_name, 'pf_type': pf.pf_type, 'pg_ids' : pg_ids}).toArray(
+            collection.save(pf);
+            collection.find(pf).toArray(
               function(error, doc)
               {
                 if(doc)
                 {
                   var string = JSON.stringify(doc[0]);
-                  console.log('New pf: \'' + pf.pf_name + '\' added');
+                  console.log('New pf: \'' + pf.name + '\' added');
                   response.writeHead(200, {"Content-Type": "text/plain"});
                   response.write(string);
                   response.end();
                 }
                 else if(error)
                 {
-                  console.log('New Family: Failure to Add - ' + pf.pf_name);
+                  console.log('New Family: Failure to Add - ' + pf.name);
                   response.writeHead(200, {"Content-Type": "text/plain"});
-                  response.write('Failure to Add \' '+ pf.pf_name + ' \' .');
+                  response.write('Failure to Add \' '+ pf.name + ' \' .');
                   response.end();
                 }
               }
