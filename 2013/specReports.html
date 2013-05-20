@@ -40,6 +40,11 @@
         'dojo/domReady!'],
       function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
+
+            init();
+
+
+
             /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
             var has_loaded = false;
 
@@ -52,7 +57,8 @@
             window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
-            GetFullDbStore = function()
+            /*  SUBSEQUENT FUNCTIONS WILL BE CALLED TO COMPLETE THE PROCESS  */
+            init = function()
             {
                 xhr.get(
                 {
@@ -77,7 +83,6 @@
                 });
             }
 
-
             /*  BUILDS THE GRIDS USING THE COLLECTED AND ORGANIZED DATA  */
             function BuildGrids()
             {
@@ -88,45 +93,43 @@
                     var familyDataStore = new ObjectStore({
                         objectStore: familyStore
                     });
-                    console.log(familyStore.idProperty);
 
                 //GLOBALIZE THE PARAMETER STORE
                 window.familyStore = familyStore;
                 window.familyDataStore = familyDataStore;
 
+                //FILL THE DROP-DOWN OPTIONS
                 fillOptions(families);
             }
 
+            //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
             var ProductSelect = new Select(
             {
                 options: [],
             }, "ProductSelect");
 
+            //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
             dojo.connect(ProductSelect, "onChange", function(value)
             {
-                console.log(value);
                 var family = familyStore.get(value);
-                console.log(family);
-                ReportGrid.buildGrid(family);
+                buildTable(family);
             });
 
+            //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
             var fillOptions = function(families)
             {
-                console.log(families);
                 for(var i = 0;i < families.length; i++)
                 {
                     var p = families[i];
-                    console.log(p.name);
                     ProductSelect.options.push({label: p.name, value: p.name});
                 }
                 ProductSelect.set(ProductSelect.options[0]);
             }
 
-            var ReportGrid = {};
 
-            ReportGrid.buildGrid = function(family)
+            buildTable = function(family)
             {
-                console.log(family);
+                //CLEAR THE HTML 
                 dom.byId("ReportGrid").innerHTML = '';
 
                 var html_table = '';
@@ -197,28 +200,36 @@
                     }
                 }
 
+                //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
                 html_table += "</table>";
                 dom.byId("ReportGrid").innerHTML = html_table;
-
-                console.log(dom.byId("ReportGrid").innerHTML);
             }
 
+            //DETERMINES THE STYLE OF A ROW FOR THE TABLE GIVEN THE NUMBER OF THE ROW AND THE TYPE OF DATA IT CONTAINS
             function get_row_style(type, rowCount)
             {
+                //STYLE FOR A GROUP (OR FAMILY) ON ODD ROWS
                 var odd_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
 
+                //STYLE FOR A GROUP (OR FAMILY) ON EVEN ROWS
                 var even_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
 
+                //STYLE FOR A PARAMETER ON ODD ROWS
                 var odd_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
 
+                //STYLE FOR A PARAMETER ON EVEN ROWS
                 var even_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
 
+                //IF THE COUNT IS EVEN AND IT'S A GROUP OR A FAMILY, DO EVEN_STYLE_GROUP
                 if(rowCount%2 == 0 && (type == 'pg' || type == 'pgf'))
                     return even_style_group;
+                //IF THE COUNT IS EVEN AND IT'S A PARAMETER, DO EVEN_STYLE_PARAMETER
                 else if(rowCount%2 == 0 && type == 'p')
                     return even_style_parameter;
+                //IF THE COUNT IS ODD AND THE DATA IS GROUP OR FAMILY, DO ODD_STYLE_GROUP
                 else if(rowCount%2 == 1 && (type == 'pg' || type == 'pgf'))
                     return odd_style_group;
+                //IF THE COUNT IS ODD AND THE DATA IS A PARAMETER, DO ODD_STYLE_PARAMETER
                 else if(rowCount%2 == 1 && type == 'p')
                     return odd_style_parameter;
             }
@@ -312,7 +323,6 @@
                 return output_string;
             }
 
-            GetFullDbStore();
             
         });
 
