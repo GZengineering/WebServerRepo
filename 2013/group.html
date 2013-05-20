@@ -195,7 +195,9 @@
                 /*create a new grid*/
                 var grid = new DataGrid({
                     store: GroupDataStore,
-                    structure: layout}, 'GroupGridDiv');
+                    structure: layout,
+                    selectionMode: 'single',
+                    }, 'GroupGridDiv');
                 grid.startup(); //RENDER
 
                 dojo.connect(GroupMemStore, 'notify', function(){grid._refresh()});

@@ -230,21 +230,26 @@ function individual (response, request, collection, url)
             {
               console.log('Parameter Class \'' + param_class.name + '\' saved successfully');
               var s = JSON.stringify(result[0]);
-              if(!typeof(s) == 'string')
-              {
-                s = {name: param_class.name};
-                s = JSON.stringify(s);
-                response.writeHead(200, {"Content-Type": "text/plain"});
-                response.write(s);
-                response.end();
-              }
-              else
-              {
+              s = JSON.stringify(param_class);
                 console.log(s);
                 response.writeHead(200, {"Content-Type": "text/plain"});
                 response.write(s);
                 response.end();
-              }
+              // if(!typeof(s) == 'string')
+              // {
+              //   s = JSON.stringify(param_class);
+              //   response.writeHead(200, {"Content-Type": "text/plain"});
+              //   response.write(s);
+              //   response.end();
+              // }
+              // else
+              // {
+              //   s = JSON.stringify(param_class);
+              //   console.log(s);
+              //   response.writeHead(200, {"Content-Type": "text/plain"});
+              //   response.write(s);
+              //   response.end();
+              // }
               
             }
             else if(error)
@@ -508,6 +513,8 @@ function family(response, request, collection, url)
   if(FieldQuery.action == 'change_pf')
   {
     var pf = eval('('+FieldQuery.pf+')');
+    var oid = new ObjectID(pf._id);
+    pf._id = oid;
     collection.save(pf);
     collection.find(pf).toArray(
       function(error, doc)

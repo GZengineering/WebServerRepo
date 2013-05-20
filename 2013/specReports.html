@@ -11,21 +11,11 @@
         
     <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/claro/claro.css"> -->
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
-        #parameterGridDiv 
+        #ProductSelect
         {
-            height: 40em;
-            width: 100%;
+            min-width: 10em
         }
-        #selectionGrid 
-        {
-            height: 40em;
-            width: 100%;
-        }
-        #groupGrid 
-        {
-            height: 40em;
-            width: 100%;
-        }
+
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
     </script>
@@ -38,143 +28,292 @@
         "dojo/_base/array",
         'dijit/registry',
         'dojo/_base/xhr', 
+        'dijit/form/RadioButton',
         'dojox/grid/_CheckBoxSelector',
-        "dijit/form/Button", 
+        "dijit/form/Button",
+        'dijit/form/TextBox', 
+        'dijit/form/Select', 
+        'dojo/store/Observable',
+        'dojo/store/Memory',
+        'dojo/data/ObjectStore',
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, Button, dom)
+      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
-            /****************************   Begin Product Grid  *********************************/
+            /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
+            var has_loaded = false;
 
-            var ProductGrid = new Object();
-            //Build the Dojo Grid for groups
-            ProductGrid.buildProductGrid = function(products)
+            /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
+            var fullDbMemStore = new Memory({data: new Array()});
+                fullDbMemStore = Observable(fullDbMemStore);
+                var fullDataStore = new ObjectStore({
+                    objectStore: fullDbMemStore
+                });
+            window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
+
+            /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            GetFullDbStore = function()
             {
-                ProductGrid.selectedProduct;
-                //Grid Data
-                var data = 
-                {
-                  identifier: "id",
-                  items: []
-                };
-
-                var data_list = []; // data list to display data
-
-                //set data list values from fields parameter
-                for(i=0;i<products.length;i++)
-                {
-                  data_list[i] = {col1: 'id', col2: products[i].product_name}
-                }
-
-                var rows = data_list.length; //# of rows = # of data
-                for(var i = 0; i < rows; i++)
-                {
-                  data.items.push(lang.mixin({ id: i }, data_list[i]));
-                }
-                var productStore = new ItemFileWriteStore({data: data}); //set up the store
-
-                /*set up layout*/
-                var layout = [[
-                  {'name': '#', 'field': 'id', 'width': '15%'},
-                  {'name': 'Product', 'field': 'col2', 'width': '85%'},
-                ]];
-
-                //Remove the group grid if it already exists
-                dijit.registry.remove("productGrid");
-
-                /*create a new grid*/
-                var productGrid = new DataGrid({
-                    store: productStore,
-                    structure: layout,
-                    autoHeigth: true}, "productGrid");
-
-
-                /*Call startup() to render the grid*/
-                productGrid.startup();
-
-                //store the currently selected group.
-                function noteSelected()
-                {
-                    var items = this.selection.getSelected();
-                    ProductGrid.selectedProduct = items[0].col2;
-                }
-
-                // When the group selection changes, update the SelectedGrid
-                // and store which group is currently selected.
-                productGrid.on("SelectionChanged",
-                        lang.hitch(productGrid, ProductGrid.getSpecs, true));
-                productGrid.on("SelectionChanged",
-                        lang.hitch(productGrid, noteSelected, true));
-
-            }
-
-            //Getter for the currently selected group
-            ProductGrid.getSelected = function()
-            {
-                return this.selectedProduct;
-            }
-
-            //get the fields of the selected group from the database.
-            ProductGrid.getSpecs = function()
-            {
-                //get the selected items from the parameter grid
-                var items = this.selection.getSelected();
-                //store the selected group
-                var selectedProduct = items[0].col2;
-                var returnedProduct;
-
                 xhr.get(
                 {
-                    url:'/productBuilder',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
+                    url:'/global',
+                    handleAs: 'json',
                     content:
                     {
-                        action: 'getSpecs',
-                        product_name: selectedProduct,
+                        action: 'getAll',
                         loaded: has_loaded = true,
                     },
-                    load:function(response)
+                    load: function(response)
                     {
-                        returnedProduct = response;
-                        // GroupGrid.buildGroupGrid(this.groups); //rebuild the dojo Grid
-                        console.log('in XHR: ' +returnedProduct);
-                        ProductSummaryGrid.buildGrid(returnedProduct);
+                        fullDbMemStore.data = response;
+                        BuildGrids();
                     },
-                    error:function(error)
+                    error: function(error)
                     {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
+                        var msg = 'There was an error getting the db. Error: ' + error;
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
+                        console.log(msg);
                     }
                 });
             }
 
-            ProductGrid.getProducts = function()
+
+            /*  BUILDS THE GRIDS USING THE COLLECTED AND ORGANIZED DATA  */
+            function BuildGrids()
             {
-                xhr.get(
-                {
-                    url:'/productBuilder',
-                    handleAs: 'json', //grabs the xhr string and turns it into an object
-                    content:
-                    {
-                        action: 'getProducts',
-                        loaded: has_loaded = true,
-                    },
-                    load:function(response)
-                    {
-                        this.products = response;
-                        ProductGrid.buildProductGrid(this.products); //rebuild the dojo Grid
-                    },
-                    error:function(error)
-                    {
-                        console.log("There was an error: " + error);
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + error;
-                    }
-                });
+                //QUERY TO GET THE PARAMETERS FROM THE FULL STORE
+                var families = fullDbMemStore.query({type: "pgf"});
+                var familyStore = new Memory({data: families, idProperty: 'name'});
+                    familyStore = Observable(familyStore);
+                    var familyDataStore = new ObjectStore({
+                        objectStore: familyStore
+                    });
+                    console.log(familyStore.idProperty);
+
+                //GLOBALIZE THE PARAMETER STORE
+                window.familyStore = familyStore;
+                window.familyDataStore = familyDataStore;
+
+                fillOptions(families);
             }
 
-            /****************************   End Product Grid  *********************************/
+            var ProductSelect = new Select(
+            {
+                options: [],
+            }, "ProductSelect");
 
-            ProductGrid.getProducts();
+            dojo.connect(ProductSelect, "onChange", function(value)
+            {
+                console.log(value);
+                var family = familyStore.get(value);
+                console.log(family);
+                ReportGrid.buildGrid(family);
+            });
+
+            var fillOptions = function(families)
+            {
+                console.log(families);
+                for(var i = 0;i < families.length; i++)
+                {
+                    var p = families[i];
+                    console.log(p.name);
+                    ProductSelect.options.push({label: p.name, value: p.name});
+                }
+                ProductSelect.set(ProductSelect.options[0]);
+            }
+
+            var ReportGrid = {};
+
+            ReportGrid.buildGrid = function(family)
+            {
+                console.log(family);
+                dom.byId("ReportGrid").innerHTML = '';
+
+                var html_table = '';
+
+                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:311pt\"";
+
+                var header_style = "style=\"height:15.0pt;width:136pt; font-size:11.0pt;color:white;font-weight:700;text-decoration:none;text-underline-style: none;text-line-through:none;font-family:Cambria;border-top:1.0pt solid black; border-right:.5pt solid black;border-bottom:.5pt solid black;border-left: .5pt solid black;background:#404040;mso-pattern:black none; padding: 2px\"";
+
+
+                var rowCount = 0;
+
+                //TABLE HEADER
+                html_table += "<table "+table_properties+">";
+                html_table += "<tr><td colspan='2' "+header_style+"><b>Technical Specifications</b></tr>";
+
+                //FAMILY NAME ROW
+                html_table += "<tr>"; 
+                html_table += "<td "+get_row_style('pgf',rowCount)+">";
+                html_table += "Product:";
+                html_table += "</td>";
+                html_table += "<td align=right "+get_row_style('pgf',rowCount)+">";
+                html_table += family.name;
+                html_table += "</td>";
+                html_table += "</tr>";
+                rowCount++;
+
+
+                //ENTER EACH GROUP AS A ROW AND EACH GROUPS PARAMETERS AS A ROW
+                for(var i = 0; i < family.members.length; i++)
+                {
+                    //IF THE MEMBER IS NULL, BAIL
+                    if(!family.members[i])
+                        continue;
+
+                    group = family.members[i];
+
+                    //ADD ROW FOR CURRENT GROUP
+                    html_table += "<tr>"; 
+                    html_table += "<td "+get_row_style('pg',rowCount)+">";
+                    html_table += group.name;
+                    html_table += "</td>";
+                    html_table += "<td align=right "+get_row_style('pg',rowCount)+"> ";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    rowCount++; //INCREMENT ROW COUNT
+
+                    //FOR EACH PARAMETER OF THE GROUP, ADD A ROW
+                    for(var j = 0; j<group.members.length; j++)
+                    {
+                        //IF THE MEMBER IS NULL, BAIL
+                        if(!group.members[i])
+                            continue;
+
+                        var parameter = group.members[j];
+
+                        var realized_value = realizeValue(group, parameter.members.value);
+
+                        //ADD ROW FOR CURRENT PARAMETER
+                        html_table += "<tr>"; 
+                        html_table += "<td "+get_row_style('p',rowCount)+">";
+                        html_table += parameter.name;
+                        html_table += "</td>";
+                        html_table += "<td align=right "+get_row_style('p',rowCount)+"> ";
+                        html_table += realized_value;
+                        html_table += "</td>";
+                        html_table += "</tr>";
+                        rowCount++; //INCREMENT ROW COUNT
+                    }
+                }
+
+                html_table += "</table>";
+                dom.byId("ReportGrid").innerHTML = html_table;
+
+                console.log(dom.byId("ReportGrid").innerHTML);
+            }
+
+            function get_row_style(type, rowCount)
+            {
+                var odd_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+
+                var even_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+
+                var odd_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+
+                var even_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.5pt solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+
+                if(rowCount%2 == 0 && (type == 'pg' || type == 'pgf'))
+                    return even_style_group;
+                else if(rowCount%2 == 0 && type == 'p')
+                    return even_style_parameter;
+                else if(rowCount%2 == 1 && (type == 'pg' || type == 'pgf'))
+                    return odd_style_group;
+                else if(rowCount%2 == 1 && type == 'p')
+                    return odd_style_parameter;
+            }
+
+            //PARSE THE GIVEN DEFINITION STRING AND GROUP
+            function realizeValue(group, value)
+            {
+                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                var val_elements = value.split(";");
+
+                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                var output_elements = [];
+
+                //QUERY THE STORE FOR ALL PIs
+                var pis = group.members;
+
+                //STRING FOR FINAL OUTPUT
+                var output = '';
+
+                //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
+                //REPORT AN ERROR
+                if(pis.length < 1 || pis == null)
+                {
+                    output = 'There was a problem acquiring the parameters';
+                    console.log('Parse Error: ' + output);
+                    return output;
+                } 
+                //WHILE ELEMENTS REMAIN
+                while(val_elements.length > 0)
+                {
+                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                    var not_found = true;
+                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+                    var temp_property;
+
+                    //GET THE NEXT ELEMENT FROM THE ARRAY
+                    var element = val_elements.shift();
+
+                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+                    for(var i = 0; i < pis.length; i++)
+                    {
+                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+                            break;
+
+                        //STORE CURRENT PARAMETER
+                        var pi = pis[i];
+
+                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+                        if(element == pi.name)
+                        {
+                            output_elements.push(pi.members.value);
+                            not_found = false;
+                        }
+                    }
+                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+                    if(not_found)
+                        output_elements.push(element);
+
+                }
+                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                if(val_elements.length < 1)
+                {
+                    output = build_output_string(output_elements);
+                    return output;
+                }
+                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                {
+                    output = 'An unknown error occurred parsing the definition.';
+                    return output;
+                }
+            }
+
+            //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
+            function build_output_string(output_elements)
+            {
+                var output_string = '';
+                for (var i = 0; i < output_elements.length; i++)
+                    output_string += output_elements[i];
+                try
+                {
+                    output_string = eval(output_string);
+                    output_string = output_string.toFixed(1); //ROUND TO 3 DECIMALS
+                }
+                catch(error)
+                {
+                    //if there's an error, ignore it and return the string as it was.
+                }
+                var i = output_string.indexOf('.0')
+                if(i != -1)
+                    output_string = output_string.slice(0,i);
+                return output_string;
+            }
+
+            GetFullDbStore();
+            
         });
 
     </script>
@@ -183,22 +322,16 @@
 <!-- Layout -->
 <body class="claro">
     <table width = '100%' border = "1">
-        <col width = '50%'>
-        <col width = '50%'>
+        <col width = '100%'>
         <tr>
             <td style = "text-align: center; padding: 5px">
                 <b>Products:</b>
             </td>
-            <td style = "text-align: center; padding: 5px">
-                <p><b>Spec Report:</b></p>
-            </td>
         </tr>
         <tr>
-            <td valign = "top" style = "padding: 5px; text-align:right">
-                <div id="productGrid"></div>
-            </td>
-            <td valign ="top" style = "padding: 5px">
-                <div id= "selectionGrid"></div>
+            <td valign = "top" style = "padding: 5px; text-align:left">
+                <div id="ProductSelect"></div>
+                <div id = "ReportGrid"></div>
             </td>
         </tr>
         <tr>

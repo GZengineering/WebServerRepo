@@ -87,7 +87,6 @@
                     load: function(response)
                     {
                         fullDbMemStore.data = response;
-                        MASTER_DATA = response;
                         BuildGrids();
                     },
                     error: function(error)
@@ -757,6 +756,7 @@
             /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
             FamilyViewerGrid.analyzeChanges = function(pgf)
             {
+                console.log(pgf);
                 var viewer_data = FamilyViewerMemStore.data;
                 var groups = pgf.members;
 

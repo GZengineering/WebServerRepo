@@ -1,5 +1,5 @@
 //requestHelpers.js
-// This code was written by Alex Stout for Goal Zero, LLC private
+// This code was written by Alex Stout for Goal Zero, LLC private use.
 //April 2013
 
 var fs = require("fs");
