@@ -29,6 +29,27 @@
         {
             font-size: 10px;
         }
+        #button_multiplication
+        {
+            width: 15px;
+        }
+        #button_division
+        {
+            width: 15px;
+        }
+        #button_addition
+        {
+            width: 15px;
+        }
+        #button_subtraction
+        {
+            width: 15px;
+        }
+        #txtBox_paramValue
+        {
+            font-family: Calibri;
+            font-size: 9pt;
+        }
         </style>
 
         <!-- parameter creator functions -->
@@ -45,7 +66,7 @@
             <td style = "text-align: center; padding: 5px">
                 <b>Parameter Class Creator</b>
                     <div style="text-align: right; vertical-align: bottom">
-                        <button id="button_add_new_param_class"></button>
+                        <button id="button_commit_new"></button>
                     </div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
@@ -59,26 +80,66 @@
         </tr>
         <tr>
             <td valign = "top" style = "padding: 5px">
-                <table>
+                <table width="100%">
+                    <col width="85%">
+                    <col width="15%">
                     <tr>
-                        <td style = "padding: 5px">
+                        <td valign ="top">
                             <div style = "padding: 2px">
-                            <label for="txtBox_paramName" style = "padding: 5px">Name:</label><br>  
-                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
-                        </td>
-                    </tr>
-                </table>
-                <div id = "fields_paramProperties" style = "display: block">
-                    <table width = '100%' border = '0'>
-                        <tr>
-                            <td style = "padding: 5px">
-                                <label for="txtBox_paramValue" style = "padding: 5px">Value:</label><br>  
+                                <label for="txtBox_paramName">Name:</label><br>  
+                                <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
+                                <br><br>
+                                <label for="txtBox_paramValue">Value:</label><br>  
                                 <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                <br><br>
+                            </div>
+                            <br>
+                            <div align="center" style = "padding: 2px" >
+                                Report Grade:
+                                <br>
+                                1<div style="padding: 2px" id="radio1"></div>
+                                2<div style="padding: 2px" id="radio2"></div>
+                                3<div style="padding: 2px" id="radio3"></div>
+                                4<div style="padding: 2px" id="radio4"></div>
+                            </form>
+                        </td>
+                         <td>
+                            <table align="right" style="border:.5pt solid black">
+                                <tr>
+                                    <td align="center">
+                                        <b>Operators</b>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="text-align: center">
+                                            <button id="button_multiplication"></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="text-align: center">
+                                            <button id="button_division"></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="text-align: center">
+                                            <button id="button_addition"></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="text-align: center">
+                                            <button id="button_subtraction"></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                </table>
             </td>
             <td valign = "top">
                 <div id="ParamGrid"></div>

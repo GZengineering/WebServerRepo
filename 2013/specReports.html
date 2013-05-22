@@ -41,9 +41,6 @@
       function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
 
-            init();
-
-
 
             /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
             var has_loaded = false;
@@ -77,8 +74,9 @@
                     error: function(error)
                     {
                         var msg = 'There was an error getting the db. Error: ' + error;
-                        dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
+                        // dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
                         console.log(msg);
+                        alert(msg);
                     }
                 });
             }
@@ -177,15 +175,17 @@
                     rowCount++; //INCREMENT ROW COUNT
 
                     //FOR EACH PARAMETER OF THE GROUP, ADD A ROW
-                    for(var j = 0; j<group.members.length; j++)
+                    for(var j = 0; j<group.members.report.length; j++)
                     {
                         //IF THE MEMBER IS NULL, BAIL
-                        if(!group.members[i])
+                        if(!group.members.report[j])
                             continue;
 
-                        var parameter = group.members[j];
+                        var parameter = group.members.report[j];
 
-                        var realized_value = realizeValue(group, parameter.members.value);
+                        console.log(parameter);
+
+                        var realized_value = realizeValue(family, parameter.members.value);
 
                         //ADD ROW FOR CURRENT PARAMETER
                         html_table += "<tr>"; 
@@ -234,8 +234,8 @@
                     return odd_style_parameter;
             }
 
-            //PARSE THE GIVEN DEFINITION STRING AND GROUP
-            function realizeValue(group, value)
+            //PARSE THE GIVEN DEFINITION STRING
+            function realizeValue(pgf, value)
             {
                 //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
                 var val_elements = value.split(";");
@@ -244,7 +244,13 @@
                 var output_elements = [];
 
                 //QUERY THE STORE FOR ALL PIs
-                var pis = group.members;
+                var pis = [];
+                for(var i = 0; i < pgf.members.length; i++)
+                {
+                    var group = pgf.members[i];
+                    pis = pis.concat(group.members.standard);
+                    pis = pis.concat(group.members.report);
+                }
 
                 //STRING FOR FINAL OUTPUT
                 var output = '';
@@ -280,7 +286,27 @@
                         //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                         if(element == pi.name)
                         {
-                            output_elements.push(pi.members.value);
+                            if(!pi.members.computed)
+                            {
+                                pi.members.computed = realizeValue(pgf, pi.members.value);
+                                if(/[\+\-\*\/]/.test(pi.members.computed))
+                                {
+                                    try
+                                    {
+                                        console.log(pi.members.computed);
+                                        pi.members.computed = eval(pi.members.computed);
+                                        pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
+                                        console.log(pi.members.computed);
+                                    }
+                                    catch(error)
+                                    {
+                                        //if there's an error, ignore it and return the string as it was.
+                                    }
+                                }
+                                output_elements.push(pi.members.computed);
+                            }
+                            else
+                                output_elements.push(pi.members.computed);
                             not_found = false;
                         }
                     }
@@ -306,32 +332,63 @@
             function build_output_string(output_elements)
             {
                 var output_string = '';
+                if(output_elements.length < 1 || output_elements[0] == "")
+                    return "(undeclared)";
                 for (var i = 0; i < output_elements.length; i++)
+                {
                     output_string += output_elements[i];
-                try
-                {
-                    output_string = eval(output_string);
-                    output_string = output_string.toFixed(1); //ROUND TO 3 DECIMALS
                 }
-                catch(error)
-                {
-                    //if there's an error, ignore it and return the string as it was.
-                }
-                var i = output_string.indexOf('.0')
-                if(i != -1)
-                    output_string = output_string.slice(0,i);
-                return output_string;
-            }
 
+                output_elements = output_string.split("'");
+                output_string = "";
+                for(var i = 0; i < output_elements.length; i++)
+                {
+                    try
+                    {
+                        var e = output_elements[i];
+                        e = eval(e);
+                        e = e.toFixed(1);
+                        var index = e.indexOf('.0');
+                        if(index > -1)
+                        {
+                            e = e.substring(0, index);
+                        }
+                        output_elements[i] = e;
+                    }
+                    catch(error){}
+                }
+                for (var i = 0; i < output_elements.length; i++)
+                {
+                    output_string += output_elements[i];
+                }
+
+                if(/[\+\-\*\/]/.test(output_string))
+                {
+                    try
+                    {
+                        console.log(output_string);
+                        output_string = eval(output_string);
+                        output_string = output_string.toFixed(3); //ROUND TO 3 DECIMALS
+                        console.log(output_string);
+                    }
+                    catch(error)
+                    {
+                        //if there's an error, ignore it and return the string as it was.
+                    }
+                }
+
+                return output_string;
+            }            
+
+            init();
             
         });
-
     </script>
 </head>
 
 <!-- Layout -->
 <body class="claro">
-    <table width = '100%' border = "1">
+    <table width = '100%' border = "0">
         <col width = '100%'>
         <tr>
             <td style = "text-align: center; padding: 5px">
@@ -344,11 +401,11 @@
                 <div id = "ReportGrid"></div>
             </td>
         </tr>
-        <tr>
+        <!-- <tr>
             <td colspan = "100%" style = "padding: 10px">
                 <div id="serverResponse">Nothing Selected</div>
             </td>
-        </tr>
+        </tr> -->
     </table>
 </body>
 </html>

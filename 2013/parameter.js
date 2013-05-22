@@ -6,6 +6,7 @@ var has_loaded = false; // tells the request handler if this page has already be
         'dojo/_base/array',
         'dojo/_base/xhr', 
         'dijit/form/TextBox',
+        'dijit/form/Textarea',
         'dijit/InlineEditBox',
         'dojo/data/ItemFileWriteStore',
         'dojo/store/Observable',
@@ -18,7 +19,7 @@ var has_loaded = false; // tells the request handler if this page has already be
         'dojox/grid/cells/dijit',
         'dijit/layout/ContentPane',
         'dojo/domReady!'], 
-        function(lang, dom, registry, Button, baseArray, xhr, TextBox, InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
+        function(lang, dom, registry, Button, baseArray, xhr, TextBox, Textarea,  InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
         {
             /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
             var fullDbMemStore = new Memory({data: new Array()});
@@ -70,7 +71,13 @@ var has_loaded = false; // tells the request handler if this page has already be
                 paramStore.put(lang.mixin(
                     {id: paramStore.data.length},
                     o,
-                    {memberValue: object.members.value}));
+                    {memberValue: object.members.value},
+                    {memberGrade: object.members.reportGrade}));
+                // for(var i = 0; i < paramStore.data.length; i++)
+                // {
+                //     if(!paramStore.data[i].id)
+                //         delete paramStore.data[i];
+                // }
             }
 
 
@@ -84,8 +91,9 @@ var has_loaded = false; // tells the request handler if this page has already be
             {
                 //DEFINE THE LAYOUT
                 var layout = [[
-                  {'name': 'Parameter', 'field': 'name', 'width': '50%', editable: true},
-                  {'name': 'Value', 'field': 'memberValue', 'width': '50%', editable: true},
+                  {'name': 'Parameter', 'field': 'name', 'width': '25%', editable: true},
+                  {'name': 'Value', 'field': 'memberValue', 'width': '65%', editable: true},
+                  {'name': 'Report Grade', 'field': 'memberGrade', 'width': '10%', editable: true},
                 ]];
 
                 var parameters = fullDbMemStore.query({type: 'param_class'});
@@ -94,7 +102,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                     paramStore.put(lang.mixin(
                         { id: i},
                         parameters[i],
-                        {memberValue: parameters[i].members.value}
+                        {memberValue: parameters[i].members.value},
+                        {memberGrade: parameters[i].members.reportGrade}
                         ));
                 }
 
@@ -104,8 +113,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                 var grid = new DataGrid({
                     store: paramDataStore,
                     structure: layout,
-                    selectionMode: 'single',
-                    singleClickEdit: true}, 'ParamGrid');
+                    selectionMode: 'single'
+                    }, 'ParamGrid');
                 grid.startup(); //RENDER
 
                 //REGISTER NOTIFY EVENT TO REFRESH THE GRID
@@ -149,7 +158,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                         button_add_param_to_value.onClick();
                     });
 
-
                 //GLOBALIZE STORE DATA AND THE GRID
                 window.paramGrid = grid;
             }
@@ -157,16 +165,20 @@ var has_loaded = false; // tells the request handler if this page has already be
             /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
             ParamGrid.analyzeChanges = function()
             {
-                var parameters = paramStore.data;
+                var parameters = [];
+                var store = paramStore.data;
 
-                for(var i = 0; i < parameters.length; i++)
+                for(var i = 0; i < store.length; i++)
                 {
-                    var p = parameters[i];
-                    p.members.value = p.memberValue;
-                    delete p.__isDirty;
-                    delete p.id;
-                    delete p.memberValue;
-                    parameters[i] = p;
+                    var p = store[i];
+                    var temp = {};
+                    temp.members = p.members;
+                    temp.members.value = p.memberValue;
+                    temp.members.reportGrade = p.memberGrade;
+                    temp._id = p._id;
+                    temp.name = p.name;
+                    temp.type = p.type;
+                    parameters.push(temp);
                 }
                 console.log(parameters);
                 ParamGrid.commitChanges(parameters);
@@ -191,7 +203,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                         alert("Changes were successful");
                         dom.byId("txtBox_paramName").value = '';
                         dom.byId("txtBox_paramValue").value = '';
-                        console.log(response);
 
                         //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
                         //ADD THE OBJECT TO THE STORE
@@ -214,20 +225,20 @@ var has_loaded = false; // tells the request handler if this page has already be
 
             /*  TEXT BOXES  */
             var txtBox_paramName = new TextBox({},"txtBox_paramName");
-            var txtBox_paramValue = new TextBox({},"txtBox_paramValue");
+            var txtBox_paramValue = new Textarea({},"txtBox_paramValue");
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE NAME TEXTBOX
             dojo.connect(txtBox_paramName, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
-                    button_add_new_param_class.onClick();
+                    button_commit_new.onClick();
             });
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE VALUE TEXTBOX
             dojo.connect(txtBox_paramValue, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
-                    button_add_new_param_class.onClick();
+                    button_commit_new.onClick();
             });
 
             //BUTTON TO REMOVE A FIXED PI
@@ -239,9 +250,9 @@ var has_loaded = false; // tells the request handler if this page has already be
                     var selected = ParamGrid.selected_fields[0];
                     if(!selected)
                     {
-                        alert('Select a Parameter to Copy.');
-                        return;
+                        return alert('Select a Parameter to Copy.');
                     }
+                    console.log(selected);
                     add_param_to_value(selected);
                 },
             }, 'button_add_param_to_value');
@@ -256,6 +267,66 @@ var has_loaded = false; // tells the request handler if this page has already be
                 else
                     dom.byId("txtBox_paramValue").value += ';' + name;   
             }
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_multiplication = new Button(
+            {
+                label: '*', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramValue").value == "")
+                        dom.byId("txtBox_paramValue").value = '*'; 
+                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
+                        dom.byId("txtBox_paramValue").value += '*';
+                    else
+                        dom.byId("txtBox_paramValue").value += ';' + '*';   
+                },
+            }, 'button_multiplication');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_division = new Button(
+            {
+                label: '/', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramValue").value == "")
+                        dom.byId("txtBox_paramValue").value = '/'; 
+                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
+                        dom.byId("txtBox_paramValue").value += '/';
+                    else
+                        dom.byId("txtBox_paramValue").value += ';' + '/';   
+                },
+            }, 'button_division');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_addition = new Button(
+            {
+                label: '+', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramValue").value == "")
+                        dom.byId("txtBox_paramValue").value = '+'; 
+                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
+                        dom.byId("txtBox_paramValue").value += '+';
+                    else
+                        dom.byId("txtBox_paramValue").value += ';' + '+';   
+                },
+            }, 'button_addition');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_subtraction = new Button(
+            {
+                label: '-', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramValue").value == "")
+                        dom.byId("txtBox_paramValue").value = '-'; 
+                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
+                        dom.byId("txtBox_paramValue").value += '-';
+                    else
+                        dom.byId("txtBox_paramValue").value += ';' + '-';   
+                },
+            }, 'button_subtraction');
 
             //BUTTON TO REMOVE A FIXED PI
             var button_delete_param_class = new Button(
@@ -279,10 +350,37 @@ var has_loaded = false; // tells the request handler if this page has already be
                     }
                 }, "button_commitChanges");
 
+            var radio1 = new RadioButton(
+            {
+                name: 'reportGrade',
+                value: '1',
+                checked: true,
+            }, "radio1");
+
+            var radio2 = new RadioButton(
+            {
+                name: 'reportGrade',
+                checked: false,
+                value: '2',
+            }, "radio2");
+
+            var radio3 = new RadioButton(
+            {
+                name: 'reportGrade',
+                checked: false,
+                value: '3',
+            }, "radio3");
+
+            var radio4 = new RadioButton(
+            {
+                name: 'reportGrade',
+                checked: false,
+                value: '4',
+            }, "radio4");
 
 
             //BUTTON TO SUBMIT A NEW PI            
-            var button_add_new_param_class = new Button(
+            var button_commit_new = new Button(
             {
                 label: 'Commit',
                 onClick: function()
@@ -294,14 +392,26 @@ var has_loaded = false; // tells the request handler if this page has already be
                          return;
                     }
 
+                    var grade = '1';
+                    if(radio2.checked)
+                        grade = '2';
+                    else if(radio3.checked)
+                        grade = '3';
+                    else if(radio4.checked)
+                        grade = '4';
+
+                    var dependencies = getDependencies(dom.byId("txtBox_paramValue").value);
+                    console.log(dependencies);
                     var param_class = {};
                     param_class.type = 'param_class';
                     param_class.name = dom.byId("txtBox_paramName").value;
                     param_class.members = {};
                     param_class.members.value = dom.byId("txtBox_paramValue").value;
+                    param_class.members.dependencies = dependencies;
+                    param_class.members.reportGrade = grade;
                     new_param_class(param_class);
                 }
-            }, 'button_add_new_param_class');
+            }, 'button_commit_new');
 
             //FUNCTION SUBMITS THE NEW PI TO THE SERVER
             //IF THE SERVER SUCCEEDS, THE SERVER RETURNS THE OBJECT
@@ -333,8 +443,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                         //IF WE RECEIVE AN EMPTY OBJECT, TELL THE USER IT ALREADY EXISTS AND BAIL.
                         if(objectIsEmpty(response))
                         {
-                            alert('The Parameter Class \'' + param_class.name + '\' already exists.');
-                            return;
+                            paramGrid._refresh();
+                            return alert('The Parameter Class \'' + param_class.name + '\' already exists.');
                         }
                         //UPDATE THE SERVER RESPONSE DIV, CLEAR FIELDS, AND ADD THE OBJECT TO THE STORE
                         dom.byId("serverResponse").innerHTML = "Response from server: \'" + param_class.name + "\' successfully added.";
@@ -393,7 +503,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                 {
                     var id = param_class.id;
                     paramStore.remove(id);
-                    paramGrid._refresh();
+                    // paramGrid._refresh();
                 }
             }
 
@@ -408,6 +518,98 @@ var has_loaded = false; // tells the request handler if this page has already be
                   }
                }
                return true;
+            }
+
+            //PARSE THE GIVEN DEFINITION STRING
+            function getDependencies(value)
+            {
+                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                var val_elements = value.split(";");
+
+                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                var dependencies = [];
+
+                //QUERY THE STORE FOR ALL PIs
+                var pis = paramStore.data;
+
+                //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
+                //REPORT AN ERROR and return an empty array
+                if(pis.length < 1 || pis == null)
+                {
+                    var msg = 'There was a problem acquiring the parameters';
+                    console.log('Parse Error: ' + msg);
+                    return [];
+                } 
+                //WHILE ELEMENTS REMAIN
+                while(val_elements.length > 0)
+                {
+                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                    var not_found = true;
+                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+                    var temp_property;
+
+                    //GET THE NEXT ELEMENT FROM THE ARRAY
+                    var element = val_elements.shift();
+
+                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+                    for(var i = 0; i < pis.length; i++)
+                    {
+                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+                            break;
+
+                        //STORE CURRENT PARAMETER
+                        var pi = pis[i];
+
+                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+                        if(element == pi.name)
+                        {
+                            var temp = {};
+                            temp._id = pi._id;
+                            temp.name = pi.name;
+                            temp.type = pi.type;
+                            temp.members = pi.members;
+                            console.log(temp);
+                            dependencies.push(temp)
+                            not_found = false;
+                            // if(!pi.members.computed)
+                            // {
+                            //     pi.members.computed = realizeValue(pgf, pi.members.value);
+                            //     if(/[\+\-\*\/]/.test(pi.members.computed))
+                            //     {
+                            //         try
+                            //         {
+                            //             console.log(pi.members.computed);
+                            //             pi.members.computed = eval(pi.members.computed);
+                            //             pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
+                            //             console.log(pi.members.computed);
+                            //         }
+                            //         catch(error)
+                            //         {
+                            //             //if there's an error, ignore it and return the string as it was.
+                            //         }
+                            //     }
+                            //     output_elements.push(pi.members.computed);
+                            // }
+                            // else
+                            //     output_elements.push(pi.members.computed);
+                        }
+                    }
+                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+                    // if(not_found)
+                    //     output_elements.push(element);
+
+                }
+                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                if(val_elements.length < 1)
+                {
+                    console.log(dependencies);
+                    return dependencies;
+                }
+                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                {
+                    alert('An unknown error occurred parsing the definition.');
+                    return dependencies;
+                }
             }
 
 
