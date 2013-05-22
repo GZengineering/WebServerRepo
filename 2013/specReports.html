@@ -175,17 +175,18 @@
                     rowCount++; //INCREMENT ROW COUNT
 
                     //FOR EACH PARAMETER OF THE GROUP, ADD A ROW
-                    for(var j = 0; j<group.members.report.length; j++)
+                    for(var j = 0; j<group.members.length; j++)
                     {
                         //IF THE MEMBER IS NULL, BAIL
-                        if(!group.members.report[j])
+                        if(!group.members)
                             continue;
 
-                        var parameter = group.members.report[j];
+                        var parameter = group.members[j];
 
+                        console.log(group);
                         console.log(parameter);
 
-                        var realized_value = realizeValue(family, parameter.members.value);
+                        // var realized_value = realizeValue(family, parameter.members.value);
 
                         //ADD ROW FOR CURRENT PARAMETER
                         html_table += "<tr>"; 
@@ -193,7 +194,7 @@
                         html_table += parameter.name;
                         html_table += "</td>";
                         html_table += "<td align=right "+get_row_style('p',rowCount)+"> ";
-                        html_table += realized_value;
+                        html_table += parameter.members.computed;
                         html_table += "</td>";
                         html_table += "</tr>";
                         rowCount++; //INCREMENT ROW COUNT
@@ -234,151 +235,150 @@
                     return odd_style_parameter;
             }
 
-            //PARSE THE GIVEN DEFINITION STRING
-            function realizeValue(pgf, value)
-            {
-                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
-                var val_elements = value.split(";");
+            // //PARSE THE GIVEN DEFINITION STRING
+            // function realizeValue(pgf, value)
+            // {
+            //     //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+            //     var val_elements = value.split(";");
 
-                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
-                var output_elements = [];
+            //     //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+            //     var output_elements = [];
 
-                //QUERY THE STORE FOR ALL PIs
-                var pis = [];
-                for(var i = 0; i < pgf.members.length; i++)
-                {
-                    var group = pgf.members[i];
-                    pis = pis.concat(group.members.standard);
-                    pis = pis.concat(group.members.report);
-                }
+            //     //QUERY THE STORE FOR ALL PIs
+            //     var pis = [];
+            //     for(var i = 0; i < pgf.members.length; i++)
+            //     {
+            //         var group = pgf.members[i];
+            //         pis = group.members;
+            //     }
 
-                //STRING FOR FINAL OUTPUT
-                var output = '';
+            //     //STRING FOR FINAL OUTPUT
+            //     var output = '';
 
-                //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
-                //REPORT AN ERROR
-                if(pis.length < 1 || pis == null)
-                {
-                    output = 'There was a problem acquiring the parameters';
-                    console.log('Parse Error: ' + output);
-                    return output;
-                } 
-                //WHILE ELEMENTS REMAIN
-                while(val_elements.length > 0)
-                {
-                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
-                    var not_found = true;
-                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
-                    var temp_property;
+            //     //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
+            //     //REPORT AN ERROR
+            //     if(pis.length < 1 || pis == null)
+            //     {
+            //         output = 'There was a problem acquiring the parameters';
+            //         console.log('Parse Error: ' + output);
+            //         return output;
+            //     } 
+            //     //WHILE ELEMENTS REMAIN
+            //     while(val_elements.length > 0)
+            //     {
+            //         //FLAG FOR WHEN AN ELEMENT IS MATCHED
+            //         var not_found = true;
+            //         //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+            //         var temp_property;
 
-                    //GET THE NEXT ELEMENT FROM THE ARRAY
-                    var element = val_elements.shift();
+            //         //GET THE NEXT ELEMENT FROM THE ARRAY
+            //         var element = val_elements.shift();
 
-                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
-                    for(var i = 0; i < pis.length; i++)
-                    {
-                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
-                            break;
+            //         //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+            //         for(var i = 0; i < pis.length; i++)
+            //         {
+            //             if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+            //                 break;
 
-                        //STORE CURRENT PARAMETER
-                        var pi = pis[i];
+            //             //STORE CURRENT PARAMETER
+            //             var pi = pis[i];
 
-                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
-                        if(element == pi.name)
-                        {
-                            if(!pi.members.computed)
-                            {
-                                pi.members.computed = realizeValue(pgf, pi.members.value);
-                                if(/[\+\-\*\/]/.test(pi.members.computed))
-                                {
-                                    try
-                                    {
-                                        console.log(pi.members.computed);
-                                        pi.members.computed = eval(pi.members.computed);
-                                        pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
-                                        console.log(pi.members.computed);
-                                    }
-                                    catch(error)
-                                    {
-                                        //if there's an error, ignore it and return the string as it was.
-                                    }
-                                }
-                                output_elements.push(pi.members.computed);
-                            }
-                            else
-                                output_elements.push(pi.members.computed);
-                            not_found = false;
-                        }
-                    }
-                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-                    if(not_found)
-                        output_elements.push(element);
+            //             //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+            //             if(element == pi.name)
+            //             {
+            //                 if(!pi.members.computed)
+            //                 {
+            //                     pi.members.computed = realizeValue(pgf, pi.members.value);
+            //                     if(/[\+\-\*\/]/.test(pi.members.computed))
+            //                     {
+            //                         try
+            //                         {
+            //                             console.log(pi.members.computed);
+            //                             pi.members.computed = eval(pi.members.computed);
+            //                             pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
+            //                             console.log(pi.members.computed);
+            //                         }
+            //                         catch(error)
+            //                         {
+            //                             //if there's an error, ignore it and return the string as it was.
+            //                         }
+            //                     }
+            //                     output_elements.push(pi.members.computed);
+            //                 }
+            //                 else
+            //                     output_elements.push(pi.members.computed);
+            //                 not_found = false;
+            //             }
+            //         }
+            //         //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+            //         if(not_found)
+            //             output_elements.push(element);
 
-                }
-                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
-                if(val_elements.length < 1)
-                {
-                    output = build_output_string(output_elements);
-                    return output;
-                }
-                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
-                {
-                    output = 'An unknown error occurred parsing the definition.';
-                    return output;
-                }
-            }
+            //     }
+            //     //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+            //     if(val_elements.length < 1)
+            //     {
+            //         output = build_output_string(output_elements);
+            //         return output;
+            //     }
+            //     else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+            //     {
+            //         output = 'An unknown error occurred parsing the definition.';
+            //         return output;
+            //     }
+            // }
 
-            //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
-            function build_output_string(output_elements)
-            {
-                var output_string = '';
-                if(output_elements.length < 1 || output_elements[0] == "")
-                    return "(undeclared)";
-                for (var i = 0; i < output_elements.length; i++)
-                {
-                    output_string += output_elements[i];
-                }
+            // //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
+            // function build_output_string(output_elements)
+            // {
+            //     var output_string = '';
+            //     if(output_elements.length < 1 || output_elements[0] == "")
+            //         return "(undeclared)";
+            //     for (var i = 0; i < output_elements.length; i++)
+            //     {
+            //         output_string += output_elements[i];
+            //     }
 
-                output_elements = output_string.split("'");
-                output_string = "";
-                for(var i = 0; i < output_elements.length; i++)
-                {
-                    try
-                    {
-                        var e = output_elements[i];
-                        e = eval(e);
-                        e = e.toFixed(1);
-                        var index = e.indexOf('.0');
-                        if(index > -1)
-                        {
-                            e = e.substring(0, index);
-                        }
-                        output_elements[i] = e;
-                    }
-                    catch(error){}
-                }
-                for (var i = 0; i < output_elements.length; i++)
-                {
-                    output_string += output_elements[i];
-                }
+            //     output_elements = output_string.split("'");
+            //     output_string = "";
+            //     for(var i = 0; i < output_elements.length; i++)
+            //     {
+            //         try
+            //         {
+            //             var e = output_elements[i];
+            //             e = eval(e);
+            //             e = e.toFixed(1);
+            //             var index = e.indexOf('.0');
+            //             if(index > -1)
+            //             {
+            //                 e = e.substring(0, index);
+            //             }
+            //             output_elements[i] = e;
+            //         }
+            //         catch(error){}
+            //     }
+            //     for (var i = 0; i < output_elements.length; i++)
+            //     {
+            //         output_string += output_elements[i];
+            //     }
 
-                if(/[\+\-\*\/]/.test(output_string))
-                {
-                    try
-                    {
-                        console.log(output_string);
-                        output_string = eval(output_string);
-                        output_string = output_string.toFixed(3); //ROUND TO 3 DECIMALS
-                        console.log(output_string);
-                    }
-                    catch(error)
-                    {
-                        //if there's an error, ignore it and return the string as it was.
-                    }
-                }
+            //     if(/[\+\-\*\/]/.test(output_string))
+            //     {
+            //         try
+            //         {
+            //             console.log(output_string);
+            //             output_string = eval(output_string);
+            //             output_string = output_string.toFixed(3); //ROUND TO 3 DECIMALS
+            //             console.log(output_string);
+            //         }
+            //         catch(error)
+            //         {
+            //             //if there's an error, ignore it and return the string as it was.
+            //         }
+            //     }
 
-                return output_string;
-            }            
+            //     return output_string;
+            // }            
 
             init();
             

@@ -25,7 +25,7 @@
             height: 55em;
             width: 100%;
         }
-        #standardMemGrid 
+        /*#standardMemGrid 
         {
             height: 23em;
             width: 100%;
@@ -33,6 +33,11 @@
         #reportMemGrid 
         {
             height: 23em;
+            width: 100%;
+        }*/
+        #membersGrid
+        {
+            height: 49.5em;
             width: 100%;
         }
         .dojoxGridMasterView
@@ -80,30 +85,39 @@
 
             var paramStore = new Memory({data: new Array()});
                 paramStore = Observable(paramStore);
-                var paramDataStore = new ObjectStore({
-                    objectStore: paramStore
-                });
+            var paramDataStore = new ObjectStore({
+                objectStore: paramStore
+            });
 
             window.paramStore = paramStore;
             window.paramDataStore = paramDataStore;
 
-            var reportMemStore = new Memory({data: new Array(), idProperty: '_id'});
-                reportMemStore = Observable(reportMemStore);
-                var reportDataStore = new ObjectStore({
-                    objectStore: reportMemStore
-                });
+            var membersStore = new Memory({data: new Array(), idProperty: '_id'});
+                membersStore = Observable(membersStore);
+            var membersDataStore = new ObjectStore({
+                objectStore: membersStore
+            });
 
-            window.reportMemStore = reportMemStore;
-            window.reportDataStore = reportDataStore;
+            window.membersStore = membersStore;
+            window.membersDataStore = membersDataStore;
 
-            var standardMemStore = new Memory({data: new Array(), idProperty: '_id'});
-                standardMemStore = Observable(standardMemStore);
-                var standardDataStore = new ObjectStore({
-                    objectStore: standardMemStore
-                });
+            // var reportMemStore = new Memory({data: new Array(), idProperty: '_id'});
+            //     reportMemStore = Observable(reportMemStore);
+            //     var reportDataStore = new ObjectStore({
+            //         objectStore: reportMemStore
+            //     });
 
-            window.standardMemStore = standardMemStore;
-            window.standardDataStore = standardDataStore;
+            // window.reportMemStore = reportMemStore;
+            // window.reportDataStore = reportDataStore;
+
+            // var standardMemStore = new Memory({data: new Array(), idProperty: '_id'});
+            //     standardMemStore = Observable(standardMemStore);
+            //     var standardDataStore = new ObjectStore({
+            //         objectStore: standardMemStore
+            //     });
+
+            // window.standardMemStore = standardMemStore;
+            // window.standardDataStore = standardDataStore;
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
             GetFullDbStore = function()
@@ -141,9 +155,11 @@
 
                 SelectionGrid.buildGrid(new Array());
 
-                ReportMembersGrid.buildGrid(new Array());
+                // ReportMembersGrid.buildGrid(new Array());
 
-                StandardMembersGrid.buildGrid(new Array());
+                // StandardMembersGrid.buildGrid(new Array());
+
+                MembersGrid.buildGrid(new Array());
                 
                 dom.byId('txtBox_groupName').value = '';
             }
@@ -268,7 +284,7 @@
                         }
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully added.";
                         ClearTextFields();
-                        add_to_group_store(response);
+                        GroupGrid.add_to_group_store(response);
                     },
                     error:function(error)
                     {
@@ -276,17 +292,17 @@
                         dom.byId("serverResponse").innerHTML = "Response from server: " + error;
                     }
                 });
+            }
 
-                //ADD THE OBJECT TO THE STORE
-                add_to_group_store = function(pg)
-                {
-                    var _pg = new Object(pg);
-                    var index = GroupMemStore.data.length;
-                    GroupMemStore.put(lang.mixin(
-                        {id: index}, 
-                        _pg
-                    )); 
-                }
+            //ADD THE OBJECT TO THE STORE
+            GroupGrid.add_to_group_store = function(pg)
+            {
+                var _pg = new Object(pg);
+                var index = GroupMemStore.data.length;
+                GroupMemStore.put(lang.mixin(
+                    {id: index}, 
+                    _pg
+                )); 
             }
 
             //Removes an entire group from the database given the id of the row
@@ -330,6 +346,39 @@
                 }
             }
 
+            GroupGrid.update_pg = function(pg)
+            {
+                var id = pg.id;
+                delete pg.id;
+                //send request to update an existing PG
+                xhr.get(
+                {
+                    url:"/group", 
+                    content: 
+                    {
+                        action: 'update_pg',
+                        pg: JSON.stringify(pg),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        alert(response);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
+                        ClearTextFields();
+                        GroupMemStore.remove(id);
+                        GroupGrid.add_to_group_store(pg);
+                        groupGrid._refresh();
+                        groupGrid.selection.clear();
+                    },
+                    error:function(error)
+                    {
+                        console.log("There was an error: \n"+error);
+                        alert("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+            }
+
 
             //GETS AND RETURNS ALL THE PIs OF THE GIVEN PGs
             GroupGrid.getFieldsOfGroups = function(pgs)
@@ -354,7 +403,7 @@
                     if(!pg)
                         return;
 
-                    for(var i = 0; i < pg.members.report.length; i++)
+                    for(var i = 0; i < pg.members.length; i++)
                     {
                         //FLAGS IF A MATCH IS FOUND
                         var matched = false;
@@ -363,7 +412,7 @@
                             if(matched)
                                 break;
                             //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
-                            if(pg.members.report[i] == paramStore.data[j]._id)
+                            if(pg.members[i] == paramStore.data[j]._id)
                             {
                                 //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
                                 parameters.push(paramStore.data[j]);
@@ -371,23 +420,23 @@
                             }
                         }
                     }
-                    for(var i = 0; i < pg.members.standard.length; i++)
-                    {
-                        //FLAGS IF A MATCH IS FOUND
-                        var matched = false;
-                        for(var j = 0; j < paramStore.data.length; j++)
-                        {
-                            if(matched)
-                                break;
-                            //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
-                            if(pg.members.standard[i] == paramStore.data[j]._id)
-                            {
-                                //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
-                                parameters.push(paramStore.data[j]);
-                                matched = true;
-                            }
-                        }
-                    }
+                    // for(var i = 0; i < pg.members.standard.length; i++)
+                    // {
+                    //     //FLAGS IF A MATCH IS FOUND
+                    //     var matched = false;
+                    //     for(var j = 0; j < paramStore.data.length; j++)
+                    //     {
+                    //         if(matched)
+                    //             break;
+                    //         //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
+                    //         if(pg.members.standard[i] == paramStore.data[j]._id)
+                    //         {
+                    //             //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
+                    //             parameters.push(paramStore.data[j]);
+                    //             matched = true;
+                    //         }
+                    //     }
+                    // }
                 }
                 return parameters;
             }
@@ -450,87 +499,40 @@
             /******************************     END PARAMETER GRID      *********************************/
 
 
-            /******************************     REPORT MEMBERS GRID      *********************************/
-
-            var ReportMembersGrid = {};
-
-            ReportMembersGrid.buildGrid = function(reportMembers)
-            {
-                //DEFINE THE LAYOUT
-                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Parameter', 'field': 'name', 'width': '100%'},
-                ]];
-
-                reportMemStore.setData(reportMembers);
-
-                //CREATE THE DOJO GRID AND RENDER IT
-                var grid = new DataGrid({
-                    store: reportDataStore,
-                    structure: layout,
-                selectionMode: 'multiple'}, 'reportMemGrid');
-                grid.startup(); //RENDER
-
-                //REGISTER NOTIFY EVENT TO REFRESH THE GRID
-                dojo.connect(reportMemStore, 'notify', function(){grid._refresh()});
-
-                dojo.connect(grid, "SelectionChanged", function()
-                {
-                    console.log("Selection Changed");
-                    ReportMembersGrid.selected_fields = this.selection.getSelected();
-                    console.log(ReportMembersGrid.selected_fields);
-                });
-
-                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN THE DIV  */
-                dojo.connect(grid, "onRowMouseOver", function(e)
-                {
-                    //get the row item so we can display the dependencies below
-                    var p_name = grid.store.getValue(grid.getItem(e.rowIndex), 'name');
-                    
-
-                    dom.byId("serverResponse").innerHTML = "Members: " ;
-                });
-
-
-                //GLOBALIZE STORE DATA AND THE GRID
-                window.reportMemGrid = grid;
-            }
-
-            /******************************     END REPORT MEMBERS GRID      *********************************/
-
 
 
             /******************************     STANDARD MEMBERS GRID      *********************************/
 
-            var StandardMembersGrid = {};
+            var MembersGrid = {};
 
-            StandardMembersGrid.buildGrid = function(members)
+            MembersGrid.buildGrid = function(members)
             {
                 //DEFINE THE LAYOUT
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
                   {'name': 'Parameter', 'field': 'name', 'width': '100%'},
                 ]];
 
-                standardMemStore.setData(members);
+                membersStore.setData(members);
 
                 //CREATE THE DOJO GRID AND RENDER IT
                 var grid = new DataGrid({
-                    store: standardDataStore,
+                    store: membersDataStore,
                     structure: layout,
-                selectionMode: 'multiple'}, 'standardMemGrid');
+                selectionMode: 'multiple'}, 'membersGrid');
                 grid.startup(); //RENDER
 
                 //REGISTER NOTIFY EVENT TO REFRESH THE GRID
-                dojo.connect(standardMemStore, 'notify', function(){grid._refresh()});
+                dojo.connect(membersStore, 'notify', function(){grid._refresh()});
 
                 dojo.connect(grid, "SelectionChanged", function()
                 {
                     console.log("Selection Changed");
-                    StandardMembersGrid.selected_fields = this.selection.getSelected();
-                    console.log(StandardMembersGrid.selected_fields);
+                    MembersGrid.selected_fields = this.selection.getSelected();
+                    console.log(MembersGrid.selected_fields);
                 });
 
                 //GLOBALIZE STORE DATA AND THE GRID
-                window.standardMemGrid = grid;
+                window.membersGrid = grid;
             }
 
             /******************************     END STANDARD MEMBERS GRID      *********************************/
@@ -550,7 +552,7 @@
                 ]];
 
                 /*  SET UP DATA STORE  */
-                var selectionMemStore = new Memory({data: parameters});
+                var selectionMemStore = new Memory({data: parameters, idProperty: '_id'});
                 selectionMemStore = Observable(selectionMemStore);
                 var selectionDataStore = new ObjectStore({
                     objectStore: selectionMemStore
@@ -561,12 +563,25 @@
                 var selectionGrid = new DataGrid({
                     store: selectionDataStore,
                     structure: layout,
-                    autoHeigth: true}, "selectionGrid");
+                    selectionMode: 'single'}, "selectionGrid");
                 selectionGrid.startup();
 
                 /*  GLOBALIZE GRID PROPERTIES  */
                 window.selectionGrid = selectionGrid;
                 window.selectionMemStore = selectionMemStore;
+            }
+
+            SelectionGrid.removeParameterFromGroup = function(group, parameter)
+            {
+                selectionMemStore.remove(parameter._id);
+                group.members = [];
+                var store = selectionMemStore.data;
+                for(var i = 0;i < store.length; i++)
+                {
+                    group.members.push(store[i]._id);
+                }
+                console.log(group);
+                GroupGrid.update_pg(group);
             }
 
             /*  ON SELECTION CHANGE OF THE GROUP GRID, THE SELECTION GRID STORE IS REPOPULATED  */
@@ -602,7 +617,7 @@
             //require a name for the group
             var button_newPG = new Button(
             {
-                label: 'Commit',
+                label: 'Commit New',
                 onClick: function()
                 {
                     var group = {};
@@ -612,26 +627,50 @@
                         alert('A name is required for the new group.');
                         return;
                     }
-                    if(standardMemStore.data.length < 1 || reportMemStore.data.length < 1)
+                    if(membersStore.data.length < 1)
                     {
-                        alert('You must add one or more parameters to the the standard or report members.');
+                        alert('You must add one or more parameters to the group.');
                         return;
                     }
-                    group.members = {};
-                    group.members.standard = [];
-                    group.members.report = [];
-                    for(var i = 0; i < standardMemStore.data.length; i++)
+                    group.members = [];
+                    // group.members.standard = [];
+                    // group.members.report = [];
+                    for(var i = 0; i < membersStore.data.length; i++)
                     {
-                        group.members.standard.push(standardMemStore.data[i]._id);
+                        group.members.push(membersStore.data[i]._id);
                     }
-                    for(var i = 0; i < reportMemStore.data.length; i++)
-                    {
-                        group.members.report.push(reportMemStore.data[i]._id);
-                    }
-                    console.log(group);
                     GroupGrid.new_pg(group);
                 }
             }, "button_newPG");
+
+            //BUTTON USED TO ADD MEMBERS TO AN EXISTING GROUP
+            var button_add_to_selected_group = new Button(
+            {
+                label: "Add To Selected",
+                onClick: function()
+                {
+                    var selected = groupGrid.selection.getSelected();
+                    var group = selected[0];
+                    if(!group)
+                        return alert("Select a group to add the paramters to.");
+                    if(membersStore.data.length < 1)
+                        return alert("There must be parameters in the 'Selected Members' grid");
+                    for(var i = 0; i < membersStore.data.length; i++)
+                    {
+                        var matched = false;
+                        mem_to_add = membersStore.data[i];
+                        for(var j = 0; j < group.members.length; j++)
+                        {
+                            if(mem_to_add._id == group.members[j])
+                                matched = true;
+                        }
+                        if(!matched)
+                            group.members.push(mem_to_add._id);
+                    }
+                    console.log(group);
+                    GroupGrid.update_pg(group);
+                }
+            }, "button_add_to_selected_group");
 
 
             //button to delete a selected group
@@ -644,29 +683,42 @@
                     }
                 }, "button_delete_group");
 
-            var button_add_report_member = new Button(
+            //button to delete a selected parameter from the selected group
+            var button_removeParameter = new Button(
+                {
+                    label: 'Delete', 
+                    onClick: function()
+                    {
+                        var group = GroupGrid.selected_groups[0];
+                        var selected_parameters = selectionGrid.selection.getSelected();
+                        var parameter = selected_parameters[0];
+                        SelectionGrid.removeParameterFromGroup(group, parameter);
+                    }
+                }, "button_removeParameter");
+
+            var button_add_member = new Button(
                 {
                     label: '-->', 
                     onClick: function()
                     {
-                        var members = ParamGrid.selected_fields;
-                        if(!members)
+                        var parameters = ParamGrid.selected_fields;
+                        if(!parameters)
                             return;
-                        for(var i = 0; i < members.length; i++)
+                        for(var i = 0; i < parameters.length; i++)
                         {
-                            var dependencies = members[i].members.dependencies;
+                            var dependencies = parameters[i].members.dependencies;
                             addDependencies(dependencies);
                             try
                             {
-                                reportMemStore.add(members[i]);
+                                membersStore.add(parameters[i]);
                             }
                             catch(error)
-                            {console.log(members[i].name + ' is already in that set')};
+                            {console.log(parameters[i].name + ' is already in that set')};
                         }
-                        reportMemGrid._refresh();
+                        membersGrid._refresh();
                         paramGrid.selection.clear();
                     }
-                }, "button_add_report_member");
+                }, "button_add_member");
 
             //HELPER FUNCTION THAT ADDS ALL THE DEPENDENCIES OF A PARAMETER TO THE STANDARD
             //SECTION OF THE GRID AUTOMATICALLY.
@@ -682,7 +734,7 @@
                         if(id == store_member._id)
                         try
                         {    
-                            standardMemStore.add(store_member);
+                            membersStore.add(store_member);
                         }
                         catch(error){}
                     }
@@ -691,60 +743,87 @@
                 }
             }
 
+            //HELPER FUNCTION THAT ADDS ALL THE DEPENDENCIES OF A PARAMETER TO THE STANDARD
+            //SECTION OF THE GRID AUTOMATICALLY.
+            // function removeDependencies(dependencies)
+            // {
+            //     for(var j = 0; j < dependencies.length; j++)
+            //     {
+            //         var id = dependencies[j]._id;
+
+            //         for(var k = 0; k < membersStore.data.length; k ++)
+            //         {
+            //             var store_member = membersStore.data[k];
+            //             if(id == store_member._id)
+            //             try
+            //             {    
+            //                 membersStore.remove(store_member._id);
+            //             }
+            //             catch(error){}
+            //         }
+
+            //         removeDependencies(dependencies[j].members.dependencies);
+            //     }
+            // }
+
             //button to remove selected report members
-            var button_remove_report_member = new Button(
+            var button_remove_member = new Button(
                 {
                     label: '<--', 
                     onClick: function()
                     {
-                        var mem_to_remove = reportMemGrid.selection.getSelected();
+                        var mem_to_remove = membersGrid.selection.getSelected();
                         for(var i = 0;i < mem_to_remove.length; i++)
                         {
-                            reportMemStore.remove(mem_to_remove[i]._id);
+                            if(!mem_to_remove[i])
+                                continue;
+                            // var dependencies = mem_to_remove[i].members.dependencies;
+                            // removeDependencies(dependencies);
+                            membersStore.remove(mem_to_remove[i]._id);
                         }
-                        reportMemGrid._refresh();
+                        membersGrid._refresh();
                     }
-                }, "button_remove_report_member");
+                }, "button_remove_member");
 
             //button to add selected members to standard members
-            var button_add_standard_member = new Button(
-                {
-                    label: '-->', 
-                    onClick: function()
-                    {
-                        var members = ParamGrid.selected_fields;
-                        if(!members)
-                            return;
-                        for(var i = 0; i < members.length; i++)
-                        {
-                            var dependencies = members[i].members.dependencies;
-                            addDependencies(dependencies);
-                            try
-                            {
-                                standardMemStore.add(members[i]);
-                            }
-                            catch(error)
-                            {console.log(members[i].name + ' is already in that set')};
-                        }
-                        standardMemGrid._refresh();
-                        paramGrid.selection.clear();
-                    }
-                }, "button_add_standard_member");
+            // var button_add_standard_member = new Button(
+            //     {
+            //         label: '-->', 
+            //         onClick: function()
+            //         {
+            //             var members = ParamGrid.selected_fields;
+            //             if(!members)
+            //                 return;
+            //             for(var i = 0; i < members.length; i++)
+            //             {
+            //                 var dependencies = members[i].members.dependencies;
+            //                 addDependencies(dependencies);
+            //                 try
+            //                 {
+            //                     standardMemStore.add(members[i]);
+            //                 }
+            //                 catch(error)
+            //                 {console.log(members[i].name + ' is already in that set')};
+            //             }
+            //             standardMemGrid._refresh();
+            //             paramGrid.selection.clear();
+            //         }
+            //     }, "button_add_standard_member");
 
-            //button to remove selected standard members
-            var button_remove_standard_member = new Button(
-                {
-                    label: '<--', 
-                    onClick: function()
-                    {
-                        var mem_to_remove = standardMemGrid.selection.getSelected();
-                        for(var i = 0;i < mem_to_remove.length; i++)
-                        {
-                            standardMemStore.remove(mem_to_remove[i]._id);
-                        }
-                        standardMemGrid._refresh();
-                    }
-                }, "button_remove_standard_member");
+            // //button to remove selected standard members
+            // var button_remove_standard_member = new Button(
+            //     {
+            //         label: '<--', 
+            //         onClick: function()
+            //         {
+            //             var mem_to_remove = standardMemGrid.selection.getSelected();
+            //             for(var i = 0;i < mem_to_remove.length; i++)
+            //             {
+            //                 standardMemStore.remove(mem_to_remove[i]._id);
+            //             }
+            //             standardMemGrid._refresh();
+            //         }
+            //     }, "button_remove_standard_member");
 
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
@@ -765,10 +844,12 @@
             {
                 dom.byId('txtBox_groupName').value = '';
                 paramGrid.selection.clear();
-                standardMemStore.setData(new Array());
-                reportMemStore.setData(new Array());
-                standardMemGrid._refresh();
-                reportMemGrid._refresh();
+                // standardMemStore.setData(new Array());
+                // reportMemStore.setData(new Array());
+                membersStore.setData(new Array());
+                membersGrid._refresh();
+                // standardMemGrid._refresh();
+                // reportMemGrid._refresh();
             }
 
             GetFullDbStore();
@@ -786,14 +867,18 @@
         <tr> <!-- Labels -->
             <td style = "text-align: center; padding: 5px">
                 <b>PG creator - Creates a New PG</b>
-                <div style="text-align: right"><button id = "button_newPG"></button></div>
+                <div style="text-align: right"><button id="button_add_to_selected_group"></button><button id = "button_newPG"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PG lister - Lists All PGs</b>
-                <div style="text-align: right"><button id="button_delete_group"></button></div>
+                <div style="text-align: right"><button id="button_delete_group"></button>
+                </div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PG Viewer - Shows Selected PG</b>
+                <div style="text-align: right">
+                    <button id="button_removeParameter"></button>
+                </div>
             </td>
         </tr>
         <tr> <!-- Grids -->
@@ -811,18 +896,20 @@
                             <div id="ParamGrid"></div>
                         </td>
                         <td>
-                            <table width="100%">
-                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_standard_member"></button></div></tr>
+                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
+                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div>
+                            <!-- <table width="100%">
+                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div></tr>
                                 <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_standard_member"></button></div></tr>
                                 <tr><div style="text-align: center; padding-top: 70px; padding-bottom: 50px"><button id = "button_add_report_member"></button></div></tr>
-                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_report_member"></button></div></tr>
-                            </table>
+                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div></tr>
+                            </table> -->
                         </td>
                         <td>
-                            <div style="padding: 2px" align='center'><b>Standard Members</b></div>
-                            <div id="standardMemGrid"></div>
-                            <div style="padding: 2px" align='center'><b>Report Members</b></div>
-                            <div id="reportMemGrid"></div>
+                            <div style="padding: 2px" align='center'><b>Selected Members</b></div>
+                            <div id="membersGrid"></div>
+                            <!-- <div style="padding: 2px" align='center'><b>Report Members</b></div>
+                            <div id="reportMemGrid"></div> -->
                         </td>
                     </tr>
                 </table>

@@ -311,7 +311,7 @@
                     var pg = pgs[i];
                     
                     //GET PIs OF CURRENT PG
-                    var pis = pg.members.report.concat(pg.members.standard);
+                    var pis = pg.members;
 
                     //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
                     for(var j = 0; j<pis.length; j++)
@@ -473,15 +473,13 @@
                 {
                     var group = groups[i]; //STORE CURRENT GROUP
                     //GET THE PARAMETERS OF THE CURRENT GROUP
-                    var members = {}; //ARRAY TO STORE COLLECTED MEMBERS FOR THE GROUP
-                    members.report = [];
-                    members.standard = [];
+                    var members = []; //ARRAY TO STORE COLLECTED MEMBERS FOR THE GROUP
 
                     //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.report.length; j++)
+                    for(var j = 0; j < group.members.length; j++)
                     {
                         var match = false; //FLAGS WHEN A MATCH IS FOUND
-                        var member_id = group.members.report[j]; //STORE CURRENT MEMBER ID
+                        var member_id = group.members[j]; //STORE CURRENT MEMBER ID
                         var store = selectionGrid.store.objectStore.data; 
 
                         //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
@@ -497,39 +495,39 @@
                                 temp.type = 'param_instance';
                                 temp.class_id = item.pi._id;
                                 temp.members = {value: item.memberValue};
-                                members.report.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
+                                members.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
                                 match = true; //FLAG THE MATCH
                             }
                         }
                     }
-                    group.members.report = members.report; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
+                    group.members = members; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
 
-                    //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.standard.length; j++)
-                    {
-                        var match = false; //FLAGS WHEN A MATCH IS FOUND
-                        var member_id = group.members.standard[j]; //STORE CURRENT MEMBER ID
-                        var store = selectionGrid.store.objectStore.data; 
+                    // //FOR EACH MEMBER OF THE CURRENT GROUP
+                    // for(var j = 0; j < group.members.standard.length; j++)
+                    // {
+                    //     var match = false; //FLAGS WHEN A MATCH IS FOUND
+                    //     var member_id = group.members.standard[j]; //STORE CURRENT MEMBER ID
+                    //     var store = selectionGrid.store.objectStore.data; 
 
-                        //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
-                        for (var k = 0; k < store.length; k++)
-                        {
-                            if(match) //IF A MATCH IS FOUND, BREAK THE LOOP
-                                break;
-                            var item = store[k]; //STORE THE CURRENT ITEM
-                            if(member_id == item.pi._id && item.pg_name == group.name)
-                            {
-                                var temp = {};
-                                temp.name = item.pi.name;
-                                temp.type = 'param_instance';
-                                temp.class_id = item.pi._id;
-                                temp.members = {value: item.memberValue};
-                                members.standard.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
-                                match = true; //FLAG THE MATCH
-                            }
-                        }
-                    }
-                    group.members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
+                    //     //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
+                    //     for (var k = 0; k < store.length; k++)
+                    //     {
+                    //         if(match) //IF A MATCH IS FOUND, BREAK THE LOOP
+                    //             break;
+                    //         var item = store[k]; //STORE THE CURRENT ITEM
+                    //         if(member_id == item.pi._id && item.pg_name == group.name)
+                    //         {
+                    //             var temp = {};
+                    //             temp.name = item.pi.name;
+                    //             temp.type = 'param_instance';
+                    //             temp.class_id = item.pi._id;
+                    //             temp.members = {value: item.memberValue};
+                    //             members.standard.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
+                    //             match = true; //FLAG THE MATCH
+                    //         }
+                    //     }
+                    // }
+                    // group.members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
                     pgf.members.push(group); //PUT EACH GROUP INTO THE MEMBERS OF THIS PGF
                 }
 
@@ -541,20 +539,20 @@
                     //GET THE PARAMETERS OF THE CURRENT GROUP
 
                     //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.report.length; j++)
+                    for(var j = 0; j < group.members.length; j++)
                     {
-                        var member = group.members.report[j];
+                        var member = group.members[j];
                         var computed = realizeValue(pgf, member.members.value);
-                        pgf.members[i].members.report[j].members.computed = computed;
+                        pgf.members[i].members[j].members.computed = computed;
                     }
 
                      //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.standard.length; j++)
-                    {
-                        var member = group.members.standard[j];
-                        var computed = realizeValue(pgf, member.members.value);
-                        pgf.members[i].members.standard[j].members.computed = computed;
-                    }
+                    // for(var j = 0; j < group.members.standard.length; j++)
+                    // {
+                    //     var member = group.members.standard[j];
+                    //     var computed = realizeValue(pgf, member.members.value);
+                    //     pgf.members[i].members.standard[j].members.computed = computed;
+                    // }
                     delete group.id;
                 }
                 FamilyGrid.newPGF(pgf); //COMMIT THE NEW PGF
@@ -741,7 +739,7 @@
                     var pg = pgs[i];
 
                     //GET PIs OF CURRENT PG
-                    var pis = pg.members.report.concat(pg.members.standard);
+                    var pis = pg.members;
 
                     //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
                     for(var j = 0; j<pis.length; j++)
@@ -776,7 +774,7 @@
                     var pgf = familyGrid.selection.getSelected();
                     pgf = pgf[0];
                     console.log(pgf);
-                    var group = familyViewerGrid.store.getValue(familyViewerGrid.getItem(e.rowIndex), 'pg');
+                    // var group = familyViewerGrid.store.getValue(familyViewerGrid.getItem(e.rowIndex), 'pg');
                     var parse_display = '';
                     if(!value) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
                     {
@@ -837,35 +835,39 @@
 
                 //FOR EACH PARAMETER OF EACH GROUP OF THE PGF, GET THE VALUE FROM THE PARAMETER IN THE GRID AND STORE IT IN
                 //THIS PGF'S PARAMETER
-                for(var i = 0; i < groups.length; i++)
-                {
-                    var parameters = groups[i].members.report;
-                    for(var j = 0; j < parameters.length; j++)
+                // for(var a = 0; a < 2; a++)
+                // {
+                    for(var i = 0; i < groups.length; i++)
                     {
-                        for(var k = 0; k < viewer_data.length; k++)
+                        var parameters = groups[i].members;
+                        for(var j = 0; j < parameters.length; j++)
                         {
-                            if(viewer_data[k].pi.class_id == parameters[j].class_id)
+                            for(var k = 0; k < viewer_data.length; k++)
                             {
-                                parameters[j].members.value = viewer_data[k].memberValue;
-                                parameters[j].name = viewer_data[k].p_name;
+                                if(viewer_data[k].pi.class_id == parameters[j].class_id)
+                                {
+                                    parameters[j].members.value = viewer_data[k].memberValue;
+                                    parameters[j].members.computed = realizeValue(pgf, viewer_data[k].memberValue);
+                                    parameters[j].name = viewer_data[k].p_name;
+                                }
                             }
                         }
+                        pgf.members[i].members = parameters; //SET THE PARAMETERS OF 
+                        // var parameters = groups[i].members.standard;
+                        // for(var j = 0; j < parameters.length; j++)
+                        // {
+                        //     for(var k = 0; k < viewer_data.length; k++)
+                        //     {
+                        //         if(viewer_data[k].pi.class_id == parameters[j].class_id)
+                        //         {
+                        //             parameters[j].members.value = viewer_data[k].memberValue;
+                        //             parameters[j].name = viewer_data[k].p_name;
+                        //         }
+                        //     }
+                        // }
+                        // pgf.members[i].members.standard = parameters; //SET THE PARAMETERS OF 
                     }
-                    pgf.members[i].members.report = parameters; //SET THE PARAMETERS OF 
-                    var parameters = groups[i].members.standard;
-                    for(var j = 0; j < parameters.length; j++)
-                    {
-                        for(var k = 0; k < viewer_data.length; k++)
-                        {
-                            if(viewer_data[k].pi.class_id == parameters[j].class_id)
-                            {
-                                parameters[j].members.value = viewer_data[k].memberValue;
-                                parameters[j].name = viewer_data[k].p_name;
-                            }
-                        }
-                    }
-                    pgf.members[i].members.standard = parameters; //SET THE PARAMETERS OF 
-                }
+                // }
                 FamilyViewerGrid.commitChanges(pgf);
             }
 
@@ -916,6 +918,35 @@
                 if(e.keyCode == 13)
                     button_newPGF.onClick();
             });
+
+            var button_add_to_existing_pgf = new Button(
+            {
+                label: "Add To Selected",
+                onClick: function()
+                {
+                    var selected = familyGrid.selection.getSelected();
+                    var pgf = selected[0];
+                    if(!pgf)
+                        return alert("Select a Family to add to.");
+                    selected = groupGrid.selection.getSelected();
+                    if(selected.length < 1)
+                        return alert("Select a group to add to the family.");
+                    for(var i = 0; i < membersStore.data.length; i++)
+                    {
+                        var matched = false;
+                        mem_to_add = membersStore.data[i];
+                        for(var j = 0; j < group.members.length; j++)
+                        {
+                            if(mem_to_add._id == group.members[j])
+                                matched = true;
+                        }
+                        if(!matched)
+                            group.members.push(mem_to_add._id);
+                    }
+                    console.log(group);
+                    GroupGrid.update_pg(group);
+                }
+            }, "button_add_to_existing_pgf");
 
             //CREATE NEW PF BUTTON
             //REQUIRES A NAME
@@ -1000,8 +1031,7 @@
                 for(var i = 0; i < pgf.members.length; i++)
                 {
                     var group = pgf.members[i];
-                    pis = pis.concat(group.members.standard);
-                    pis = pis.concat(group.members.report);
+                    pis = group.members;
                 }
 
                 //STRING FOR FINAL OUTPUT
@@ -1038,8 +1068,8 @@
                         //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                         if(element == pi.name)
                         {
-                            if(!pi.members.computed)
-                            {
+                            // if(!pi.members.computed)
+                            // {
                                 pi.members.computed = realizeValue(pgf, pi.members.value);
                                 if(/[\+\-\*\/]/.test(pi.members.computed))
                                 {
@@ -1056,9 +1086,9 @@
                                     }
                                 }
                                 output_elements.push(pi.members.computed);
-                            }
-                            else
-                                output_elements.push(pi.members.computed);
+                            // }
+                            // else
+                            //     output_elements.push(pi.members.computed);
                             not_found = false;
                         }
                     }
@@ -1145,7 +1175,6 @@
                return true;
             }
 
-
             //ON LOAD, GET THE FULL DB AND PUT IT IN A GLOBAL STORE   
             GetFullDbStore();
         });
@@ -1161,12 +1190,12 @@
         <tr>
             <td style = "text-align: center; padding: 5px">
                 <b>PGF Creator - Creates a New PGF</b>
-                <div style = "text-align: right"><button id = "button_newPGF"></button></div>
+                <div style = "text-align: right"><button id="button_add_to_existing_pgf"></button><button id = "button_newPGF"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PGF Lister - Lists All PGFs</b>
-                <div style="text-align:right"><button id="button_clonePGF"></button></div>
-                <div style="text-align:right"><button id="button_deletePGF"></button></div>
+                <div style="text-align:right"><button id="button_clonePGF"></button>
+                <button id="button_deletePGF"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PGF Viewer - Shows Selected PGF</b>
