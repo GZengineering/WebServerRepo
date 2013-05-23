@@ -2,11 +2,15 @@ var has_loaded = false; // tells the request handler if this page has already be
 	require(['dojo/_base/lang',
         'dojo/dom',
         'dijit/registry',
+        'dojo/parser',
         'dijit/form/Button',
         'dojo/_base/array',
         'dojo/_base/xhr', 
         'dijit/form/TextBox',
         'dijit/form/Textarea',
+        'dojox/form/RangeSlider',
+        'dijit/form/HorizontalRule',
+        'dijit/form/HorizontalRuleLabels',
         'dijit/InlineEditBox',
         'dojo/data/ItemFileWriteStore',
         'dojo/store/Observable',
@@ -19,7 +23,7 @@ var has_loaded = false; // tells the request handler if this page has already be
         'dojox/grid/cells/dijit',
         'dijit/layout/ContentPane',
         'dojo/domReady!'], 
-        function(lang, dom, registry, Button, baseArray, xhr, TextBox, Textarea,  InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
+        function(lang, dom, registry, parser, Button, baseArray, xhr, TextBox, Textarea, RangeSlider, HorizontalRule, HorizontalRuleLabels, InlineEditBox, ItemFileWriteStore, Observable, DataGrid, Memory, ObjectStore, _CheckBoxSelector, CheckBox, RadioButton, cells, CP)
         {
             /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
             var fullDbMemStore = new Memory({data: new Array()});
@@ -72,7 +76,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                     {id: paramStore.data.length},
                     o,
                     {memberValue: object.members.value},
-                    {memberGrade: object.members.reportGrade}));
+                    {memberGrade: object.members.reportGrade.x + "-" + object.members.reportGrade.y}));
                 // for(var i = 0; i < paramStore.data.length; i++)
                 // {
                 //     if(!paramStore.data[i].id)
@@ -103,7 +107,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                         { id: i},
                         parameters[i],
                         {memberValue: parameters[i].members.value},
-                        {memberGrade: parameters[i].members.reportGrade}
+                        {memberGrade: parameters[i].members.reportGrade.x + "-" + parameters[i].members.reportGrade.y}
                         ));
                 }
 
@@ -171,10 +175,13 @@ var has_loaded = false; // tells the request handler if this page has already be
                 for(var i = 0; i < store.length; i++)
                 {
                     var p = store[i];
+                    var grade_elements = p.memberGrade.split("-");
+                    console.log(grade_elements);
                     var temp = {};
                     temp.members = p.members;
                     temp.members.value = p.memberValue;
-                    temp.members.reportGrade = p.memberGrade;
+                    temp.members.reportGrade.x = grade_elements[0];
+                    temp.members.reportGrade.y = grade_elements[1];
                     temp._id = p._id;
                     temp.name = p.name;
                     temp.type = p.type;
@@ -379,6 +386,53 @@ var has_loaded = false; // tells the request handler if this page has already be
             }, "radio4");
 
 
+            //RULES DIV FOR THE SLIDER
+            var rulesNode = dojo.create("div", {}, dojo.byId("gradeSlider"), "first");
+
+            //RULES DECLARATION. THESE ARE THE HASHES ONTOP OF THE SLIDER
+            var sliderRules = new dijit.form.HorizontalRule(
+            {
+                container: "topDecoration",
+                count: 4,
+                style: "height: 8px",
+            }, rulesNode);
+
+            //LABELS DIV FOR THE SLIDER
+            var labelsNode = dojo.create("div", {}, dojo.byId("gradeSlider"), "first");
+
+            //BOTTOM NUMBERS FOR THE SLIDER.
+            var sliderLabels = new dijit.form.HorizontalRuleLabels(
+            {
+                container: "bottomDecoration",
+                count: 4,
+                labels: [1,2,3,4],
+                labelStyle: "font-style: italic; font-size: 1.0em",
+            }, labelsNode);
+
+            //THE SLIDER
+            var gradeSlider = new dojox.form.HorizontalRangeSlider(
+            {
+                value: [1,4],
+                minimum: 1,
+                maximum: 4,
+                discreteValues: 4,
+                showButtons: false,
+                onChange: function(value)
+                {
+                    dom.byId("gradeRange").innerHTML = "Report Grade: " + value;
+                }
+            },"gradeSlider");
+
+            //RENDER THE SLIDER AND ITS RULERS
+            gradeSlider.startup();
+            sliderRules.startup();
+            sliderLabels.startup();
+
+            //DISPLAY THE VALUE OF THE SLIDER
+            dom.byId("gradeRange").innerHTML = "Report Grade: " + gradeSlider.value;
+            console.log(gradeSlider.value);
+
+
             //BUTTON TO SUBMIT A NEW PI            
             var button_commit_new = new Button(
             {
@@ -392,13 +446,16 @@ var has_loaded = false; // tells the request handler if this page has already be
                          return;
                     }
 
-                    var grade = '1';
-                    if(radio2.checked)
-                        grade = '2';
-                    else if(radio3.checked)
-                        grade = '3';
-                    else if(radio4.checked)
-                        grade = '4';
+                    // var grade = '1';
+                    // if(radio2.checked)
+                    //     grade = '2';
+                    // else if(radio3.checked)
+                    //     grade = '3';
+                    // else if(radio4.checked)
+                    //     grade = '4';
+
+                    var grade_x = gradeSlider.value[0];
+                    var grade_y = gradeSlider.value[1];
 
                     var dependencies = getDependencies(dom.byId("txtBox_paramValue").value);
                     console.log(dependencies);
@@ -408,7 +465,9 @@ var has_loaded = false; // tells the request handler if this page has already be
                     param_class.members = {};
                     param_class.members.value = dom.byId("txtBox_paramValue").value;
                     param_class.members.dependencies = dependencies;
-                    param_class.members.reportGrade = grade;
+                    param_class.members.reportGrade = {};
+                    param_class.members.reportGrade.x = grade_x;
+                    param_class.members.reportGrade.y = grade_y;
                     new_param_class(param_class);
                 }
             }, 'button_commit_new');

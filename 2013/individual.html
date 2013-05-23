@@ -9,6 +9,8 @@
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/form/resources/RangeSlider.css">
+
         <link rel="icon" href="favicon.ico">
 
         <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
@@ -93,16 +95,9 @@
                                 <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
                             </div>
                             <br>
-                            <div align="center" style = "padding: 2px" >
-                                Report Grade:
-                                <br>
-                                1<div style="padding: 2px" id="radio1"></div>
-                                2<div style="padding: 2px" id="radio2"></div>
-                                3<div style="padding: 2px" id="radio3"></div>
-                                4<div style="padding: 2px" id="radio4"></div>
-                            </form>
+                            
                         </td>
-                         <td>
+                         <td valign="top">
                             <table align="right" style="border:.5pt solid black">
                                 <tr>
                                     <td align="center">
@@ -139,6 +134,16 @@
                                 </tr>
                             </table>
                         </td>
+                        <tr>
+                            <td colspan="2">
+                                <div style = "padding: 2px" >
+                                    <div id="gradeRange" style="font-size: 1em"></div>
+                                    <br>
+                                        <div align="center" id ="gradeSlider" style="100%"></div>
+                                    <br>
+                                </div>
+                            </td>
+                        </tr>
                 </table>
             </td>
             <td valign = "top">
