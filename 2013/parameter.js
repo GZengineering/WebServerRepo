@@ -75,8 +75,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                 paramStore.put(lang.mixin(
                     {id: paramStore.data.length},
                     o,
-                    {memberValue: object.members.value},
-                    {memberGrade: object.members.reportGrade.x + "-" + object.members.reportGrade.y}));
+                    {formula: object.members.formula},
+                    {reportRange: object.members.report_range.x + "-" + object.members.report_range.y}));
                 // for(var i = 0; i < paramStore.data.length; i++)
                 // {
                 //     if(!paramStore.data[i].id)
@@ -96,8 +96,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                 //DEFINE THE LAYOUT
                 var layout = [[
                   {'name': 'Parameter', 'field': 'name', 'width': '25%', editable: true},
-                  {'name': 'Value', 'field': 'memberValue', 'width': '65%', editable: true},
-                  {'name': 'Report Grade', 'field': 'memberGrade', 'width': '10%', editable: true},
+                  {'name': 'Formula', 'field': 'formula', 'width': '65%', editable: true},
+                  {'name': 'Report Range', 'field': 'reportRange', 'width': '10%', editable: true},
                 ]];
 
                 var parameters = fullDbMemStore.query({type: 'param_class'});
@@ -106,8 +106,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                     paramStore.put(lang.mixin(
                         { id: i},
                         parameters[i],
-                        {memberValue: parameters[i].members.value},
-                        {memberGrade: parameters[i].members.reportGrade.x + "-" + parameters[i].members.reportGrade.y}
+                        {formula: parameters[i].members.formula},
+                        {reportRange: parameters[i].members.report_range.x + "-" + parameters[i].members.report_range.y}
                         ));
                 }
 
@@ -159,7 +159,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                 //IT TO A FUNCTION TO ADD ADD A PROPERTY TO THE DEFINITION
                 dojo.connect(grid,"onCellDblClick", function(e)
                     {
-                        button_add_param_to_value.onClick();
+                        button_add_param_to_formula.onClick();
                     });
 
                 //GLOBALIZE STORE DATA AND THE GRID
@@ -175,13 +175,13 @@ var has_loaded = false; // tells the request handler if this page has already be
                 for(var i = 0; i < store.length; i++)
                 {
                     var p = store[i];
-                    var grade_elements = p.memberGrade.split("-");
-                    console.log(grade_elements);
+                    var report_elements = p.reportRange.split("-");
+                    console.log(report_elements);
                     var temp = {};
                     temp.members = p.members;
-                    temp.members.value = p.memberValue;
-                    temp.members.reportGrade.x = grade_elements[0];
-                    temp.members.reportGrade.y = grade_elements[1];
+                    temp.members.formula = p.formula;
+                    temp.members.report_range.x = report_elements[0];
+                    temp.members.report_range.y = report_elements[1];
                     temp._id = p._id;
                     temp.name = p.name;
                     temp.type = p.type;
@@ -209,7 +209,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                         dom.byId("serverResponse").innerHTML = "Response from server: All Changes succesful";
                         alert("Changes were successful");
                         dom.byId("txtBox_paramName").value = '';
-                        dom.byId("txtBox_paramValue").value = '';
+                        dom.byId("txtBox_paramFormula").value = '';
 
                         //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
                         //ADD THE OBJECT TO THE STORE
@@ -232,7 +232,7 @@ var has_loaded = false; // tells the request handler if this page has already be
 
             /*  TEXT BOXES  */
             var txtBox_paramName = new TextBox({},"txtBox_paramName");
-            var txtBox_paramValue = new Textarea({},"txtBox_paramValue");
+            var txtBox_paramFormula = new Textarea({},"txtBox_paramFormula");
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE NAME TEXTBOX
             dojo.connect(txtBox_paramName, "onKeyUp", function(e)
@@ -242,16 +242,16 @@ var has_loaded = false; // tells the request handler if this page has already be
             });
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE VALUE TEXTBOX
-            dojo.connect(txtBox_paramValue, "onKeyUp", function(e)
+            dojo.connect(txtBox_paramFormula, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
                     button_commit_new.onClick();
             });
 
             //BUTTON TO REMOVE A FIXED PI
-            var button_add_param_to_value = new Button(
+            var button_add_param_to_formula = new Button(
             {
-                label: 'Add To Value', 
+                label: 'Add To Formula', 
                 onClick: function()
                 {
                     var selected = ParamGrid.selected_fields[0];
@@ -260,19 +260,19 @@ var has_loaded = false; // tells the request handler if this page has already be
                         return alert('Select a Parameter to Copy.');
                     }
                     console.log(selected);
-                    add_param_to_value(selected);
+                    add_param_to_formula(selected);
                 },
-            }, 'button_add_param_to_value');
+            }, 'button_add_param_to_formula');
 
-            var add_param_to_value = function(selected)
+            var add_param_to_formula = function(selected) 
             {
                 var name = selected.name;
-                if(dom.byId("txtBox_paramValue").value == "")
-                    dom.byId("txtBox_paramValue").value = name; 
-                else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
-                    dom.byId("txtBox_paramValue").value += name;
+                if(dom.byId("txtBox_paramFormula").value == "")
+                    dom.byId("txtBox_paramFormula").value = name; 
+                else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                    dom.byId("txtBox_paramFormula").value += name;
                 else
-                    dom.byId("txtBox_paramValue").value += ';' + name;   
+                    dom.byId("txtBox_paramFormula").value += ';' + name;   
             }
 
             //BUTTON TO REMOVE A FIXED PI
@@ -281,12 +281,12 @@ var has_loaded = false; // tells the request handler if this page has already be
                 label: '*', 
                 onClick: function()
                 {
-                    if(dom.byId("txtBox_paramValue").value == "")
-                        dom.byId("txtBox_paramValue").value = '*'; 
-                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
-                        dom.byId("txtBox_paramValue").value += '*';
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '*'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '*';
                     else
-                        dom.byId("txtBox_paramValue").value += ';' + '*';   
+                        dom.byId("txtBox_paramFormula").value += ';' + '*';   
                 },
             }, 'button_multiplication');
 
@@ -296,12 +296,12 @@ var has_loaded = false; // tells the request handler if this page has already be
                 label: '/', 
                 onClick: function()
                 {
-                    if(dom.byId("txtBox_paramValue").value == "")
-                        dom.byId("txtBox_paramValue").value = '/'; 
-                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
-                        dom.byId("txtBox_paramValue").value += '/';
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '/'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '/';
                     else
-                        dom.byId("txtBox_paramValue").value += ';' + '/';   
+                        dom.byId("txtBox_paramFormula").value += ';' + '/';   
                 },
             }, 'button_division');
 
@@ -311,12 +311,12 @@ var has_loaded = false; // tells the request handler if this page has already be
                 label: '+', 
                 onClick: function()
                 {
-                    if(dom.byId("txtBox_paramValue").value == "")
-                        dom.byId("txtBox_paramValue").value = '+'; 
-                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
-                        dom.byId("txtBox_paramValue").value += '+';
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '+'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '+';
                     else
-                        dom.byId("txtBox_paramValue").value += ';' + '+';   
+                        dom.byId("txtBox_paramFormula").value += ';' + '+';   
                 },
             }, 'button_addition');
 
@@ -326,12 +326,12 @@ var has_loaded = false; // tells the request handler if this page has already be
                 label: '-', 
                 onClick: function()
                 {
-                    if(dom.byId("txtBox_paramValue").value == "")
-                        dom.byId("txtBox_paramValue").value = '-'; 
-                    else if(dom.byId("txtBox_paramValue").value[dom.byId("txtBox_paramValue").value.length-1] == ';')
-                        dom.byId("txtBox_paramValue").value += '-';
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '-'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '-';
                     else
-                        dom.byId("txtBox_paramValue").value += ';' + '-';   
+                        dom.byId("txtBox_paramFormula").value += ';' + '-';   
                 },
             }, 'button_subtraction');
 
@@ -357,37 +357,37 @@ var has_loaded = false; // tells the request handler if this page has already be
                     }
                 }, "button_commitChanges");
 
-            var radio1 = new RadioButton(
-            {
-                name: 'reportGrade',
-                value: '1',
-                checked: true,
-            }, "radio1");
+            // var radio1 = new RadioButton(
+            // {
+            //     name: 'reportGrade',
+            //     value: '1',
+            //     checked: true,
+            // }, "radio1");
 
-            var radio2 = new RadioButton(
-            {
-                name: 'reportGrade',
-                checked: false,
-                value: '2',
-            }, "radio2");
+            // var radio2 = new RadioButton(
+            // {
+            //     name: 'reportGrade',
+            //     checked: false,
+            //     value: '2',
+            // }, "radio2");
 
-            var radio3 = new RadioButton(
-            {
-                name: 'reportGrade',
-                checked: false,
-                value: '3',
-            }, "radio3");
+            // var radio3 = new RadioButton(
+            // {
+            //     name: 'reportGrade',
+            //     checked: false,
+            //     value: '3',
+            // }, "radio3");
 
-            var radio4 = new RadioButton(
-            {
-                name: 'reportGrade',
-                checked: false,
-                value: '4',
-            }, "radio4");
+            // var radio4 = new RadioButton(
+            // {
+            //     name: 'reportGrade',
+            //     checked: false,
+            //     value: '4',
+            // }, "radio4");
 
 
             //RULES DIV FOR THE SLIDER
-            var rulesNode = dojo.create("div", {}, dojo.byId("gradeSlider"), "first");
+            var rulesNode = dojo.create("div", {}, dojo.byId("reportRangeSlider"), "first");
 
             //RULES DECLARATION. THESE ARE THE HASHES ONTOP OF THE SLIDER
             var sliderRules = new dijit.form.HorizontalRule(
@@ -398,7 +398,7 @@ var has_loaded = false; // tells the request handler if this page has already be
             }, rulesNode);
 
             //LABELS DIV FOR THE SLIDER
-            var labelsNode = dojo.create("div", {}, dojo.byId("gradeSlider"), "first");
+            var labelsNode = dojo.create("div", {}, dojo.byId("reportRangeSlider"), "first");
 
             //BOTTOM NUMBERS FOR THE SLIDER.
             var sliderLabels = new dijit.form.HorizontalRuleLabels(
@@ -410,7 +410,7 @@ var has_loaded = false; // tells the request handler if this page has already be
             }, labelsNode);
 
             //THE SLIDER
-            var gradeSlider = new dojox.form.HorizontalRangeSlider(
+            var reportRangeSlider = new dojox.form.HorizontalRangeSlider(
             {
                 value: [1,4],
                 minimum: 1,
@@ -419,18 +419,18 @@ var has_loaded = false; // tells the request handler if this page has already be
                 showButtons: false,
                 onChange: function(value)
                 {
-                    dom.byId("gradeRange").innerHTML = "Report Grade: " + value;
+                    dom.byId("reportRange").innerHTML = "Report Range: " + value;
                 }
-            },"gradeSlider");
+            },"reportRangeSlider");
 
             //RENDER THE SLIDER AND ITS RULERS
-            gradeSlider.startup();
+            reportRangeSlider.startup();
             sliderRules.startup();
             sliderLabels.startup();
 
             //DISPLAY THE VALUE OF THE SLIDER
-            dom.byId("gradeRange").innerHTML = "Report Grade: " + gradeSlider.value;
-            console.log(gradeSlider.value);
+            dom.byId("reportRange").innerHTML = "Report Range: " + reportRangeSlider.value;
+            console.log(reportRangeSlider.value);
 
 
             //BUTTON TO SUBMIT A NEW PI            
@@ -454,20 +454,20 @@ var has_loaded = false; // tells the request handler if this page has already be
                     // else if(radio4.checked)
                     //     grade = '4';
 
-                    var grade_x = gradeSlider.value[0];
-                    var grade_y = gradeSlider.value[1];
+                    var range_x = reportRangeSlider.value[0];
+                    var range_y = reportRangeSlider.value[1];
 
-                    var dependencies = getDependencies(dom.byId("txtBox_paramValue").value);
+                    var dependencies = getDependencies(dom.byId("txtBox_paramFormula").value);
                     console.log(dependencies);
                     var param_class = {};
                     param_class.type = 'param_class';
                     param_class.name = dom.byId("txtBox_paramName").value;
                     param_class.members = {};
-                    param_class.members.value = dom.byId("txtBox_paramValue").value;
+                    param_class.members.formula = dom.byId("txtBox_paramFormula").value;
                     param_class.members.dependencies = dependencies;
-                    param_class.members.reportGrade = {};
-                    param_class.members.reportGrade.x = grade_x;
-                    param_class.members.reportGrade.y = grade_y;
+                    param_class.members.report_range = {};
+                    param_class.members.report_range.x = range_x;
+                    param_class.members.report_range.y = range_y;
                     new_param_class(param_class);
                 }
             }, 'button_commit_new');
@@ -580,10 +580,10 @@ var has_loaded = false; // tells the request handler if this page has already be
             }
 
             //PARSE THE GIVEN DEFINITION STRING
-            function getDependencies(value)
+            function getDependencies(formula)
             {
                 //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
-                var val_elements = value.split(";");
+                var val_elements = formula.split(";");
 
                 //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
                 var dependencies = [];
@@ -622,13 +622,14 @@ var has_loaded = false; // tells the request handler if this page has already be
                         //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                         if(element == pi.name)
                         {
-                            var temp = {};
-                            temp._id = pi._id;
-                            temp.name = pi.name;
-                            temp.type = pi.type;
-                            temp.members = pi.members;
-                            console.log(temp);
-                            dependencies.push(temp)
+                            // var temp = {};
+                            // temp._id = pi._id;
+                            // temp.name = pi.name;
+                            // temp.type = pi.type;
+                            // temp.members = pi.members;
+                            // console.log(temp);
+                            // dependencies.push(temp)
+                            dependencies.push(pi._id);
                             not_found = false;
                             // if(!pi.members.computed)
                             // {
@@ -676,7 +677,7 @@ var has_loaded = false; // tells the request handler if this page has already be
             function ClearTextFields()
             {
                 dom.byId("txtBox_paramName").value = "";
-                dom.byId("txtBox_paramValue").value = "";
+                dom.byId("txtBox_paramFormula").value = "";
             }
 
             //ON LOAD, CLEAR TEXT FIELDS AND GET ALL THE DATA

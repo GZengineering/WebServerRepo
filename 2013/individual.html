@@ -47,7 +47,7 @@
         {
             width: 15px;
         }
-        #txtBox_paramValue
+        #txtBox_paramFormula
         {
             font-family: Calibri;
             font-size: 9pt;
@@ -74,7 +74,7 @@
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>Parameter Class List</b>
                 <div style="text-align: right; vertical-align: bottom">
-                    <button id="button_add_param_to_value"></button>
+                    <button id="button_add_param_to_formula"></button>
                     <button id="button_delete_param_class"></button>
                     <button id="button_commitChanges"></button>
                 </div>
@@ -91,8 +91,8 @@
                                 <label for="txtBox_paramName">Name:</label><br>  
                                 <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"> </input><br>
                                 <br><br>
-                                <label for="txtBox_paramValue">Value:</label><br>  
-                                <input id ='txtBox_paramValue' data-dojo-type="dijit/form/TextBox"> </input><br>
+                                <label for="txtBox_paramFormula">Formula:</label><br>  
+                                <input id ='txtBox_paramFormula' data-dojo-type="dijit/form/TextBox"> </input><br>
                             </div>
                             <br>
                             
@@ -137,9 +137,9 @@
                         <tr>
                             <td colspan="2">
                                 <div style = "padding: 2px" >
-                                    <div id="gradeRange" style="font-size: 1em"></div>
+                                    <div id="reportRange" style="font-size: 1em"></div>
                                     <br>
-                                        <div align="center" id ="gradeSlider" style="100%"></div>
+                                        <div align="center" id ="reportRangeSlider" style="100%"></div>
                                     <br>
                                 </div>
                             </td>

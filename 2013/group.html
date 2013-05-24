@@ -633,8 +633,6 @@
                         return;
                     }
                     group.members = [];
-                    // group.members.standard = [];
-                    // group.members.report = [];
                     for(var i = 0; i < membersStore.data.length; i++)
                     {
                         group.members.push(membersStore.data[i]._id);
@@ -726,20 +724,24 @@
             {
                 for(var j = 0; j < dependencies.length; j++)
                 {
-                    var id = dependencies[j]._id;
+                    var id = dependencies[j];
 
-                    for(var k = 0; k < paramStore.data.length; k ++)
+                    var sub_d = [];
+
+                    for(var k = 0; k < paramStore.data.length; k++)
                     {
                         var store_member = paramStore.data[k];
                         if(id == store_member._id)
                         try
                         {    
+                            sub_d = store_member.members.dependencies;
                             membersStore.add(store_member);
                         }
                         catch(error){}
+                        console.log(store_member);
                     }
 
-                    addDependencies(dependencies[j].members.dependencies);
+                    addDependencies(sub_d);
                 }
             }
 

@@ -292,9 +292,10 @@
             {
                 /*  DEFINE LAYOUT  */
                 var layout = [[
-                  {'name': 'Group', 'field': 'pg_name', 'width': '28%'},
-                  {'name': 'Parameter', 'field': 'p_name', 'width': '30%'},
-                  {'name': 'Value', 'field': 'memberValue', 'width': '42%', editable: true},
+                  {'name': 'Group', 'field': 'pg_name', 'width': '15%'},
+                  {'name': 'Parameter', 'field': 'p_name', 'width': '15%'},
+                  {'name': 'Formula', 'field': 'p_formula', 'width': '40%', editable: true},
+                  {'name': 'Value', 'field': 'p_value', 'width': '30%', editable: true},
                 ]];
 
 
@@ -327,14 +328,19 @@
                         row.pi = pi;
                         row.pg_name = pg.name;
                         row.p_name = pi.name;
-                        row.memberValue = pi.members.value;
+                        row.p_formula = pi.members.formula;
+                        row.p_dependencies = pi.members.dependencies;
+                        row.p_value = "";
 
                         selectionMemStore.put(row);
                     }
                 }
 
+                selectionMemStore.data = computeValues(selectionMemStore.data);
+
                 //REMOVE FROM REGISTRY IF IT EXISTS
                 registry.remove('selectionGrid');
+
 
 
                 /*  CREATE THE DOJO GRID AND RENDER IT  */
@@ -343,9 +349,18 @@
                     structure: layout}, "selectionGrid");
                 selectionGrid.startup();
 
+                // dojo.connect(selectionGrid, "onApplyCellEdit", function(inValue, inRowIndex, inFieldIndex)
+                // {
+                //     // selectionDataStore.save();
+                //     var p = computeValues(selectionMemStore.data)
+                //     selectionMemStore.setData(p);
+                //     // selectionGrid._refresh();
+                // });
+
                 /*  GLOBALIZE GRID PROPERTIES  */
                 window.selectionGrid = selectionGrid;
                 window.selectionMemStore = selectionMemStore;
+                window.selectionDataStore = selectionDataStore;
             }
 
             /*  ON SELECTION CHANGE OF THE GROUP GRID, THE SELECTION GRID STORE IS REPOPULATED  */
@@ -1013,109 +1028,136 @@
                     }
                 }, "button_commitChanges");
 
+            var button_recompute = new Button(
+            {
+                label: "Recompute Values",
+                onClick: function()
+                {
+                    selectionMemStore.data = computeValues(selectionMemStore.data);
+                }
+            }, "button_recompute");
+
 
             /****************************   HELPER FUNCTIONS  *********************************/
 
 
             //PARSE THE GIVEN DEFINITION STRING
-            function realizeValue(pgf, value)
+            //RETURNS THE ALTERED SET 
+            function computeValues(parameters)
             {
-                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
-                var val_elements = value.split(";");
-
-                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
-                var output_elements = [];
-
-                //QUERY THE STORE FOR ALL PIs
-                var pis = [];
-                for(var i = 0; i < pgf.members.length; i++)
-                {
-                    var group = pgf.members[i];
-                    pis = group.members;
-                }
-
-                //STRING FOR FINAL OUTPUT
-                var output = '';
-
                 //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
                 //REPORT AN ERROR
-                if(pis.length < 1 || pis == null)
+                if(parameters.length < 1 || parameters == null)
                 {
-                    output = 'There was a problem acquiring the parameters';
-                    console.log('Parse Error: ' + output);
-                    return output;
+                    // output = 'There was a problem acquiring the parameters';
+                    // console.log('Parse Error: ' + output);
+                    // return output;
+                    return parameters;
                 } 
-                //WHILE ELEMENTS REMAIN
-                while(val_elements.length > 0)
+
+                for(var a = 0; a < parameters.length; a++)
                 {
-                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
-                    var not_found = true;
-                    //TEMP VARIABLE TO STORE A GRABBED PROPERTY
-                    var temp_property;
+                    var formula = parameters[a].p_formula;    
+                    //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                    var formula_elements = formula.split(";");
 
-                    //GET THE NEXT ELEMENT FROM THE ARRAY
-                    var element = val_elements.shift();
+                    //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                    var output_elements = [];
 
-                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
-                    for(var i = 0; i < pis.length; i++)
+                    //QUERY THE STORE FOR ALL PIs
+                    // var pis = [];
+                    // for(var i = 0; i < pgf.members.length; i++)
+                    // {
+                    //     var group = pgf.members[i];
+                    //     pis = group.members;
+                    // }
+
+                    //STRING FOR VALUE OUTPUT
+                    var value = '';
+                
+                    //WHILE ELEMENTS REMAIN
+                    while(formula_elements.length > 0)
                     {
-                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
-                            break;
+                        //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                        var not_found = true;
+                        //TEMP VARIABLE TO STORE A GRABBED PROPERTY
+                        var temp_property = '';
 
-                        //STORE CURRENT PARAMETER
-                        var pi = pis[i];
+                        //GET THE NEXT ELEMENT FROM THE ARRAY
+                        var element = formula_elements.shift();
 
-                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
-                        if(element == pi.name)
+                        //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+                        for(var i = 0; i < parameters.length; i++)
                         {
-                            // if(!pi.members.computed)
-                            // {
-                                pi.members.computed = realizeValue(pgf, pi.members.value);
-                                if(/[\+\-\*\/]/.test(pi.members.computed))
-                                {
-                                    try
-                                    {
-                                        console.log(pi.members.computed);
-                                        pi.members.computed = eval(pi.members.computed);
-                                        pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
-                                        console.log(pi.members.computed);
-                                    }
-                                    catch(error)
-                                    {
-                                        //if there's an error, ignore it and return the string as it was.
-                                    }
-                                }
-                                output_elements.push(pi.members.computed);
-                            // }
-                            // else
-                            //     output_elements.push(pi.members.computed);
-                            not_found = false;
-                        }
-                    }
-                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-                    if(not_found)
-                        output_elements.push(element);
+                            if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+                                break;
 
+                            //STORE CURRENT PARAMETER
+                            var pi = parameters[i];
+
+                            //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+                            if(element == pi.p_name)
+                            {
+                                if(element == parameters[a].p_name)
+                                {
+                                    return alert("A Circular Dependency was detected: a parameter is somehow referencing itself.");
+                                }
+                                // if(!pi.members.computed)
+                                // {
+                                    // try
+                                    // {
+                                    //     pi.p_value = eval(pi.p_value);
+                                    // }catch(e){}
+                                    if(/[\+\-\*\/]/.test(pi.p_value))
+                                    {
+                                        try
+                                        {
+                                            console.log(pi.p_value);
+                                            pi.p_value = eval(pi.p_value);
+                                            pi.p_value = pi.p_value.toFixed(3); //ROUND TO 3 DECIMALS
+                                            console.log(pi.p_value);
+                                        }
+                                        catch(error)
+                                        {
+                                            //if there's an error, ignore it and return the string as it was.
+                                        }
+                                    }
+                                    output_elements.push(pi.p_value);
+                                // }
+                                // else
+                                //     output_elements.push(pi.members.computed);
+                                not_found = false;
+                            }
+                        }
+                        //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+                        if(not_found)
+                            output_elements.push(element);
+
+                    }
+                    //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                    if(formula_elements.length < 1)
+                    {
+                        if(output_elements.length < 1)
+                            value = parameters[a].value;
+                        else
+                            value = build_value_string(output_elements);
+                        parameters[a].p_value = value;
+                    }
+                    else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                    {
+                        value = 'An unknown error occurred parsing the definition.';
+                        parameters[a].p_value = value;
+                    }
                 }
-                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
-                if(val_elements.length < 1)
-                {
-                    output = build_output_string(output_elements);
-                    return output;
-                }
-                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
-                {
-                    output = 'An unknown error occurred parsing the definition.';
-                    return output;
-                }
+                return parameters;
             }
 
             //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
-            function build_output_string(output_elements)
+            function build_value_string(output_elements)
             {
                 var output_string = '';
-                if(output_elements.length < 1 || output_elements[0] == "")
-                    return "(undeclared)";
+                if(output_elements.length < 1)
+                    return "";
                 for (var i = 0; i < output_elements.length; i++)
                 {
                     output_string += output_elements[i];
@@ -1214,7 +1256,18 @@
                             <div style = "padding: 5px" align='center'><b>Groups</b><div>
                         </td>
                         <td>
-                            <div style = "padding: 5px" align='center'><b>Preview</b><div>
+                            <table width="100%">
+                                <col width="70%">
+                                <col width="30%">
+                                <tr>
+                                    <td align = "center">
+                                        <div style = "padding: 5px" align='center'><b>Preview</b><div>
+                                    </td>
+                                    <td align="right">
+                                        <div style="text-align: right"><button  id="button_recompute"></button></div>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
                     <tr>

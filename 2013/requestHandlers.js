@@ -429,7 +429,6 @@ function group(response, request, collection, url)
       collection.find(doc).toArray(
         function(error, result)
         {
-          console.log(result[0]);
           if(error)
           {
             console.log("Error saving '"+doc.name+"' :: " + error);
@@ -451,12 +450,6 @@ function group(response, request, collection, url)
   if(FieldQuery.action == 'new_pg')
   {
     var pg = eval('('+FieldQuery.pg+')');
-    // var p_ids = new Array();
-    // for(var f in pg.p_ids)
-    // {
-    //   var oid = new ObjectID(pg.p_ids[f]);
-    //   p_ids.push(oid);
-    // }
 
     collection.find({'type': 'param_group', 'name': pg.name}).toArray( 
       function(error, result)
