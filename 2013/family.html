@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
-<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+<html lang='en' style= 'background-color:#666666; padding: 0px 25px 25px'>
 <head>
     <title>Parameter: Family</title>
     <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Family </h1>
@@ -997,26 +997,6 @@
                 label: "Recompute Values",
                 onClick: function()
                 {
-                    // var new_data = [];
-                    // for(var i = 0; i < selectionMemStore.data.length; i++)
-                    // {
-                    //     var element = selectionMemStore.data[i];
-                    //     console.log(element);
-                    //     var v_temp = realizeValue(selectionMemStore.data, element.p_formula);
-                    //     if(!v_temp == "")
-                    //     {
-                    //         element.p_value = v_temp;
-                    //         // selectionMemStore.remove(element.id);
-                    //         // selectionMemStore.add(element);
-                    //         new_data.push(element);
-                    //     }
-                    // }
-                    // for(var i = 0;i < new_data.length; i++)
-                    // {
-                    //     var element = new_data[i];
-                    //     selectionMemStore.remove(element.id);
-                    //     selectionMemStore.add(element); 
-                    // }
                     recompute_values(selectionMemStore);
                 }
             }, "button_recompute");
@@ -1033,8 +1013,6 @@
                     if(!v_temp == "")
                     {
                         element.p_value = v_temp;
-                        // selectionMemStore.remove(element.id);
-                        // selectionMemStore.add(element);
                         new_data.push(element);
                     }
                 }

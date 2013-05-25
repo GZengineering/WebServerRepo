@@ -1,7 +1,7 @@
 <!-- PI Page -->
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
 <!DOCTYPE html>
-<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+<html lang='en' style= 'background-color:#666666; padding: 0px 25px 25px'>
 	<head>
         <title>Parameter: Class</title>
         <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Class </h1>
@@ -26,10 +26,12 @@
         .dojoxGridMasterHeader
         {
             font-size: 11px;
+            font-color: '#111111';
         }
         .dojoxGridMasterView
         {
             font-size: 10px;
+            font-color: '#111111';
         }
         #button_multiplication
         {
@@ -51,6 +53,11 @@
         {
             font-family: Calibri;
             font-size: 9pt;
+            min-height: 56px
+        }
+        #reportRangeSlider
+        {
+            width: 100%
         }
         </style>
 
@@ -98,7 +105,7 @@
                             
                         </td>
                          <td valign="top">
-                            <table align="right" style="border:.5pt solid black">
+                            <table id="operator" align="right" style="border:.5pt solid black; background-color:#999999">
                                 <tr>
                                     <td align="center">
                                         <b>Operators</b>

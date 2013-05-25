@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
-<html lang='en' style= 'background-color:#00FFFF; padding: 20px 50px 50px'>
+<html lang='en' style= 'background-color:#666666; padding: 20px 50px 50px'>
 <head>
     <title>Specs: Product Spec Reports</title>
 
@@ -104,22 +104,22 @@
                 fillOptions(families);
             }
 
-            // //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
-            // var GradeSelect = new Select(
-            // {
-            //     options: [],
-            // }, "GradeSelect");
+            //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
+            var GradeSelect = new Select(
+            {
+                options: [],
+            }, "GradeSelect");
 
-            // //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
-            // dojo.connect(GradeSelect, "onChange", function(value)
-            // {
-            //     // selected_family = familyStore.get(value);
-            //     report_grade = value;
-            //     console.log(report_grade);
-            //     console.log(selected_family);
-            //     buildPGF(selected_family, report_grade);
-            //     // buildTable(family, report_grade);
-            // });
+            //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
+            dojo.connect(GradeSelect, "onChange", function(value)
+            {
+                // selected_family = familyStore.get(value);
+                report_grade = value;
+                console.log(report_grade);
+                console.log(selected_family);
+                buildPGF(selected_family, report_grade);
+                // buildTable(family, report_grade);
+            });
 
             //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
             var ProductSelect = new Select(
@@ -133,7 +133,7 @@
                 selected_family = familyStore.get(value);
                 console.log(selected_family);
                 buildPGF(selected_family, report_grade);
-                // buildTable(family, report_grade);
+                buildTable(family, report_grade);
             });
 
             //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
@@ -145,12 +145,19 @@
                     ProductSelect.options.push({label: p.name, value: p.name});
                 }
                 ProductSelect.set('value', ProductSelect.options[0]);
-                // GradeSelect.options.push({label: "Light", value: 1});
-                // GradeSelect.options.push({label: "Medium", value: 2});
-                // GradeSelect.options.push({label: "Heavy", value: 3});
-                // GradeSelect.options.push({label: "Comprehensive", value: 4});
-                // GradeSelect.set('value', GradeSelect.options[3]);
-                // console.log(GradeSelect.get('value'));
+                GradeSelect.options.push({label: "Light", value: 1});
+                GradeSelect.options.push({label: "Medium", value: 2});
+                GradeSelect.options.push({label: "Heavy", value: 3});
+                GradeSelect.options.push({label: "Comprehensive", value: 4});
+                GradeSelect.set('value', GradeSelect.options[3]);
+                if(!families || families.length < 1)
+                {
+                    ProductSelect.options.push({label: "(Empty)", value: "(Empty)"});
+                    ProductSelect.set('value', ProductSelect.options[0]);
+                    buildTable("", report_grade);
+                    return;
+                }
+                console.log(GradeSelect.get('value'));
             }
 
             //CONSTRUCTS A PGF OBJECT WITH THE GIVEN FAMILY DB REFERENCE AND A REPORT GRADE.
@@ -224,10 +231,11 @@
                             }
                         }
                     }
-                    pg.name = group.name;
-                    pg.type = group.type;
-                    pg.members = params;
-                    pgf.members.push(pg);
+                    var temp = {};
+                    temp.name = group.name;
+                    temp.type = group.type;
+                    temp.members = params;
+                    pgf.members.push(temp);
                 }
                 console.log(pgf);
 
@@ -264,6 +272,19 @@
                 html_table += "<tr><td "+header_style+"><b>Technical Specifications</b>";
                 html_table += "<td align=right "+header_style+"><b>Report Level: "+report_grade_desc+"</b></tr>";
 
+                if(!family.members)
+                {
+                    html_table += "<tr>";
+                    html_table += "<td colspan = '2' "+get_row_style('pgf',rowCount)+">";
+                    html_table += "NO PRODUCTS WERE RETRIEVED";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
+                    html_table += "</table>";
+                    dom.byId("ReportGrid").innerHTML = html_table;
+                    return;
+                }
+
                 //FAMILY NAME ROW
                 html_table += "<tr>"; 
                 html_table += "<td "+get_row_style('pgf',rowCount)+">";
@@ -275,6 +296,7 @@
                 html_table += "</tr>";
                 rowCount++;
 
+                
 
                 //ENTER EACH GROUP AS A ROW AND EACH GROUPS PARAMETERS AS A ROW
                 for(var i = 0; i < family.members.length; i++)
@@ -356,151 +378,6 @@
                     return odd_style_parameter;
             }
 
-            // //PARSE THE GIVEN DEFINITION STRING
-            // function realizeValue(pgf, value)
-            // {
-            //     //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
-            //     var val_elements = value.split(";");
-
-            //     //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
-            //     var output_elements = [];
-
-            //     //QUERY THE STORE FOR ALL PIs
-            //     var pis = [];
-            //     for(var i = 0; i < pgf.members.length; i++)
-            //     {
-            //         var group = pgf.members[i];
-            //         pis = group.members;
-            //     }
-
-            //     //STRING FOR FINAL OUTPUT
-            //     var output = '';
-
-            //     //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
-            //     //REPORT AN ERROR
-            //     if(pis.length < 1 || pis == null)
-            //     {
-            //         output = 'There was a problem acquiring the parameters';
-            //         console.log('Parse Error: ' + output);
-            //         return output;
-            //     } 
-            //     //WHILE ELEMENTS REMAIN
-            //     while(val_elements.length > 0)
-            //     {
-            //         //FLAG FOR WHEN AN ELEMENT IS MATCHED
-            //         var not_found = true;
-            //         //TEMP VARIABLE TO STORE A GRABBED PROPERTY
-            //         var temp_property;
-
-            //         //GET THE NEXT ELEMENT FROM THE ARRAY
-            //         var element = val_elements.shift();
-
-            //         //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
-            //         for(var i = 0; i < pis.length; i++)
-            //         {
-            //             if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
-            //                 break;
-
-            //             //STORE CURRENT PARAMETER
-            //             var pi = pis[i];
-
-            //             //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
-            //             if(element == pi.name)
-            //             {
-            //                 if(!pi.members.computed)
-            //                 {
-            //                     pi.members.computed = realizeValue(pgf, pi.members.value);
-            //                     if(/[\+\-\*\/]/.test(pi.members.computed))
-            //                     {
-            //                         try
-            //                         {
-            //                             console.log(pi.members.computed);
-            //                             pi.members.computed = eval(pi.members.computed);
-            //                             pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
-            //                             console.log(pi.members.computed);
-            //                         }
-            //                         catch(error)
-            //                         {
-            //                             //if there's an error, ignore it and return the string as it was.
-            //                         }
-            //                     }
-            //                     output_elements.push(pi.members.computed);
-            //                 }
-            //                 else
-            //                     output_elements.push(pi.members.computed);
-            //                 not_found = false;
-            //             }
-            //         }
-            //         //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-            //         if(not_found)
-            //             output_elements.push(element);
-
-            //     }
-            //     //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
-            //     if(val_elements.length < 1)
-            //     {
-            //         output = build_output_string(output_elements);
-            //         return output;
-            //     }
-            //     else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
-            //     {
-            //         output = 'An unknown error occurred parsing the definition.';
-            //         return output;
-            //     }
-            // }
-
-            // //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
-            // function build_output_string(output_elements)
-            // {
-            //     var output_string = '';
-            //     if(output_elements.length < 1 || output_elements[0] == "")
-            //         return "(undeclared)";
-            //     for (var i = 0; i < output_elements.length; i++)
-            //     {
-            //         output_string += output_elements[i];
-            //     }
-
-            //     output_elements = output_string.split("'");
-            //     output_string = "";
-            //     for(var i = 0; i < output_elements.length; i++)
-            //     {
-            //         try
-            //         {
-            //             var e = output_elements[i];
-            //             e = eval(e);
-            //             e = e.toFixed(1);
-            //             var index = e.indexOf('.0');
-            //             if(index > -1)
-            //             {
-            //                 e = e.substring(0, index);
-            //             }
-            //             output_elements[i] = e;
-            //         }
-            //         catch(error){}
-            //     }
-            //     for (var i = 0; i < output_elements.length; i++)
-            //     {
-            //         output_string += output_elements[i];
-            //     }
-
-            //     if(/[\+\-\*\/]/.test(output_string))
-            //     {
-            //         try
-            //         {
-            //             console.log(output_string);
-            //             output_string = eval(output_string);
-            //             output_string = output_string.toFixed(3); //ROUND TO 3 DECIMALS
-            //             console.log(output_string);
-            //         }
-            //         catch(error)
-            //         {
-            //             //if there's an error, ignore it and return the string as it was.
-            //         }
-            //     }
-
-            //     return output_string;
-            // }            
-
             init();
             
         });
@@ -518,11 +395,10 @@
         </tr>
         <tr>
             <td valign = "top" style = "padding: 5px; text-align:left">
-                <div id="ProductSelect"></div><!-- <div id="GradeSelect"></div> -->
+                <div id="ProductSelect"></div><div id="GradeSelect"></div>
                 <div id = "ReportGrid"></div>
             </td>
         </tr>
-        <!-- <tr>
             <td colspan = "100%" style = "padding: 10px">
                 <div id="serverResponse">Nothing Selected</div>
             </td>

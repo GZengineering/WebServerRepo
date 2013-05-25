@@ -77,11 +77,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                     o,
                     {formula: object.members.formula},
                     {reportRange: object.members.report_range.x + "-" + object.members.report_range.y}));
-                // for(var i = 0; i < paramStore.data.length; i++)
-                // {
-                //     if(!paramStore.data[i].id)
-                //         delete paramStore.data[i];
-                // }
             }
 
 
@@ -357,34 +352,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                     }
                 }, "button_commitChanges");
 
-            // var radio1 = new RadioButton(
-            // {
-            //     name: 'reportGrade',
-            //     value: '1',
-            //     checked: true,
-            // }, "radio1");
-
-            // var radio2 = new RadioButton(
-            // {
-            //     name: 'reportGrade',
-            //     checked: false,
-            //     value: '2',
-            // }, "radio2");
-
-            // var radio3 = new RadioButton(
-            // {
-            //     name: 'reportGrade',
-            //     checked: false,
-            //     value: '3',
-            // }, "radio3");
-
-            // var radio4 = new RadioButton(
-            // {
-            //     name: 'reportGrade',
-            //     checked: false,
-            //     value: '4',
-            // }, "radio4");
-
 
             //RULES DIV FOR THE SLIDER
             var rulesNode = dojo.create("div", {}, dojo.byId("reportRangeSlider"), "first");
@@ -446,21 +413,13 @@ var has_loaded = false; // tells the request handler if this page has already be
                          return;
                     }
 
-                    // var grade = '1';
-                    // if(radio2.checked)
-                    //     grade = '2';
-                    // else if(radio3.checked)
-                    //     grade = '3';
-                    // else if(radio4.checked)
-                    //     grade = '4';
-
-                    var range_x = reportRangeSlider.value[0];
+                    /*  GET THE RANGE FROM THE SLIDER  */
+                    var range_x = reportRangeSlider.value[0]; 
                     var range_y = reportRangeSlider.value[1];
 
                     var dependencies = getDependencies(dom.byId("txtBox_paramFormula").value);
-                    console.log(dependencies);
                     var param_class = {};
-                    param_class.type = 'param_class';
+                    param_class.type = 'p';
                     param_class.name = dom.byId("txtBox_paramName").value;
                     param_class.members = {};
                     param_class.members.formula = dom.byId("txtBox_paramFormula").value;
@@ -562,7 +521,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                 {
                     var id = param_class.id;
                     paramStore.remove(id);
-                    // paramGrid._refresh();
                 }
             }
 
@@ -622,41 +580,10 @@ var has_loaded = false; // tells the request handler if this page has already be
                         //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                         if(element == pi.name)
                         {
-                            // var temp = {};
-                            // temp._id = pi._id;
-                            // temp.name = pi.name;
-                            // temp.type = pi.type;
-                            // temp.members = pi.members;
-                            // console.log(temp);
-                            // dependencies.push(temp)
                             dependencies.push(pi._id);
                             not_found = false;
-                            // if(!pi.members.computed)
-                            // {
-                            //     pi.members.computed = realizeValue(pgf, pi.members.value);
-                            //     if(/[\+\-\*\/]/.test(pi.members.computed))
-                            //     {
-                            //         try
-                            //         {
-                            //             console.log(pi.members.computed);
-                            //             pi.members.computed = eval(pi.members.computed);
-                            //             pi.members.computed = pi.members.computed.toFixed(3); //ROUND TO 3 DECIMALS
-                            //             console.log(pi.members.computed);
-                            //         }
-                            //         catch(error)
-                            //         {
-                            //             //if there's an error, ignore it and return the string as it was.
-                            //         }
-                            //     }
-                            //     output_elements.push(pi.members.computed);
-                            // }
-                            // else
-                            //     output_elements.push(pi.members.computed);
                         }
                     }
-                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-                    // if(not_found)
-                    //     output_elements.push(element);
 
                 }
                 //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT

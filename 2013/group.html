@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
-<html lang='en' style= 'background-color:#00FFFF; padding: 0px 25px 25px'>
+<html lang='en' style= 'background-color:#666666; padding: 0px 25px 25px'>
 <head>
     <title>Parameter: Group</title>
     <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Group </h1>
@@ -25,16 +25,6 @@
             height: 55em;
             width: 100%;
         }
-        /*#standardMemGrid 
-        {
-            height: 23em;
-            width: 100%;
-        }
-        #reportMemGrid 
-        {
-            height: 23em;
-            width: 100%;
-        }*/
         #membersGrid
         {
             height: 49.5em;
@@ -83,41 +73,23 @@
                 });
             window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
 
+            //MEMORY AND DATA STORE FOR PARAMETERS
             var paramStore = new Memory({data: new Array()});
                 paramStore = Observable(paramStore);
             var paramDataStore = new ObjectStore({
                 objectStore: paramStore
             });
-
             window.paramStore = paramStore;
             window.paramDataStore = paramDataStore;
 
+            //MEMORY AND DATA STORES FOR TEMPORARY MEMBERS
             var membersStore = new Memory({data: new Array(), idProperty: '_id'});
                 membersStore = Observable(membersStore);
             var membersDataStore = new ObjectStore({
                 objectStore: membersStore
             });
-
             window.membersStore = membersStore;
             window.membersDataStore = membersDataStore;
-
-            // var reportMemStore = new Memory({data: new Array(), idProperty: '_id'});
-            //     reportMemStore = Observable(reportMemStore);
-            //     var reportDataStore = new ObjectStore({
-            //         objectStore: reportMemStore
-            //     });
-
-            // window.reportMemStore = reportMemStore;
-            // window.reportDataStore = reportDataStore;
-
-            // var standardMemStore = new Memory({data: new Array(), idProperty: '_id'});
-            //     standardMemStore = Observable(standardMemStore);
-            //     var standardDataStore = new ObjectStore({
-            //         objectStore: standardMemStore
-            //     });
-
-            // window.standardMemStore = standardMemStore;
-            // window.standardDataStore = standardDataStore;
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
             GetFullDbStore = function()
@@ -150,23 +122,16 @@
             {
                 var groups = GroupGrid.getGroups();
                 GroupGrid.buildGrid(groups);
-
                 ParamGrid.buildGrid();
-
                 SelectionGrid.buildGrid(new Array());
-
-                // ReportMembersGrid.buildGrid(new Array());
-
-                // StandardMembersGrid.buildGrid(new Array());
-
                 MembersGrid.buildGrid(new Array());
-                
-                dom.byId('txtBox_groupName').value = '';
+                dom.byId('txtBox_groupName').value = ''; //clear name text box
             }
 
 
             /********************************     Group Grid      *********************************/
 
+            //GLOBAL GROUPGRID OBJECT TO ASSOCIATE ITS FUNCTIONS AND MEMBERS
             var GroupGrid = new Object();
 
             //GET AND RETURN THE GROUPS FROM THE STORE
@@ -309,12 +274,18 @@
             //of the selected group
             GroupGrid.removePG = function(selected)
             {
+                //IF SELECTED IS NULL OR EMPTY, BAIL
                 if(!selected)
                     return;
 
-                if(!selected[0]){ return alert('error deleting '+selected[0].name+' from Parameter Grid'); }
+                //IF THE FIRST ITEM IS NULL, BAIL AND NOTIFY
+                if(!selected[0]){ return alert('error deleting '+selected[0].name+' from Parameter Grid');}
+
+                //IF THE USER DOESN'T CONFIRM THEIR WISH TO REMOVE THE SELECTED ITEM, BAIL
                 if(!confirm("Are you sure you want to delete \'" + selected[0].name +"\'?"))
                     return;
+
+                //OTHERWISE, SEND THE REQUEST TO REMOVE THE ITEM
                 else
                 {
                     xhr.get(
@@ -346,9 +317,12 @@
                 }
             }
 
+            //UPDATES THE GIVEN GROUP. AN UPDATE IS EITHER A REMOVAL OR ADDITION OF A PARAMETER TO/FROM A GROUP
             GroupGrid.update_pg = function(pg)
             {
+                //store the store id of the object
                 var id = pg.id;
+                //then delete the id from the object so it doesn't get store in the db
                 delete pg.id;
                 //send request to update an existing PG
                 xhr.get(
@@ -362,16 +336,18 @@
                     },
                     load:function(response)
                     {
+                        //if an update is successful, we'll receive a message, notify the user.
                         alert(response);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
-                        ClearTextFields();
-                        GroupMemStore.remove(id);
-                        GroupGrid.add_to_group_store(pg);
-                        groupGrid._refresh();
-                        groupGrid.selection.clear();
+                        ClearTextFields(); //clear text fields
+                        GroupMemStore.remove(id); //remove the old group from the store
+                        GroupGrid.add_to_group_store(pg); //add the change object to the store
+                        groupGrid._refresh(); //refresh the grid to display the update
+                        groupGrid.selection.clear(); //clear the selection
                     },
                     error:function(error)
                     {
+                        //log and alert the user of any error
                         console.log("There was an error: \n"+error);
                         alert("There was an error: \n"+error);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + error;
@@ -385,9 +361,7 @@
             {
                 //IF THE GIVEN ARRAY IS EMPTY, RETURN AN EMPTY ARRAY
                 if(pgs.length < 1)
-                {
                     return new Array();
-                }
 
                 //CREATE AN ARRAY TO STORE REALIZED PIs
                 var parameters = [];
@@ -420,23 +394,6 @@
                             }
                         }
                     }
-                    // for(var i = 0; i < pg.members.standard.length; i++)
-                    // {
-                    //     //FLAGS IF A MATCH IS FOUND
-                    //     var matched = false;
-                    //     for(var j = 0; j < paramStore.data.length; j++)
-                    //     {
-                    //         if(matched)
-                    //             break;
-                    //         //TRY TO MATCH THE CURRENT PI ID TO AN ID IN THE STORE
-                    //         if(pg.members.standard[i] == paramStore.data[j]._id)
-                    //         {
-                    //             //IF THERE'S A MATCH, PUSH THE PI OBJECT TO THE ARRAY
-                    //             parameters.push(paramStore.data[j]);
-                    //             matched = true;
-                    //         }
-                    //     }
-                    // }
                 }
                 return parameters;
             }
@@ -454,7 +411,8 @@
             ParamGrid.buildGrid = function()
             {
                 //DEFINE THE LAYOUT
-                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
+                var layout = 
+                [{type: 'dojox.grid._CheckBoxSelector'},[
                   {'name': 'Parameter', 'field': 'name', 'width': '100%'},
                 ]];
 
@@ -498,10 +456,7 @@
 
             /******************************     END PARAMETER GRID      *********************************/
 
-
-
-
-            /******************************     STANDARD MEMBERS GRID      *********************************/
+            /**********************************     MEMBERS GRID      *********************************/
 
             var MembersGrid = {};
 
@@ -571,16 +526,16 @@
                 window.selectionMemStore = selectionMemStore;
             }
 
+            /*  REMOVE A PARAMETER FROM A GROUP  */
             SelectionGrid.removeParameterFromGroup = function(group, parameter)
             {
-                selectionMemStore.remove(parameter._id);
-                group.members = [];
-                var store = selectionMemStore.data;
+                selectionMemStore.remove(parameter._id); //remove the parameter from the selection store
+                group.members = []; //clear teh group's members
+                var store = selectionMemStore.data; // simplify the store reference
+                //for each item in the selection store, put the item in the group members
                 for(var i = 0;i < store.length; i++)
-                {
                     group.members.push(store[i]._id);
-                }
-                console.log(group);
+                //send the update to the db
                 GroupGrid.update_pg(group);
             }
 
@@ -590,7 +545,6 @@
                 //IF THERE ARE NO PIs, GET OUT
                 if(!parameters)
                     return;
-
                 //CLEAR THE STORE
                 selectionMemStore.setData(parameters);
                 selectionGrid._refresh();
@@ -606,12 +560,12 @@
             //Group Name Textbox
             var txtBox_groupName = new TextBox({}, "txtBox_groupName");
 
+            //REGISTER THE ENTER KEY TO SUBMIT A NEW PG
             dojo.connect(txtBox_groupName, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
                     button_newPG.onClick();
             });
-
 
             //Confirm selection button for new group
             //require a name for the group
@@ -620,13 +574,18 @@
                 label: 'Commit New',
                 onClick: function()
                 {
-                    var group = {};
+                    var group = {}; //CREATE A NEW PG OBJECT
                     group.name = dom.byId('txtBox_groupName').value;
+                    group.name = group.name.replace(/(^\s+|\s+$)/g, '');
+                    console.log(group.name.length);
+
+                    //make sure the name is simple and exists
                     if(group.name < 1)
-                    {
-                        alert('A name is required for the new group.');
-                        return;
-                    }
+                        return alert('A name is required for the new group.');
+
+                    // if((/[^A-Za-z0-9\s]/g.test(group.name)))
+                    //     return alert('the name should be Alpha-Numeric, no symbols.');
+
                     if(membersStore.data.length < 1)
                     {
                         alert('You must add one or more parameters to the group.');
@@ -745,28 +704,6 @@
                 }
             }
 
-            //HELPER FUNCTION THAT ADDS ALL THE DEPENDENCIES OF A PARAMETER TO THE STANDARD
-            //SECTION OF THE GRID AUTOMATICALLY.
-            // function removeDependencies(dependencies)
-            // {
-            //     for(var j = 0; j < dependencies.length; j++)
-            //     {
-            //         var id = dependencies[j]._id;
-
-            //         for(var k = 0; k < membersStore.data.length; k ++)
-            //         {
-            //             var store_member = membersStore.data[k];
-            //             if(id == store_member._id)
-            //             try
-            //             {    
-            //                 membersStore.remove(store_member._id);
-            //             }
-            //             catch(error){}
-            //         }
-
-            //         removeDependencies(dependencies[j].members.dependencies);
-            //     }
-            // }
 
             //button to remove selected report members
             var button_remove_member = new Button(
@@ -787,45 +724,6 @@
                     }
                 }, "button_remove_member");
 
-            //button to add selected members to standard members
-            // var button_add_standard_member = new Button(
-            //     {
-            //         label: '-->', 
-            //         onClick: function()
-            //         {
-            //             var members = ParamGrid.selected_fields;
-            //             if(!members)
-            //                 return;
-            //             for(var i = 0; i < members.length; i++)
-            //             {
-            //                 var dependencies = members[i].members.dependencies;
-            //                 addDependencies(dependencies);
-            //                 try
-            //                 {
-            //                     standardMemStore.add(members[i]);
-            //                 }
-            //                 catch(error)
-            //                 {console.log(members[i].name + ' is already in that set')};
-            //             }
-            //             standardMemGrid._refresh();
-            //             paramGrid.selection.clear();
-            //         }
-            //     }, "button_add_standard_member");
-
-            // //button to remove selected standard members
-            // var button_remove_standard_member = new Button(
-            //     {
-            //         label: '<--', 
-            //         onClick: function()
-            //         {
-            //             var mem_to_remove = standardMemGrid.selection.getSelected();
-            //             for(var i = 0;i < mem_to_remove.length; i++)
-            //             {
-            //                 standardMemStore.remove(mem_to_remove[i]._id);
-            //             }
-            //             standardMemGrid._refresh();
-            //         }
-            //     }, "button_remove_standard_member");
 
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
@@ -846,12 +744,8 @@
             {
                 dom.byId('txtBox_groupName').value = '';
                 paramGrid.selection.clear();
-                // standardMemStore.setData(new Array());
-                // reportMemStore.setData(new Array());
                 membersStore.setData(new Array());
                 membersGrid._refresh();
-                // standardMemGrid._refresh();
-                // reportMemGrid._refresh();
             }
 
             GetFullDbStore();
@@ -900,17 +794,10 @@
                         <td>
                             <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
                             <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div>
-                            <!-- <table width="100%">
-                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div></tr>
-                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_standard_member"></button></div></tr>
-                                <tr><div style="text-align: center; padding-top: 70px; padding-bottom: 50px"><button id = "button_add_report_member"></button></div></tr>
-                                <tr><div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div></tr>
-                            </table> -->
                         </td>
                         <td>
                             <div style="padding: 2px" align='center'><b>Selected Members</b></div>
                             <div id="membersGrid"></div>
-                            <!-- <div style="padding: 2px" align='center'><b>Report Members</b></div>
                             <div id="reportMemGrid"></div> -->
                         </td>
                     </tr>
