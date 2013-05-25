@@ -329,18 +329,33 @@
                         row.pg_name = pg.name;
                         row.p_name = pi.name;
                         row.p_formula = pi.members.formula;
-                        row.p_dependencies = pi.members.dependencies;
-                        row.p_value = "";
-
+                        row.p_value = pi.members.formula;
                         selectionMemStore.put(row);
                     }
                 }
 
-                selectionMemStore.data = computeValues(selectionMemStore.data);
+                var new_data = [];
+                for(var i = 0; i < selectionMemStore.data.length; i++)
+                {
+                    var element = selectionMemStore.data[i];
+                    console.log(element);
+                    var v_temp = realizeValue(selectionMemStore.data, element.p_formula);
+                    if(!v_temp == "")
+                    {
+                        element.p_value = v_temp;
+                        new_data.push(element);
+                    }
+                }
+                for(var i = 0;i < new_data.length; i++)
+                {
+                    var element = new_data[i];
+                    selectionMemStore.remove(element.id);
+                    selectionMemStore.add(element); 
+                }
+
 
                 //REMOVE FROM REGISTRY IF IT EXISTS
                 registry.remove('selectionGrid');
-
 
 
                 /*  CREATE THE DOJO GRID AND RENDER IT  */
@@ -349,13 +364,12 @@
                     structure: layout}, "selectionGrid");
                 selectionGrid.startup();
 
-                // dojo.connect(selectionGrid, "onApplyCellEdit", function(inValue, inRowIndex, inFieldIndex)
-                // {
-                //     // selectionDataStore.save();
-                //     var p = computeValues(selectionMemStore.data)
-                //     selectionMemStore.setData(p);
-                //     // selectionGrid._refresh();
-                // });
+
+                dojo.connect(selectionGrid, "onApplyCellEdit", function(inValue, inRowIndex, inFieldIndex)
+                {
+                    button_recompute.onClick();
+                });
+
 
                 /*  GLOBALIZE GRID PROPERTIES  */
                 window.selectionGrid = selectionGrid;
@@ -506,10 +520,8 @@
                             if(member_id == item.pi._id && item.pg_name == group.name)
                             {
                                 var temp = {};
-                                temp.name = item.pi.name;
-                                temp.type = 'param_instance';
-                                temp.class_id = item.pi._id;
-                                temp.members = {value: item.memberValue};
+                                temp._id = item.pi._id;
+                                temp.value = item.p_value;
                                 members.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
                                 match = true; //FLAG THE MATCH
                             }
@@ -517,59 +529,14 @@
                     }
                     group.members = members; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
 
-                    // //FOR EACH MEMBER OF THE CURRENT GROUP
-                    // for(var j = 0; j < group.members.standard.length; j++)
-                    // {
-                    //     var match = false; //FLAGS WHEN A MATCH IS FOUND
-                    //     var member_id = group.members.standard[j]; //STORE CURRENT MEMBER ID
-                    //     var store = selectionGrid.store.objectStore.data; 
+                    var g = {};
+                    g._id = group._id;
+                    g.members = members;
 
-                    //     //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
-                    //     for (var k = 0; k < store.length; k++)
-                    //     {
-                    //         if(match) //IF A MATCH IS FOUND, BREAK THE LOOP
-                    //             break;
-                    //         var item = store[k]; //STORE THE CURRENT ITEM
-                    //         if(member_id == item.pi._id && item.pg_name == group.name)
-                    //         {
-                    //             var temp = {};
-                    //             temp.name = item.pi.name;
-                    //             temp.type = 'param_instance';
-                    //             temp.class_id = item.pi._id;
-                    //             temp.members = {value: item.memberValue};
-                    //             members.standard.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
-                    //             match = true; //FLAG THE MATCH
-                    //         }
-                    //     }
-                    // }
-                    // group.members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
-                    pgf.members.push(group); //PUT EACH GROUP INTO THE MEMBERS OF THIS PGF
+                    members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
+                    pgf.members.push(g); //PUT EACH GROUP INTO THE MEMBERS OF THIS PGF
                 }
 
-                groups = pgf.members;
-
-                for(var i = 0; i < groups.length; i++)
-                {
-                    var group = groups[i]; //STORE CURRENT GROUP
-                    //GET THE PARAMETERS OF THE CURRENT GROUP
-
-                    //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.length; j++)
-                    {
-                        var member = group.members[j];
-                        var computed = realizeValue(pgf, member.members.value);
-                        pgf.members[i].members[j].members.computed = computed;
-                    }
-
-                     //FOR EACH MEMBER OF THE CURRENT GROUP
-                    // for(var j = 0; j < group.members.standard.length; j++)
-                    // {
-                    //     var member = group.members.standard[j];
-                    //     var computed = realizeValue(pgf, member.members.value);
-                    //     pgf.members[i].members.standard[j].members.computed = computed;
-                    // }
-                    delete group.id;
-                }
                 FamilyGrid.newPGF(pgf); //COMMIT THE NEW PGF
             }
 
@@ -639,7 +606,6 @@
 
                 pgf.name = name;
                 pgf.type = copy.type;
-                pgf._id = copy._id;
                 pgf.members = copy.members;
 
                 console.log(pgf);
@@ -737,8 +703,9 @@
                 /*  DEFINE LAYOUT  */
                 var layout = [[
                   {'name': 'Group', 'field': 'pg_name', 'width': '20%'},
-                  {'name': 'Parameter', 'field': 'p_name', 'width': '33%', editable: true},
-                  {'name': 'Value', 'field': 'memberValue', 'width': '47%', editable: true},
+                  {'name': 'Parameter', 'field': 'p_name', 'width': '33%'},
+                  {'name': 'Formula', 'field': 'p_formula', 'width': '47%'},
+                  {'name': 'Value', 'field': 'p_value', 'width': '47%', editable: true},
                 ]];
 
                 /*  SET UP STORE  */
@@ -749,27 +716,56 @@
                 });
 
                 /*  POPULATE THE STORE  */
+
                 for(var i = 0; i < pgs.length; i++)
                 {
                     var pg = pgs[i];
+                    var group = {};
 
-                    //GET PIs OF CURRENT PG
+                    for(var j = 0; j < GroupMemStore.data.length; j++)
+                    {
+                        var g = GroupMemStore.data[j];
+                        if(pg._id == g._id)
+                        {
+                            group = g;
+                            break;
+                        }
+                    }
+
+
                     var pis = pg.members;
 
                     //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
-                    for(var j = 0; j<pis.length; j++)
+                    for(var k = 0; k<pis.length; k++)
                     {
-                        var row = {};
-                        var pi = pis[j];
-                        row.pg = pg;
-                        row.pi = pi;
-                        row.pg_name = pg.name;
-                        row.p_name = pi.name;
-                        row.memberValue = pi.members.value;
+                        var matched = false;
+                        var pi = pis[k];
 
-                        FamilyViewerMemStore.put(row);
+                        for(var l = 0; l < paramStore.data.length; l++)
+                        {
+                            if(matched)
+                                break;
+                            var p = paramStore.data[l];
+
+                            if(pi._id == p._id)
+                            {
+                                row = {};
+                                row.pg = group;
+                                row.pg_name = group.name;
+                                row.pi = p;
+                                row.p_name = p.name;
+                                row.p_formula = p.members.formula;
+                                row.p_value = pi.value;
+                                FamilyViewerMemStore.put(row);
+                                matched = true;
+                            }
+                        }
                     }
                 }
+
+                //COMPUTE ALL THE VALUES
+                recompute_values(FamilyViewerMemStore);
+                    //GET PIs OF CURRENT PG
 
                 registry.remove('FamilyViewerGrid');
 
@@ -777,30 +773,12 @@
                 var familyViewerGrid = new DataGrid({
                     store: FamilyViewerDataStore,
                     structure: layout,
-                    selectionMode: 'single',
-                    singleClickEdit: true}, "FamilyViewerGrid");
+                    selectionMode: 'single'}, "FamilyViewerGrid");
                 familyViewerGrid.startup(); //RENDER
 
-                /*  REGISTER THE MOUSE_OVER EVENT TO DISPLAY THE DEFINITION IN THE DIV  */
-                dojo.connect(familyViewerGrid, "onRowMouseOver", function(e)
+                dojo.connect(familyViewerGrid, "onApplyCellEdit", function(inValue, inRowIndex, inFieldIndex)
                 {
-                    //GET THE DEFINITION FROM THE ITEM IN THE GRID BEING HOVERED OVER
-                    var value = familyViewerGrid.store.getValue(familyViewerGrid.getItem(e.rowIndex), 'memberValue');
-                    var pgf = familyGrid.selection.getSelected();
-                    pgf = pgf[0];
-                    console.log(pgf);
-                    // var group = familyViewerGrid.store.getValue(familyViewerGrid.getItem(e.rowIndex), 'pg');
-                    var parse_display = '';
-                    if(!value) //IF THERE ISN'T A VALUE, THEN ITS TYPE IS FIXED
-                    {
-                        parse_display = '(undeclared)';
-                    }
-                    else
-                    {
-                        parse_display = realizeValue(pgf, value);
-                    }
-
-                    dom.byId("parseDisplay").innerHTML = "Parsed Definition: " + parse_display;
+                    recompute_values(FamilyViewerMemStore);
                 });
 
                 /*  GLOBALIZE GRID PROPERTIES  */
@@ -820,24 +798,26 @@
                 var viewer_data = FamilyViewerMemStore.data;
                 var selected = familyViewerGrid.selection.getSelected();
                 var member_to_remove = selected[0];
-                var groups = pgf.members;
+                if(!member_to_remove)
+                    return alert("Select a parameter to remove");
+                var pg_ids = pgf.members;
 
-                for(var i = 0; i < groups.length; i++)
+                for(var i = 0; i < pg_ids.length; i++)
                 {
-                    var parameters = groups[i].members;
-                    for(var j = 0; j < parameters.length; j++)
+                    var p_ids = pg_ids[i].members;
+                    for(var j = 0; j < p_ids.length; j++)
                     {
-                        if(parameters[j].name == member_to_remove.p_name)
+                        if(p_ids[j]._id == member_to_remove.pi._id)
                         {
-                            if(!confirm("Remove '" + parameters[j].name + "'?"))
+                            if(!confirm("Remove '" + member_to_remove.p_name + "'?"))
                                 return;
-                            parameters.splice(j,1);
+                            p_ids.splice(j,1);
                         }
                     }
                 }
-                pgf.members.members = parameters;
+                pgf.members.members = p_ids;
                 console.log(pgf);
-
+                delete pgf.id;
                 FamilyViewerGrid.commitChanges(pgf);
             }
 
@@ -846,43 +826,27 @@
             {
                 console.log(pgf);
                 var viewer_data = FamilyViewerMemStore.data;
-                var groups = pgf.members;
+                var pg_ids = pgf.members;
 
                 //FOR EACH PARAMETER OF EACH GROUP OF THE PGF, GET THE VALUE FROM THE PARAMETER IN THE GRID AND STORE IT IN
                 //THIS PGF'S PARAMETER
-                // for(var a = 0; a < 2; a++)
-                // {
-                    for(var i = 0; i < groups.length; i++)
+                for(var i = 0; i < pg_ids.length; i++)
+                {
+                    var p_ids = pg_ids[i].members;
+                    for(var j = 0; j < p_ids.length; j++)
                     {
-                        var parameters = groups[i].members;
-                        for(var j = 0; j < parameters.length; j++)
+                        for(var k = 0; k < viewer_data.length; k++)
                         {
-                            for(var k = 0; k < viewer_data.length; k++)
+                            if(viewer_data[k].pi._id == p_ids[j]._id)
                             {
-                                if(viewer_data[k].pi.class_id == parameters[j].class_id)
-                                {
-                                    parameters[j].members.value = viewer_data[k].memberValue;
-                                    parameters[j].members.computed = realizeValue(pgf, viewer_data[k].memberValue);
-                                    parameters[j].name = viewer_data[k].p_name;
-                                }
+                                p_ids[j].value = viewer_data[k].p_value;
                             }
                         }
-                        pgf.members[i].members = parameters; //SET THE PARAMETERS OF 
-                        // var parameters = groups[i].members.standard;
-                        // for(var j = 0; j < parameters.length; j++)
-                        // {
-                        //     for(var k = 0; k < viewer_data.length; k++)
-                        //     {
-                        //         if(viewer_data[k].pi.class_id == parameters[j].class_id)
-                        //         {
-                        //             parameters[j].members.value = viewer_data[k].memberValue;
-                        //             parameters[j].name = viewer_data[k].p_name;
-                        //         }
-                        //     }
-                        // }
-                        // pgf.members[i].members.standard = parameters; //SET THE PARAMETERS OF 
                     }
-                // }
+                    pgf.members[i].members = p_ids; //SET THE PARAMETERS OF 
+                }   
+                delete pgf.id;
+
                 FamilyViewerGrid.commitChanges(pgf);
             }
 
@@ -1033,127 +997,150 @@
                 label: "Recompute Values",
                 onClick: function()
                 {
-                    selectionMemStore.data = computeValues(selectionMemStore.data);
+                    // var new_data = [];
+                    // for(var i = 0; i < selectionMemStore.data.length; i++)
+                    // {
+                    //     var element = selectionMemStore.data[i];
+                    //     console.log(element);
+                    //     var v_temp = realizeValue(selectionMemStore.data, element.p_formula);
+                    //     if(!v_temp == "")
+                    //     {
+                    //         element.p_value = v_temp;
+                    //         // selectionMemStore.remove(element.id);
+                    //         // selectionMemStore.add(element);
+                    //         new_data.push(element);
+                    //     }
+                    // }
+                    // for(var i = 0;i < new_data.length; i++)
+                    // {
+                    //     var element = new_data[i];
+                    //     selectionMemStore.remove(element.id);
+                    //     selectionMemStore.add(element); 
+                    // }
+                    recompute_values(selectionMemStore);
                 }
             }, "button_recompute");
+
+            //Function that recomputes values for the given data store.
+            var recompute_values = function(store)
+            {
+                var new_data = [];
+                for(var i = 0; i < store.data.length; i++)
+                {
+                    var element = store.data[i];
+                    console.log(element);
+                    var v_temp = realizeValue(store.data, element.p_formula);
+                    if(!v_temp == "")
+                    {
+                        element.p_value = v_temp;
+                        // selectionMemStore.remove(element.id);
+                        // selectionMemStore.add(element);
+                        new_data.push(element);
+                    }
+                }
+                for(var i = 0;i < new_data.length; i++)
+                {
+                    var element = new_data[i];
+                    store.remove(element.id);
+                    store.add(element); 
+                }
+            }
 
 
             /****************************   HELPER FUNCTIONS  *********************************/
 
 
             //PARSE THE GIVEN DEFINITION STRING
-            //RETURNS THE ALTERED SET 
-            function computeValues(parameters)
+            //RETURNS AN EMPTY STRING IF THE FORMULA IS EMPTY
+            function realizeValue(data, formula)
             {
+                //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
+                if(formula.length < 1)
+                    return "";
+                var formula_elements = formula.split(";");
+
+                //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
+                var output_elements = [];
+
+                //STRING FOR FINAL OUTPUT
+                var output = '';
+
                 //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
                 //REPORT AN ERROR
-                if(parameters.length < 1 || parameters == null)
+                if(data.length < 1 || data == null)
                 {
-                    // output = 'There was a problem acquiring the parameters';
-                    // console.log('Parse Error: ' + output);
-                    // return output;
-                    return parameters;
+                    output = 'There was a problem acquiring the parameters';
+                    console.log('Parse Error: ' + output);
+                    return output;
                 } 
-
-                for(var a = 0; a < parameters.length; a++)
+                //WHILE ELEMENTS REMAIN
+                while(formula_elements.length > 0)
                 {
-                    var formula = parameters[a].p_formula;    
-                    //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
-                    var formula_elements = formula.split(";");
+                    //FLAG FOR WHEN AN ELEMENT IS MATCHED
+                    var not_found = true;
 
-                    //AN ARRAY TO MAKE UP THE PARSED ELEMENTS OF THE OUTPUT STRING
-                    var output_elements = [];
+                    //GET THE NEXT ELEMENT FROM THE ARRAY
+                    var element = formula_elements.shift();
 
-                    //QUERY THE STORE FOR ALL PIs
-                    // var pis = [];
-                    // for(var i = 0; i < pgf.members.length; i++)
-                    // {
-                    //     var group = pgf.members[i];
-                    //     pis = group.members;
-                    // }
+                    if(element == "")
+                        continue;
 
-                    //STRING FOR VALUE OUTPUT
-                    var value = '';
-                
-                    //WHILE ELEMENTS REMAIN
-                    while(formula_elements.length > 0)
+                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+                    for(var i = 0; i < data.length; i++)
                     {
-                        //FLAG FOR WHEN AN ELEMENT IS MATCHED
-                        var not_found = true;
-                        //TEMP VARIABLE TO STORE A GRABBED PROPERTY
-                        var temp_property = '';
+                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+                            break;
 
-                        //GET THE NEXT ELEMENT FROM THE ARRAY
-                        var element = formula_elements.shift();
+                        //STORE CURRENT PARAMETER
+                        var e = data[i];
 
-                        //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
-                        for(var i = 0; i < parameters.length; i++)
+                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+                        if(element == e.p_name)
                         {
-                            if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
-                                break;
-
-                            //STORE CURRENT PARAMETER
-                            var pi = parameters[i];
-
-                            //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
-                            if(element == pi.p_name)
+                            v_temp = realizeValue(data, e.p_formula);
+                            if(!v_temp == "")
                             {
-                                if(element == parameters[a].p_name)
-                                {
-                                    return alert("A Circular Dependency was detected: a parameter is somehow referencing itself.");
-                                }
-                                // if(!pi.members.computed)
-                                // {
-                                    // try
-                                    // {
-                                    //     pi.p_value = eval(pi.p_value);
-                                    // }catch(e){}
-                                    if(/[\+\-\*\/]/.test(pi.p_value))
-                                    {
-                                        try
-                                        {
-                                            console.log(pi.p_value);
-                                            pi.p_value = eval(pi.p_value);
-                                            pi.p_value = pi.p_value.toFixed(3); //ROUND TO 3 DECIMALS
-                                            console.log(pi.p_value);
-                                        }
-                                        catch(error)
-                                        {
-                                            //if there's an error, ignore it and return the string as it was.
-                                        }
-                                    }
-                                    output_elements.push(pi.p_value);
-                                // }
-                                // else
-                                //     output_elements.push(pi.members.computed);
-                                not_found = false;
+                                e.p_value = v_temp;
                             }
+                            if(/[\+\-\*\/]/.test(e.p_value))
+                            {
+                                try
+                                {
+                                    console.log(e.p_value);
+                                    e.p_value = eval(e.p_value);
+                                    e.p_value = e.p_value.toFixed(3); //ROUND TO 3 DECIMALS
+                                    console.log(e.p_value);
+                                }
+                                catch(error)
+                                {
+                                    //if there's an error, ignore it and return the string as it was.
+                                }
+                            }
+                            output_elements.push(e.p_value);
+                            not_found = false;
                         }
-                        //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-                        if(not_found)
-                            output_elements.push(element);
+                    }
+                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+                    if(not_found)
+                        output_elements.push(element);
 
-                    }
-                    //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
-                    if(formula_elements.length < 1)
-                    {
-                        if(output_elements.length < 1)
-                            value = parameters[a].value;
-                        else
-                            value = build_value_string(output_elements);
-                        parameters[a].p_value = value;
-                    }
-                    else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
-                    {
-                        value = 'An unknown error occurred parsing the definition.';
-                        parameters[a].p_value = value;
-                    }
                 }
-                return parameters;
+                //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
+                if(formula_elements.length < 1)
+                {
+                    output = build_output_string(output_elements);
+                    return output;
+                }
+                else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
+                {
+                    output = 'An unknown error occurred parsing the definition.';
+                    return output;
+                }
             }
 
             //BUILD THE OUTPUT STRING WITH THE GIVEN ARRAY OF STRINGS
-            function build_value_string(output_elements)
+            //RETURNS AN EMPTY STRING IF THE ELEMENTS ARE EMPTY
+            function build_output_string(output_elements)
             {
                 var output_string = '';
                 if(output_elements.length < 1)
@@ -1202,7 +1189,7 @@
                 }
 
                 return output_string;
-            }
+            }     
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
             function objectIsEmpty(map) 

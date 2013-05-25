@@ -15,7 +15,10 @@
         {
             min-width: 10em
         }
-
+        #GradeSelect
+        {
+            min-width: 10em
+        }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
     </script>
@@ -41,6 +44,8 @@
       function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
 
+            window.report_grade = 4;
+            window.selected_family = {};
 
             /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
             var has_loaded = false;
@@ -74,7 +79,6 @@
                     error: function(error)
                     {
                         var msg = 'There was an error getting the db. Error: ' + error;
-                        // dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
                         console.log(msg);
                         alert(msg);
                     }
@@ -100,6 +104,23 @@
                 fillOptions(families);
             }
 
+            // //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
+            // var GradeSelect = new Select(
+            // {
+            //     options: [],
+            // }, "GradeSelect");
+
+            // //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
+            // dojo.connect(GradeSelect, "onChange", function(value)
+            // {
+            //     // selected_family = familyStore.get(value);
+            //     report_grade = value;
+            //     console.log(report_grade);
+            //     console.log(selected_family);
+            //     buildPGF(selected_family, report_grade);
+            //     // buildTable(family, report_grade);
+            // });
+
             //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
             var ProductSelect = new Select(
             {
@@ -109,8 +130,10 @@
             //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
             dojo.connect(ProductSelect, "onChange", function(value)
             {
-                var family = familyStore.get(value);
-                buildTable(family);
+                selected_family = familyStore.get(value);
+                console.log(selected_family);
+                buildPGF(selected_family, report_grade);
+                // buildTable(family, report_grade);
             });
 
             //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
@@ -121,27 +144,125 @@
                     var p = families[i];
                     ProductSelect.options.push({label: p.name, value: p.name});
                 }
-                ProductSelect.set(ProductSelect.options[0]);
+                ProductSelect.set('value', ProductSelect.options[0]);
+                // GradeSelect.options.push({label: "Light", value: 1});
+                // GradeSelect.options.push({label: "Medium", value: 2});
+                // GradeSelect.options.push({label: "Heavy", value: 3});
+                // GradeSelect.options.push({label: "Comprehensive", value: 4});
+                // GradeSelect.set('value', GradeSelect.options[3]);
+                // console.log(GradeSelect.get('value'));
             }
 
+            //CONSTRUCTS A PGF OBJECT WITH THE GIVEN FAMILY DB REFERENCE AND A REPORT GRADE.
+            //THE GRADE DETERMINES WHAT PARAMETERS ARE PUT INTO THE OBJECT FOR DISPLAY.
+            buildPGF = function(family, grade)
+            {
+                console.log(family);
+                var parameters = fullDbMemStore.query({type: "param_class"});
+                var groups = fullDbMemStore.query({type: "param_group"});
+                console.log(parameters);
+                console.log(groups);
 
-            buildTable = function(family)
+                var rows = [];
+
+                var pgf = {};
+                pgf.name = family.name;
+                pgf.type = family.type;
+                pgf.members = [];
+
+                pgs = family.members;
+
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    var pg = pgs[i];
+                    var group = {};
+
+                    for(var j = 0; j < groups.length; j++)
+                    {
+                        var g = groups[j];
+                        if(pg._id == g._id)
+                        {
+                            group = g;
+                            break;
+                        }
+                    }
+
+                    var pis = pg.members;
+                    var params = [];
+
+                    //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
+                    for(var k = 0; k<pis.length; k++)
+                    {
+                        var matched = false;
+                        var pi = pis[k];
+
+                        for(var l = 0; l < parameters.length; l++)
+                        {
+                            if(matched)
+                                break;
+
+                            var p = parameters[l];
+
+                            if(p.members.report_range.x > grade || p.members.report_range.y < grade)
+                                continue;
+
+                            if(pi._id == p._id)
+                            {
+                                var param = {};
+                                row = {};
+                                row.pg_name = group.name;
+                                row.p_name = p.name;
+                                param.name = p.name;
+                                param._id = p._id;
+                                param.members = p.members;
+                                row.p_value = pi.value;
+                                param.value = pi.value;
+                                param.type = p.type;
+                                rows.push(row);
+                                params.push(param);
+                                matched = true;
+                            }
+                        }
+                    }
+                    pg.name = group.name;
+                    pg.type = group.type;
+                    pg.members = params;
+                    pgf.members.push(pg);
+                }
+                console.log(pgf);
+
+                console.log(rows);
+
+                buildTable(pgf, grade);
+            }
+
+            //BUILD THE HTML TABLE GIVEN THE PRE-CONSTRUCTED FAMILY OBJECT AND THE REPORT GRADE
+            buildTable = function(family, grade)
             {
                 //CLEAR THE HTML 
                 dom.byId("ReportGrid").innerHTML = '';
 
                 var html_table = '';
 
-                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:311pt\"";
+                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:400pt\"";
 
                 var header_style = "style=\"height:15.0pt;width:136pt; font-size:11.0pt;color:white;font-weight:700;text-decoration:none;text-underline-style: none;text-line-through:none;font-family:Cambria;border-top:1.0pt solid black; border-right:.5pt solid black;border-bottom:.5pt solid black;border-left: .5pt solid black;background:#404040;mso-pattern:black none; padding: 2px\"";
+
+                var report_grade_desc = "Light";
+                if(grade == 2)
+                    report_grade_desc = "Medium";
+                else if(grade == 3)
+                    report_grade_desc = "Heavy";
+                else if(grade == 4)
+                    report_grade_desc = "Comprehensive";
 
 
                 var rowCount = 0;
 
                 //TABLE HEADER
                 html_table += "<table "+table_properties+">";
-                html_table += "<tr><td colspan='2' "+header_style+"><b>Technical Specifications</b></tr>";
+                html_table += "<tr><td "+header_style+"><b>Technical Specifications</b>";
+                html_table += "<td align=right "+header_style+"><b>Report Level: "+report_grade_desc+"</b></tr>";
 
                 //FAMILY NAME ROW
                 html_table += "<tr>"; 
@@ -194,7 +315,7 @@
                         html_table += parameter.name;
                         html_table += "</td>";
                         html_table += "<td align=right "+get_row_style('p',rowCount)+"> ";
-                        html_table += parameter.members.computed;
+                        html_table += parameter.value;
                         html_table += "</td>";
                         html_table += "</tr>";
                         rowCount++; //INCREMENT ROW COUNT
@@ -397,7 +518,7 @@
         </tr>
         <tr>
             <td valign = "top" style = "padding: 5px; text-align:left">
-                <div id="ProductSelect"></div>
+                <div id="ProductSelect"></div><!-- <div id="GradeSelect"></div> -->
                 <div id = "ReportGrid"></div>
             </td>
         </tr>
