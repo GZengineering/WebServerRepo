@@ -5,6 +5,8 @@
     <title>Specs: Product Spec Reports</title>
 
 
+
+
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
@@ -127,13 +129,22 @@
                 options: [],
             }, "ProductSelect");
 
+            //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
+            var button_refresh_data = new Button(
+            {
+                label: 'Refresh All Data',
+                onClick: function()
+                {
+                    init();
+                }
+            }, "button_refresh_data");
+
             //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
             dojo.connect(ProductSelect, "onChange", function(value)
             {
                 selected_family = familyStore.get(value);
                 console.log(selected_family);
                 buildPGF(selected_family, report_grade);
-                buildTable(family, report_grade);
             });
 
             //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
@@ -204,6 +215,8 @@
                     {
                         var matched = false;
                         var pi = pis[k];
+                        if(!pi)
+                            continue;
 
                         for(var l = 0; l < parameters.length; l++)
                         {
@@ -309,6 +322,9 @@
 
                     group = family.members[i];
 
+                    if(group.members.length < 1)
+                        continue;
+
                     //ADD ROW FOR CURRENT GROUP
                     html_table += "<tr>"; 
                     html_table += "<td "+get_row_style('pg',rowCount)+">";
@@ -386,12 +402,25 @@
     </script>
 </head>
 
+
+
 <body class="claro">
     <table border = "0">
         <col width = '100%'>
         <tr>
-            <td style = "text-align: center; padding: 20px">
-                <h1><u>Spec Reports</u></h1>
+            <td>
+                <table width="100%" style="padding-top: 10px">
+                    <col width = "40%">
+                    <col width = "60%">
+                    <tr>
+                        <td align="left" valign="bottom">
+                            <button id="button_refresh_data"></button>
+                        </td>
+                        <td valign="bottom">
+                            <h1 align = 'left'><u> Spec Reports  </u></h1>
+                        </td>   
+                    </tr>
+                </table>
             </td>
         </tr>
         <tr>

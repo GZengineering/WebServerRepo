@@ -44,7 +44,7 @@ var has_loaded = false; // tells the request handler if this page has already be
             
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
-            GetFullDbStore = function()
+            init = function()
             {
                 xhr.get(
                 {
@@ -57,7 +57,9 @@ var has_loaded = false; // tells the request handler if this page has already be
                     },
                     load: function(response)
                     {
-                        fullDbMemStore.data = response;
+                        fullDbMemStore.setData(new Array());
+                        paramStore.setData(new Array());
+                        fullDbMemStore.setData(response);
                         ParamGrid.buildGrid();
                     },
                     error: function(error)
@@ -73,7 +75,6 @@ var has_loaded = false; // tells the request handler if this page has already be
             {
                 var o = new Object(object);
                 paramStore.put(lang.mixin(
-                    {id: paramStore.data.length},
                     o,
                     {formula: object.members.formula},
                     {reportRange: object.members.report_range.x + "-" + object.members.report_range.y}));
@@ -99,7 +100,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                 for(var i = 0; i < parameters.length; i++)
                 {
                     paramStore.put(lang.mixin(
-                        { id: i},
                         parameters[i],
                         {formula: parameters[i].members.formula},
                         {reportRange: parameters[i].members.report_range.x + "-" + parameters[i].members.report_range.y}
@@ -171,7 +171,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                 {
                     var p = store[i];
                     var report_elements = p.reportRange.split("-");
-                    console.log(report_elements);
                     var temp = {};
                     temp.members = p.members;
                     temp.members.formula = p.formula;
@@ -183,7 +182,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                     temp.type = p.type;
                     parameters.push(temp);
                 }
-                console.log(parameters);
                 ParamGrid.commitChanges(parameters);
             }
 
@@ -209,7 +207,7 @@ var has_loaded = false; // tells the request handler if this page has already be
 
                         //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
                         //ADD THE OBJECT TO THE STORE
-                        GetFullDbStore();
+                        init();
                     },
                     error:function(error)
                     {
@@ -255,7 +253,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                     {
                         return alert('Select a Parameter to Copy.');
                     }
-                    console.log(selected);
                     add_param_to_formula(selected);
                 },
             }, 'button_add_param_to_formula');
@@ -337,7 +334,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                 label: 'Delete', 
                 onClick: function()
                 {
-                    console.log(ParamGrid.selected_fields);
                     remove_param_class(ParamGrid.selected_fields)
                 },
             }, 'button_delete_param_class');
@@ -398,7 +394,6 @@ var has_loaded = false; // tells the request handler if this page has already be
 
             //DISPLAY THE VALUE OF THE SLIDER
             dom.byId("reportRange").innerHTML = "Report Range: " + reportRangeSlider.value;
-            console.log(reportRangeSlider.value);
 
 
             //BUTTON TO SUBMIT A NEW PI            
@@ -432,6 +427,16 @@ var has_loaded = false; // tells the request handler if this page has already be
                 }
             }, 'button_commit_new');
 
+            //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
+            var button_refresh_data = new Button(
+            {
+                label: 'Refresh All Data',
+                onClick: function()
+                {
+                    init();
+                }
+            }, "button_refresh_data");
+
             //FUNCTION SUBMITS THE NEW PI TO THE SERVER
             //IF THE SERVER SUCCEEDS, THE SERVER RETURNS THE OBJECT
             //AND THE OBJECT IS ADDED TO THE APPROPRIATE STORE
@@ -443,7 +448,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                     return;
                 }
 
-                paramDataStore.save();
+                // paramDataStore.save();
 
                 //SEND THE NEW PI TO THE SERVER
                 xhr.get(
@@ -484,15 +489,15 @@ var has_loaded = false; // tells the request handler if this page has already be
             remove_param_class = function(selected)
             {
                 if(!selected || selected.length < 1)
-                {
-                    alert("Select something to delete");
-                    return;
-                }
+                    return alert("Select something to delete");
+
                 var param_class = selected[0];
 
                 if(!param_class){ return alert('error deleting \''+param_class.name+'\''); }
                 if(!confirm("Are you sure you want to delete \'" + param_class.name +"\'?"))
                     return;
+                var id = param_class.id;
+
                 //REQUEST SERVER TO REMOVE
                 xhr.get(
                 {
@@ -507,7 +512,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                     {
                         //UPDATE SERVER RESPONSE DIV AND REMOVE THE PI FROM THE STORE
                         dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                        remove_from_db_store(param_class);
+                        paramStore.remove(id);
+                        // remove_from_db_store(param_class);
                     },
                     error:function(error)
                     {
@@ -517,12 +523,6 @@ var has_loaded = false; // tells the request handler if this page has already be
                     }
                 });
 
-                //REMOVE THE PI FROM THE FIXED STORE
-                remove_from_db_store = function(param_class)
-                {
-                    var id = param_class.id;
-                    paramStore.remove(id);
-                }
             }
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
@@ -531,9 +531,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                for(var key in map) 
                {
                   if (map.hasOwnProperty(key)) 
-                  {
                      return false;
-                  }
                }
                return true;
             }
@@ -589,10 +587,8 @@ var has_loaded = false; // tells the request handler if this page has already be
                 }
                 //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
                 if(val_elements.length < 1)
-                {
-                    console.log(dependencies);
                     return dependencies;
-                }
+                
                 else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
                 {
                     alert('An unknown error occurred parsing the definition.');
@@ -610,5 +606,5 @@ var has_loaded = false; // tells the request handler if this page has already be
 
             //ON LOAD, CLEAR TEXT FIELDS AND GET ALL THE DATA
             ClearTextFields();
-            GetFullDbStore();
+            init();
         });

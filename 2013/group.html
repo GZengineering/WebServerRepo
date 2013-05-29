@@ -3,7 +3,18 @@
 <html lang='en' style= 'background-color:#666666; padding: 0px 25px 25px'>
 <head>
     <title>Parameter: Group</title>
-    <h1 ALIGN = 'center' style = 'padding: 10px'> Parameter: Group </h1>
+    <table width="100%" style="padding-top: 10px">
+        <col width = "49%">
+        <col width = "51%">
+        <tr>
+            <td align="left" valign="bottom">
+                <button id="button_refresh_data"></button>
+            </td>
+            <td valign="bottom">
+                <h1 align = 'left'> Parameter: Group </h1>
+            </td>   
+        </tr>
+    </table>
 
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
@@ -92,7 +103,7 @@
             window.membersDataStore = membersDataStore;
 
             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
-            GetFullDbStore = function()
+            init = function()
             {
                 xhr.get(
                 {
@@ -161,6 +172,8 @@
                 {
                     GroupMemStore.add(groups[i]);
                 }
+
+                registry.remove('GroupGridDiv');
 
                 /*create a new grid*/
                 var grid = new DataGrid({
@@ -246,7 +259,6 @@
                         }
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully added.";
                         ClearTextFields();
-                        // GroupGrid.add_to_group_store(response);
                         GroupMemStore.add(pg);
                     },
                     error:function(error)
@@ -288,7 +300,7 @@
                         load:function(response)
                         {
                             dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                            remove_from_Group_store();
+                            GroupMemStore.remove(selected[0].id);
                         },
                         error:function(error)
                         {
@@ -297,12 +309,6 @@
                         }
                     });
                 }
-
-                //REMOVE THE OBJECT FROM THE STORE
-                remove_from_Group_store = function()
-                {
-                    GroupMemStore.remove(selected[0].id);
-                }
             }
 
             //UPDATES THE GIVEN GROUP. AN UPDATE IS EITHER A REMOVAL OR ADDITION OF A PARAMETER TO/FROM A GROUP
@@ -310,8 +316,7 @@
             {
                 //store the store id of the object
                 var id = pg.id;
-                console.log(pg);
-                //then delete the id from the object so it doesn't get store in the db
+                //delete the id from the object so it doesn't get stored in the db
                 delete pg.id;
                 //send request to update an existing PG
                 xhr.get(
@@ -330,16 +335,14 @@
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
                         ClearTextFields(); //clear text fields
                         GroupMemStore.remove(id); //remove the old group from the store
-                        // GroupGrid.add_to_group_store(pg); //add the change object to the store
                         GroupMemStore.add(pg);
-                        // groupGrid._refresh(); //refresh the grid to display the update
                         groupGrid.selection.clear(); //clear the selection
                     },
                     error:function(error)
                     {
                         //log and alert the user of any error
                         console.log("There was an error: \n"+error);
-                        alert("There was an error: \n"+error);
+                        alert("There was an error updating " + pg.name);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + error;
                     }
                 });
@@ -406,8 +409,11 @@
                   {'name': 'Parameter', 'field': 'name', 'width': '100%'},
                 ]];
 
+                //get the parameters from the global store
                 var parameters = fullDbMemStore.query({type: 'p'});
                 paramStore.setData(parameters);
+
+                registry.remove('ParamGrid');
 
                 //CREATE THE DOJO GRID AND RENDER IT
                 var grid = new DataGrid({
@@ -448,6 +454,7 @@
 
             /**********************************     MEMBERS GRID      *********************************/
 
+            //OBJECT TO ASSOCIATE MEMBER GRID PROPERTIES AND FUNCTIONS
             var MembersGrid = {};
 
             MembersGrid.buildGrid = function(members)
@@ -457,7 +464,10 @@
                   {'name': 'Parameter', 'field': 'name', 'width': '100%'},
                 ]];
 
+                //SET MEMBERS STORE DATA TO THE PASSED MEMBERS
                 membersStore.setData(members);
+
+                registry.remove('membersGrid');
 
                 //CREATE THE DOJO GRID AND RENDER IT
                 var grid = new DataGrid({
@@ -468,13 +478,6 @@
 
                 //REGISTER NOTIFY EVENT TO REFRESH THE GRID
                 dojo.connect(membersStore, 'notify', function(){grid._refresh()});
-
-                dojo.connect(grid, "SelectionChanged", function()
-                {
-                    console.log("Selection Changed");
-                    MembersGrid.selected_fields = this.selection.getSelected();
-                    console.log(MembersGrid.selected_fields);
-                });
 
                 //GLOBALIZE STORE DATA AND THE GRID
                 window.membersGrid = grid;
@@ -503,6 +506,8 @@
                     objectStore: selectionMemStore
                 });
 
+                registry.remove('selectionGrid');
+
 
                 /*  CREATE THE DOJO GRID AND RENDER IT  */
                 var selectionGrid = new DataGrid({
@@ -525,7 +530,6 @@
                 //for each item in the selection store, put the item in the group members
                 for(var i = 0;i < store.length; i++)
                     group.members.push(store[i]._id);
-                console.log(group);
                 //send the update to the db
                 GroupGrid.update_pg(group);
             }
@@ -568,14 +572,10 @@
                     var group = {}; //CREATE A NEW PG OBJECT
                     group.name = dom.byId('txtBox_groupName').value;
                     group.name = group.name.replace(/(^\s+|\s+$)/g, '');
-                    console.log(group.name.length);
 
                     //make sure the name is simple and exists
                     if(group.name < 1)
                         return alert('A name is required for the new group.');
-
-                    // if((/[^A-Za-z0-9\s]/g.test(group.name)))
-                    //     return alert('the name should be Alpha-Numeric, no symbols.');
 
                     if(membersStore.data.length < 1)
                     {
@@ -597,28 +597,33 @@
                 label: "Add To Selected",
                 onClick: function()
                 {
+                    //GET THE SELECTED GROUP
                     var selected = groupGrid.selection.getSelected();
                     var group = selected[0];
                     if(!group)
                         return alert("Select a group to add the paramters to.");
+
+                    //ENSURE THE USER IS ACTUALLY TRYING TO ADD SOMETHING TO THE GROUP
                     if(membersStore.data.length < 1)
                         return alert("There must be parameters in the 'Selected Members' grid");
+
+                    //FOR EACH ITEM IN THE MEMBERS STORE, MAKE SURE IT'S NOT ALREADY IN THE GROUP AND ADD IT
                     for(var i = 0; i < membersStore.data.length; i++)
                     {
-                        var matched = false;
+                        var matched = false; //flag if there's a match
                         mem_to_add = membersStore.data[i];
                         for(var j = 0; j < group.members.length; j++)
                         {
                             if(mem_to_add._id == group.members[j])
                             {
-                                matched = true;
+                                matched = true; //if we find it exists, stop looking and don't add it
                                 break;
                             }
                         }
-                        if(!matched)
+                        if(!matched) //if we don't find it in the group, add it
                             group.members.push(mem_to_add._id);
                     }
-                    console.log(group);
+                    //send the update to the db
                     GroupGrid.update_pg(group);
                 }
             }, "button_add_to_selected_group");
@@ -647,27 +652,30 @@
                     }
                 }, "button_removeParameter");
 
+            //BUTTON TO ADD A MEMBER TO THE PENDING GROUP
             var button_add_member = new Button(
                 {
                     label: '-->', 
                     onClick: function()
                     {
+                        //GET THE SELECTED PARAMETERS
                         var parameters = ParamGrid.selected_fields;
                         if(!parameters)
                             return;
+                        //ADD EACH PARAMETER AND RECURSIVELY ADD EACH PARAMETER'S DEPENDENCIES
                         for(var i = 0; i < parameters.length; i++)
                         {
                             var dependencies = parameters[i].members.dependencies;
                             addDependencies(dependencies);
-                            try
+                            try //try to add it to the pending group
                             {
                                 membersStore.add(parameters[i]);
                             }
-                            catch(error)
+                            catch(error) //if there's an error, it is already in the pending group
                             {console.log(parameters[i].name + ' is already in that set')};
                         }
                         membersGrid._refresh();
-                        paramGrid.selection.clear();
+                        paramGrid.selection.clear(); //clear the selection
                     }
                 }, "button_add_member");
 
@@ -681,19 +689,22 @@
 
                     var sub_d = [];
 
+                    //for each parameter find a match for the current dependency
                     for(var k = 0; k < paramStore.data.length; k++)
                     {
                         var store_member = paramStore.data[k];
                         if(id == store_member._id)
-                        try
-                        {    
-                            sub_d = store_member.members.dependencies;
-                            membersStore.add(store_member);
+                        {
+                            try
+                            {   
+                                //get the dependencies of this dependency 
+                                sub_d = store_member.members.dependencies;
+                                membersStore.add(store_member);
+                            }
+                            catch(error){}
                         }
-                        catch(error){}
-                        console.log(store_member);
                     }
-
+                    //add the dependencies of this dependency
                     addDependencies(sub_d);
                 }
             }
@@ -710,14 +721,21 @@
                         {
                             if(!mem_to_remove[i])
                                 continue;
-                            // var dependencies = mem_to_remove[i].members.dependencies;
-                            // removeDependencies(dependencies);
                             membersStore.remove(mem_to_remove[i]._id);
                         }
                         membersGrid._refresh();
                     }
                 }, "button_remove_member");
 
+            //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
+            var button_refresh_data = new Button(
+            {
+                label: 'Refresh All Data',
+                onClick: function()
+                {
+                    init();
+                }
+            }, "button_refresh_data");
 
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
@@ -726,9 +744,7 @@
                for(var key in map) 
                {
                   if (map.hasOwnProperty(key)) 
-                  {
                      return false;
-                  }
                }
                return true;
             }
@@ -742,8 +758,7 @@
                 membersGrid._refresh();
             }
 
-            GetFullDbStore();
-
+            init();
         });
 </script>
 </head>
@@ -792,7 +807,7 @@
                         <td>
                             <div style="padding: 2px" align='center'><b>Selected Members</b></div>
                             <div id="membersGrid"></div>
-                            <div id="reportMemGrid"></div> -->
+                            <div id="reportMemGrid"></div>
                         </td>
                     </tr>
                 </table>
