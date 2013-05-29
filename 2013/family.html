@@ -103,7 +103,7 @@
             function BuildGrids()
             {
                 //QUERY TO GET THE PARAMETERS FROM THE FULL STORE
-                var parameters = fullDbMemStore.query({type: "param_class"});
+                var parameters = fullDbMemStore.query({type: "p"});
                 var paramStore = new Memory({data: parameters});
                     paramStore = Observable(paramStore);
                     var paramDataStore = new ObjectStore({
@@ -138,7 +138,7 @@
             //GET AND RETURN THE GROUPS FROM THE STORE
             GroupGrid.getGroups = function()
             {
-                var groups = fullDbMemStore.query({type: 'param_group'});
+                var groups = fullDbMemStore.query({type: 'pg'});
                 return groups;
             }
 
@@ -188,9 +188,9 @@
                     console.log(groups);
 
                     //GET THE PIs OF THE SELECTED GROUP & REBUILD THE SELECTION STORE
-                    var parameters = GroupGrid.getFieldsOfGroups(groups);
-                    console.log(parameters);
-                    SelectionGrid.rebuildStore(groups);
+                    // var parameters = GroupGrid.getFieldsOfGroups(groups);
+                    // console.log(parameters);
+                    // SelectionGrid.rebuildStore(groups);
 
                     /*  DISPLAY WHAT'S SELECTED IN THE PROMPT  */
                     if(groups.length < 1)
@@ -226,9 +226,7 @@
             {
                 //IF THE GIVEN ARRAY IS EMPTY, RETURN AN EMPTY ARRAY
                 if(pgs.length < 1)
-                {
                     return new Array();
-                }
 
                 //CREATE AN ARRAY TO STORE REALIZED PIs
                 var parameters = [];
@@ -291,7 +289,7 @@
             SelectionGrid.buildGrid = function(pgs)
             {
                 /*  DEFINE LAYOUT  */
-                var layout = [[
+                var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
                   {'name': 'Group', 'field': 'pg_name', 'width': '15%'},
                   {'name': 'Parameter', 'field': 'p_name', 'width': '15%'},
                   {'name': 'Formula', 'field': 'p_formula', 'width': '40%', editable: true},
@@ -300,7 +298,7 @@
 
 
                 /*  SET UP DATA STORE  */
-                var selectionMemStore = new Memory({data: new Array()});
+                var selectionMemStore = new Memory({data: new Array(), idProperty: 'p_name'});
                 selectionMemStore = Observable(selectionMemStore);
                 var selectionDataStore = new ObjectStore({
                     objectStore: selectionMemStore
@@ -324,13 +322,31 @@
                             if(pi == paramStore.data[k]._id)
                                 pi = paramStore.data[k];
                         }
+                        if(!pi.members)
+                            continue;
                         row.pg = pg;
                         row.pi = pi;
                         row.pg_name = pg.name;
                         row.p_name = pi.name;
+                        console.log(pi);
                         row.p_formula = pi.members.formula;
                         row.p_value = pi.members.formula;
-                        selectionMemStore.put(row);
+                        try
+                        {
+                            selectionMemStore.add(row);
+                        }
+                        catch(e){}
+                    }
+                }
+
+                for(var i = 0; i < selectionMemStore.data.length; i++)
+                {
+                    var element1 = selectionMemStore.data[i];
+                    for(var j = 0; j < selectionMemStore.data.length; j++)
+                    {
+                        var element2 = selectionMemStore.data[j];
+                        if ((element1.pi._id == element2.pi._id) && (element1.pg_name != element2.pg_name))
+                            selectionMemStore.remove(element2.p_name);
                     }
                 }
 
@@ -349,8 +365,12 @@
                 for(var i = 0;i < new_data.length; i++)
                 {
                     var element = new_data[i];
-                    selectionMemStore.remove(element.id);
-                    selectionMemStore.add(element); 
+                    selectionMemStore.remove(element.p_name);
+                    try
+                    {
+                        selectionMemStore.add(element);
+                    }
+                    catch(error){console.log(element.p_name + " is already in this store");} 
                 }
 
 
@@ -489,55 +509,163 @@
                 window.FamilyMemStore = FamilyMemStore;
             }
 
+            FamilyGrid.update_pgf = function(pgf)
+            {
+                var id = pgf.id;
+                console.log(pgf);
+                delete pgf.id;
+
+                xhr.get(
+                {
+                    url:"/family", 
+                    content: 
+                    {
+                        action: 'update_pgf',
+                        pgf: JSON.stringify(pgf),
+                        loaded: has_loaded=true,
+                    },
+                    load:function(response)
+                    {
+                        //if an update is successful, we'll receive a message, notify the user.
+                        alert(response);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + pgf.name + " successfully upated.";
+                        dom.byId("txtBox_familyName").value = '';
+                        FamilyMemStore.remove(id); //remove the old group from the store
+                        // GroupGrid.add_to_group_store(pg); //add the change object to the store
+                        try
+                        {
+                            FamilyMemStore.add(pgf);
+                        }
+                        catch(error)
+                        {
+                            console.log(pgf.name + 'already exists in this store');
+                        }
+                        // groupGrid._refresh(); //refresh the grid to display the update
+                        familyGrid.selection.clear(); //clear the selection
+                    },
+                    error:function(error)
+                    {
+                        //log and alert the user of any error
+                        console.log("There was an error: \n"+error);
+                        alert("There was an error: \n"+error);
+                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                    }
+                });
+            }
+
             /*  BUILD THE PGF OBJECT TO SEND TO THE SERVER BY ANALYZING THE GROUPS AND EDITED VALUES  */
-            FamilyGrid.analyzeNewPGF = function(groups)
+            FamilyGrid.analyzeNewPGF = function()
             {
                 var pgf = {}; //OBJECT TO STORE THE PGF DATA
                 pgf.type = 'pgf';
                 pgf.name = dom.byId("txtBox_familyName").value;
                 pgf.members = []; //PGF MEMBERS ARE GROUPS PGF MEMBERS CONTAIN MEMBERS (PARAMETERS)
 
+                var groups = GroupMemStore.data;
 
-                for(var i = 0; i < groups.length; i++)
+                var store = selectionGrid.store.objectStore.data; 
+
+                var matched = false;
+                var members = [];
+                var pgs = [];
+                var params = [];
+                var group;
+                for(var i = 0; i < store.length; i++)
                 {
-                    var group = groups[i]; //STORE CURRENT GROUP
-                    //GET THE PARAMETERS OF THE CURRENT GROUP
-                    var members = []; //ARRAY TO STORE COLLECTED MEMBERS FOR THE GROUP
-
-                    //FOR EACH MEMBER OF THE CURRENT GROUP
-                    for(var j = 0; j < group.members.length; j++)
+                    var item = store[i];
+                    if(pgs.indexOf(item.pg._id) == -1)
+                        pgs.push(item.pg._id);
+                }
+                console.log(pgs);
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    var item = {};
+                    item._id = pgs[i];
+                    item.members = [];
+                    pgs[i] = item;
+                }
+                console.log(pgs);
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    pgs[i].members = [];
+                }
+                console.log(pgs);
+                for(var i = 0; i < store.length; i++)
+                {
+                    // var member = pgs[i];
+                    // for(var j = 0; j < groups.length; j++)
+                    // {
+                    //     var group = groups[j];
+                    //     if(group._id == member._id)
+                    //     {
+                    //         member.members = group.members;
+                    //     }
+                    // }
+                    var matched = false;
+                    var item = store[i];
+                    for(var j = 0; j < pgs.length; j++)
                     {
-                        var match = false; //FLAGS WHEN A MATCH IS FOUND
-                        var member_id = group.members[j]; //STORE CURRENT MEMBER ID
-                        var store = selectionGrid.store.objectStore.data; 
-
-                        //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
-                        for (var k = 0; k < store.length; k++)
+                        if(matched)
+                            break;
+                        var pg = pgs[j];
+                        if(pg._id == item.pg._id)
                         {
-                            if(match) //IF A MATCH IS FOUND, BREAK THE LOOP
-                                break;
-                            var item = store[k]; //STORE THE CURRENT ITEM
-                            if(member_id == item.pi._id && item.pg_name == group.name)
-                            {
-                                var temp = {};
-                                temp._id = item.pi._id;
-                                temp.value = item.p_value;
-                                members.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
-                                match = true; //FLAG THE MATCH
-                            }
+                            var p = {};
+                            p._id = item.pi._id;
+                            p.value = item.p_value;
+                            pgs[j].members.push(p);
+                            matched = true;
                         }
                     }
-                    group.members = members; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
-
-                    var g = {};
-                    g._id = group._id;
-                    g.members = members;
-
-                    members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
-                    pgf.members.push(g); //PUT EACH GROUP INTO THE MEMBERS OF THIS PGF
                 }
-
+                console.log(pgs);
+                pgf.members = pgs;
+                console.log(pgf);
                 FamilyGrid.newPGF(pgf); //COMMIT THE NEW PGF
+
+
+
+
+                // for(var i = 0; i < groups.length; i++)
+                // {
+                //     var group = groups[i]; //STORE CURRENT GROUP
+                //     //GET THE PARAMETERS OF THE CURRENT GROUP
+                //     var members = []; //ARRAY TO STORE COLLECTED MEMBERS FOR THE GROUP
+
+                //     //FOR EACH MEMBER OF THE CURRENT GROUP
+                //     for(var j = 0; j < group.members.length; j++)
+                //     {
+                //         var match = false; //FLAGS WHEN A MATCH IS FOUND
+                //         var member_id = group.members[j]; //STORE CURRENT MEMBER ID
+                //         var store = selectionGrid.store.objectStore.data; 
+
+                //         //CHECK EACH ITEM IN THE STORE AGAINST THE CURRENT GROUPS MEMBERS
+                //         for (var k = 0; k < store.length; k++)
+                //         {
+                //             if(match) //IF A MATCH IS FOUND, BREAK THE LOOP
+                //                 break;
+                //             var item = store[k]; //STORE THE CURRENT ITEM
+                //             if(member_id == item.pi._id && item.pg_name == group.name)
+                //             {
+                //                 var temp = {};
+                //                 temp._id = item.pi._id;
+                //                 temp.value = item.p_value;
+                //                 members.push(temp); //PUSH THE ITEM TO THE MEMBERS ARRAY
+                //                 match = true; //FLAG THE MATCH
+                //             }
+                //         }
+                //     }
+                //     group.members = members; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
+
+                //     var g = {};
+                //     g._id = group._id;
+                //     g.members = members;
+
+                //     members.standard = members.standard; //SET THE GROUP MEMBERS TO THE OBTAINED MEMBERS ARRAY
+                //     pgf.members.push(g); //PUT EACH GROUP INTO THE MEMBERS OF THIS PGF
+                // }
+
+                // FamilyGrid.newPGF(pgf); //COMMIT THE NEW PGF
             }
 
             /*  CREATES A NEW PGF  */
@@ -709,7 +837,7 @@
                 ]];
 
                 /*  SET UP STORE  */
-                var FamilyViewerMemStore = new Memory({data: new Array()});
+                var FamilyViewerMemStore = new Memory({data: new Array(), idProperty: 'p_name'});
                 FamilyViewerMemStore = Observable(FamilyViewerMemStore);
                 var FamilyViewerDataStore = new ObjectStore({
                     objectStore: FamilyViewerMemStore
@@ -740,6 +868,8 @@
                     {
                         var matched = false;
                         var pi = pis[k];
+                        if(!pi)
+                            continue;
 
                         for(var l = 0; l < paramStore.data.length; l++)
                         {
@@ -898,34 +1028,49 @@
                     button_newPGF.onClick();
             });
 
-            var button_add_to_existing_pgf = new Button(
-            {
-                label: "Add To Selected",
-                onClick: function()
-                {
-                    var selected = familyGrid.selection.getSelected();
-                    var pgf = selected[0];
-                    if(!pgf)
-                        return alert("Select a Family to add to.");
-                    selected = groupGrid.selection.getSelected();
-                    if(selected.length < 1)
-                        return alert("Select a group to add to the family.");
-                    for(var i = 0; i < membersStore.data.length; i++)
-                    {
-                        var matched = false;
-                        mem_to_add = membersStore.data[i];
-                        for(var j = 0; j < group.members.length; j++)
-                        {
-                            if(mem_to_add._id == group.members[j])
-                                matched = true;
-                        }
-                        if(!matched)
-                            group.members.push(mem_to_add._id);
-                    }
-                    console.log(group);
-                    GroupGrid.update_pg(group);
-                }
-            }, "button_add_to_existing_pgf");
+            // var button_add_to_existing_pgf = new Button(
+            // {
+            //     label: "Add To Selected",
+            //     onClick: function()
+            //     {
+            //         var selected = familyGrid.selection.getSelected();
+            //         var pgf = selected[0];
+            //         if(!pgf)
+            //             return alert("Select a Family to add to.");
+            //         if(selectionMemStore.data.length < 1)
+            //             return alert("There must be items in the Preview Grid to add to an existing family.");
+            //         for(var i = 0; i < selectionMemStore.data.length; i++)
+            //         {
+            //             var matched_p = false;
+            //             var matched_pg = false;
+            //             mem_to_add = selectionMemStore.data[i];
+            //             for(var j = 0; j < pgf.members.length; j++)
+            //             {
+            //                 var group = pgf.members[j];
+            //                 if(group == mem_to_add.pg._id)
+            //                 {    
+            //                     for(var k = 0; k < group.members.length; k++)
+            //                     {
+            //                         if(mem_to_add.pi._id == group.members[k])
+            //                             matched_p = true;
+            //                         if(!matched_p && (k == group.members.length - 1))
+            //                             pgf.members[j].members.push(mem_to_add.pi._id);
+            //                     }
+            //                 }
+            //                 if((j == pgf.members.length - 1) && !matched_pg)
+            //                 {
+            //                     var pg = {};
+            //                     pg.members = [];
+            //                     pg._id = mem_to_add.pg._id;
+            //                     pg.members.push(mem_to_add.pi._id);
+            //                     pgf.members.push(pg);
+            //                 }
+            //             }
+            //         }
+            //         console.log(pgf);
+            //         FamilyGrid.update_pgf(pgf);
+            //     }
+            // }, "button_add_to_existing_pgf");
 
             //CREATE NEW PF BUTTON
             //REQUIRES A NAME
@@ -934,18 +1079,11 @@
                 label: 'Commit',
                 onClick: function()
                 {
-                    var groups = groupGrid.selection.getSelected();
                     if(dom.byId('txtBox_familyName').value.length < 1)
-                    {
-                        alert('A name is required for the new family.');
-                        return;
-                    }
-                    if(groups < 1)
-                    {
-                        alert('You must select at least one group to form a family');
-                        return;
-                    }
-                    FamilyGrid.analyzeNewPGF(groups);
+                        return alert('A name is required for the new family.');
+                    if(selectionMemStore.data.length < 1)
+                        return alert("There must be at least one item in the 'Preview' Grid.");
+                    FamilyGrid.analyzeNewPGF();
                 }
             }, "button_newPGF");
 
@@ -992,6 +1130,108 @@
                     }
                 }, "button_commitChanges");
 
+            var button_add_member = new Button(
+                {
+                    label: '-->', 
+                    onClick: function()
+                    {
+                        var pgs = groupGrid.selection.getSelected();
+                        if(!pgs)
+                            return;
+
+
+                        /*  POPULATE THE STORE  */
+                        for(var i = 0; i < pgs.length; i++)
+                        {
+                            var pg = pgs[i];
+                            
+                            //GET PIs OF CURRENT PG
+                            var pis = pg.members;
+
+                            //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
+                            for(var j = 0; j<pis.length; j++)
+                            {
+                                var row = {};
+                                var pi = pis[j];
+                                for(var k = 0; k < paramStore.data.length; k++)
+                                {
+                                    if(pi == paramStore.data[k]._id)
+                                        pi = paramStore.data[k];
+                                }
+                                if(!pi.members)
+                                    continue;
+                                row.pg = pg;
+                                row.pi = pi;
+                                row.pg_name = pg.name;
+                                row.p_name = pi.name;
+                                console.log(pi);
+                                row.p_formula = pi.members.formula;
+                                row.p_value = pi.members.formula;
+                                try
+                                {
+                                    selectionMemStore.add(row);
+                                }
+                                catch(e){}
+                            }
+                        }
+
+                        for(var i = 0; i < selectionMemStore.data.length; i++)
+                        {
+                            var element1 = selectionMemStore.data[i];
+                            for(var j = 0; j < selectionMemStore.data.length; j++)
+                            {
+                                var element2 = selectionMemStore.data[j];
+                                if ((element1.pi._id == element2.pi._id) && (element1.pg_name != element2.pg_name))
+                                    selectionMemStore.remove(element2.p_name);
+                            }
+                        }
+
+                        var new_data = [];
+                        for(var i = 0; i < selectionMemStore.data.length; i++)
+                        {
+                            var element = selectionMemStore.data[i];
+                            console.log(element);
+                            var v_temp = realizeValue(selectionMemStore.data, element.p_formula);
+                            if(!v_temp == "")
+                            {
+                                element.p_value = v_temp;
+                                new_data.push(element);
+                            }
+                        }
+                        for(var i = 0;i < new_data.length; i++)
+                        {
+                            var element = new_data[i];
+                            selectionMemStore.remove(element.p_name);
+                            try
+                            {
+                                selectionMemStore.add(element); 
+                            }
+                            catch(e){console.log(element.p_name + ' is already in that set')};
+                        }
+                        selectionGrid._refresh();
+                        groupGrid.selection.clear();
+                    }
+                }, "button_add_member");
+
+            //button to remove selected report members
+            var button_remove_member = new Button(
+                {
+                    label: '<--', 
+                    onClick: function()
+                    { 
+                        var mem_to_remove = selectionGrid.selection.getSelected();
+                        for(var i = 0;i < mem_to_remove.length; i++)
+                        {
+                            if(!mem_to_remove[i])
+                                continue;
+                            // var dependencies = mem_to_remove[i].members.dependencies;
+                            // removeDependencies(dependencies);
+                            selectionMemStore.remove(mem_to_remove[i].p_name);
+                        }
+                        // selectionGrid._refresh();
+                    }
+                }, "button_remove_member");
+
             var button_recompute = new Button(
             {
                 label: "Recompute Values",
@@ -1019,8 +1259,12 @@
                 for(var i = 0;i < new_data.length; i++)
                 {
                     var element = new_data[i];
-                    store.remove(element.id);
-                    store.add(element); 
+                    store.remove(element.p_name);
+                    try
+                    {
+                        store.add(element); 
+                    }
+                    catch(e){console.log(element.p_name + " is already in this store");}
                 }
             }
 
@@ -1135,7 +1379,10 @@
                     try
                     {
                         var e = output_elements[i];
+                        if(!e)
+                            break;
                         e = eval(e);
+                        console.log(e);
                         e = e.toFixed(1);
                         var index = e.indexOf('.0');
                         if(index > -1)
@@ -1197,7 +1444,7 @@
         <tr>
             <td style = "text-align: center; padding: 5px">
                 <b>PGF Creator - Creates a New PGF</b>
-                <div style = "text-align: right"><button id="button_add_to_existing_pgf"></button><button id = "button_newPGF"></button></div>
+                <div style = "text-align: right"><!-- button id="button_add_to_existing_pgf"></button --><button id = "button_newPGF"></button></div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PGF Lister - Lists All PGFs</b>
@@ -1206,27 +1453,28 @@
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PGF Viewer - Shows Selected PGF</b>
-                <div style="text-align:right"><button id="button_deleteParameter"></button><button id = "button_commitChanges"></button></div>
+                <div style="text-align:right"><button id = "button_commitChanges"></button><button id="button_deleteParameter"></button></div>
             </td>
         </tr>
         <tr>
             <td valign = "top" style = "padding: 5px">
                 <label for="txtBox_familyName">Name:</label><br>
-                <input id="txtBox_familyName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
+                <input id="txtBox_familyName" data-dojo-type="dijit/form/TextBox" style="width: 50%;"></input>
                 <table width = '100%'>
-                    <col width = '35%'>
-                    <col width = '65%'>
+                    <col width = '22%'>
+                    <col width = '6%'>
+                    <col width = '72%'>
                     <tr>
                         <td>
                             <div style = "padding: 5px" align='center'><b>Groups</b><div>
                         </td>
-                        <td>
+                        <td colspan = '2'>
                             <table width="100%">
-                                <col width="70%">
-                                <col width="30%">
+                                <col width="60%">
+                                <col width="40%">
                                 <tr>
-                                    <td align = "center">
-                                        <div style = "padding: 5px" align='center'><b>Preview</b><div>
+                                    <td align="right">
+                                        <div style = "padding: 5px"><b>Preview</b><div>
                                     </td>
                                     <td align="right">
                                         <div style="text-align: right"><button  id="button_recompute"></button></div>
@@ -1238,6 +1486,10 @@
                     <tr>
                         <td>
                             <div id="GroupGridDiv"></div>
+                        </td>
+                        <td>
+                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
+                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div>
                         </td>
                         <td>
                             <div id= "selectionGrid"></div>

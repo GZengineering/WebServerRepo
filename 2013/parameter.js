@@ -95,7 +95,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                   {'name': 'Report Range', 'field': 'reportRange', 'width': '10%', editable: true},
                 ]];
 
-                var parameters = fullDbMemStore.query({type: 'param_class'});
+                var parameters = fullDbMemStore.query({type: 'p'});
                 for(var i = 0; i < parameters.length; i++)
                 {
                     paramStore.put(lang.mixin(
@@ -175,6 +175,7 @@ var has_loaded = false; // tells the request handler if this page has already be
                     var temp = {};
                     temp.members = p.members;
                     temp.members.formula = p.formula;
+                    temp.members.dependencies = getDependencies(p.formula);
                     temp.members.report_range.x = report_elements[0];
                     temp.members.report_range.y = report_elements[1];
                     temp._id = p._id;

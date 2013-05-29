@@ -137,7 +137,7 @@
             //GET AND RETURN THE GROUPS FROM THE STORE
             GroupGrid.getGroups = function()
             {
-                var groups = fullDbMemStore.query({type: 'param_group'});
+                var groups = fullDbMemStore.query({type: 'pg'});
                 return groups;
             }
 
@@ -159,10 +159,7 @@
                 //Fill the store with the retrieved DB data
                 for(var i = 0; i < groups.length; i++)
                 {
-                    GroupMemStore.put(lang.mixin(
-                        { id: i }, 
-                        groups[i]
-                    ));
+                    GroupMemStore.add(groups[i]);
                 }
 
                 /*create a new grid*/
@@ -249,7 +246,8 @@
                         }
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully added.";
                         ClearTextFields();
-                        GroupGrid.add_to_group_store(response);
+                        // GroupGrid.add_to_group_store(response);
+                        GroupMemStore.add(pg);
                     },
                     error:function(error)
                     {
@@ -259,16 +257,6 @@
                 });
             }
 
-            //ADD THE OBJECT TO THE STORE
-            GroupGrid.add_to_group_store = function(pg)
-            {
-                var _pg = new Object(pg);
-                var index = GroupMemStore.data.length;
-                GroupMemStore.put(lang.mixin(
-                    {id: index}, 
-                    _pg
-                )); 
-            }
 
             //Removes an entire group from the database given the id of the row
             //of the selected group
@@ -322,6 +310,7 @@
             {
                 //store the store id of the object
                 var id = pg.id;
+                console.log(pg);
                 //then delete the id from the object so it doesn't get store in the db
                 delete pg.id;
                 //send request to update an existing PG
@@ -341,8 +330,9 @@
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
                         ClearTextFields(); //clear text fields
                         GroupMemStore.remove(id); //remove the old group from the store
-                        GroupGrid.add_to_group_store(pg); //add the change object to the store
-                        groupGrid._refresh(); //refresh the grid to display the update
+                        // GroupGrid.add_to_group_store(pg); //add the change object to the store
+                        GroupMemStore.add(pg);
+                        // groupGrid._refresh(); //refresh the grid to display the update
                         groupGrid.selection.clear(); //clear the selection
                     },
                     error:function(error)
@@ -416,7 +406,7 @@
                   {'name': 'Parameter', 'field': 'name', 'width': '100%'},
                 ]];
 
-                var parameters = fullDbMemStore.query({type: 'param_class'});
+                var parameters = fullDbMemStore.query({type: 'p'});
                 paramStore.setData(parameters);
 
                 //CREATE THE DOJO GRID AND RENDER IT
@@ -535,6 +525,7 @@
                 //for each item in the selection store, put the item in the group members
                 for(var i = 0;i < store.length; i++)
                     group.members.push(store[i]._id);
+                console.log(group);
                 //send the update to the db
                 GroupGrid.update_pg(group);
             }
@@ -619,7 +610,10 @@
                         for(var j = 0; j < group.members.length; j++)
                         {
                             if(mem_to_add._id == group.members[j])
+                            {
                                 matched = true;
+                                break;
+                            }
                         }
                         if(!matched)
                             group.members.push(mem_to_add._id);

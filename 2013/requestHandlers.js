@@ -380,44 +380,6 @@ function group(response, request, collection, url)
 
   if(FieldQuery.action == 'update_pg')
   {
-    // console.log(FieldQuery.pg);
-    // var pg = eval('('+FieldQuery.pg+')');
-    // var members = new Array();
-    // for(var f in pg.members)
-    // {
-    //   var oid = new ObjectID(pg.members[f]);
-    //   members.push(oid);
-    // }
-    // pg.members = members;
-
-    // var oid = new ObjectID(pg._id);
-    // pg._id = oid;
-
-    // console.log("got here");
-
-
-    // collection.update(pg);
-    // collection.find(pg).toArray(
-    //   function(error, result)
-    //   {
-    //     if(error)
-    //     {
-    //       console.log('Error: ' + error);
-    //       response.writeHead(200, {"Content-Type": "text/plain"});
-    //       response.write(new Object());
-    //       response.end();
-    //     }
-    //     else
-    //     {
-    //       console.log(pg.name + ' successfully updated.');
-    //       var s = JSON.stringify(result[0]);
-    //       response.writeHead(200, {"Content-Type": "text/plain"});
-    //       response.write(s);
-    //       response.end();
-    //     }
-    //   }
-    // );
-
       var doc = eval('('+FieldQuery.pg+')');
       var s = JSON.stringify(doc);
       console.log(s);
@@ -451,7 +413,7 @@ function group(response, request, collection, url)
   {
     var pg = eval('('+FieldQuery.pg+')');
 
-    collection.find({'type': 'param_group', 'name': pg.name}).toArray( 
+    collection.find({'type': 'pg', 'name': pg.name}).toArray( 
       function(error, result)
       {
         if(error)
@@ -470,9 +432,9 @@ function group(response, request, collection, url)
           }
           else if(result.length == 0)
           {
-            collection.save({'type': 'param_group', 'name': pg.name, 'members' : pg.members});
+            collection.save({'type': 'pg', 'name': pg.name, 'members' : pg.members});
             // collection.ensureIndex({'group_name':1},{unique: true, sparse: true, dropDups: true});
-            collection.find({'type': 'param_group', 'name': pg.name, 'members' : pg.members}).toArray(
+            collection.find({'type': 'pg', 'name': pg.name, 'members' : pg.members}).toArray(
               function(error, doc)
               {
                 if(doc)
@@ -601,6 +563,37 @@ function family(response, request, collection, url)
         }
       }
     );
+  }
+
+  if(FieldQuery.action == 'update_pgf')
+  {
+      var doc = eval('('+FieldQuery.pgf+')');
+      var s = JSON.stringify(doc);
+      console.log(s);
+
+      var oid = new ObjectID(doc._id);
+      doc._id = oid;
+
+      collection.save(doc);
+      collection.find(doc).toArray(
+        function(error, result)
+        {
+          if(error)
+          {
+            console.log("Error saving '"+doc.name+"' :: " + error);
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write("Error saving '"+doc.name+"' :: " + error);
+            response.end();
+          }
+          else if(result[0])
+          {
+            console.log("Doc '"+doc.name+"' Saved successfully");
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write("Group '"+doc.name+"' Saved successfully");
+            response.end();
+          }
+        }
+      );
   }
 
   if(FieldQuery.action == 'new_pf')
