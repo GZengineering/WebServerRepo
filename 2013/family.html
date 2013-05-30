@@ -298,12 +298,13 @@
                   {'name': 'Group', 'field': 'pg_name', 'width': '15%'},
                   {'name': 'Parameter', 'field': 'p_name', 'width': '15%'},
                   {'name': 'Formula', 'field': 'p_formula', 'width': '40%'},
-                  {'name': 'Value', 'field': 'p_value', 'width': '30%', editable: true},
+                  {'name': 'Value', 'field': 'p_value', 'width': '23%', editable: true},
+                  {'name': 'Range', 'field': 'p_range', 'width': '7%', editable: true},
                 ]];
 
 
                 /*  SET UP DATA STORE  */
-                var previewMemStore = new Memory({data: new Array(), idProperty: 'p_name'});
+                var previewMemStore = new Memory({data: new Array()});
                 previewMemStore = Observable(previewMemStore);
                 var previewDataStore = new ObjectStore({
                     objectStore: previewMemStore
@@ -323,19 +324,14 @@
                     {
                         var row = {};
                         var pi = pis[j];
-                        for(var k = 0; k < paramStore.data.length; k++)
-                        {
-                            if(pi == paramStore.data[k]._id)
-                                pi = paramStore.data[k];
-                        }
-                        if(!pi.members)
-                            continue;
+                        
                         row.pg = pg;
                         row.pi = pi;
                         row.pg_name = pg.name;
                         row.p_name = pi.name;
-                        row.p_formula = pi.members.formula;
-                        row.p_value = pi.members.formula;
+                        row.p_formula = pi.formula;
+                        row.p_value = pi.formula;
+                        row.p_range = pi.range;
                         try
                         {
                             previewMemStore.add(row);
@@ -343,44 +339,6 @@
                         catch(e){}
                     }
                 }
-
-                for(var i = 0; i < previewMemStore.data.length; i++)
-                {
-                    var element1 = previewMemStore.data[i];
-                    for(var j = 0; j < previewMemStore.data.length; j++)
-                    {
-                        var element2 = previewMemStore.data[j];
-                        if ((element1.pi._id == element2.pi._id) && (element1.pg_name != element2.pg_name))
-                            previewMemStore.remove(element2.p_name);
-                    }
-                }
-
-                var new_data = [];
-                for(var i = 0; i < previewMemStore.data.length; i++)
-                {
-                    var element = previewMemStore.data[i];
-                    var v_temp = realizeValue(previewMemStore.data, element.p_formula);
-                    if(!v_temp == "")
-                    {
-                        element.p_value = v_temp;
-                        new_data.push(element);
-                    }
-                }
-                for(var i = 0;i < new_data.length; i++)
-                {
-                    var element = new_data[i];
-                    previewMemStore.remove(element.p_name);
-                    try
-                    {
-                        previewMemStore.add(element);
-                    }
-                    catch(error){console.log(element.p_name + " is already in this store");} 
-                }
-
-                // recompute_values(previewMemStore);
-
-                //BUILD THE PREVIEW GRID
-                // PreviewGrid.rebuildStore(pgs);
 
 
                 //REMOVE FROM REGISTRY IF IT EXISTS
@@ -439,20 +397,11 @@
                 ]];
 
                 //CREATE THE DATA STORE FOR THE FAMILY OBJECTS
-                var FamilyMemStore = new Memory({data: new Array()}); //set up the store
+                var FamilyMemStore = new Memory({data: families, idProperty: 'name'}); //set up the store
                 FamilyMemStore = Observable(FamilyMemStore);
                 var FamilyDataStore = new ObjectStore({
                     objectStore: FamilyMemStore
                 });
-
-                //FILL THE STORE WITH THE FAMILY OBJECTS
-                for(var i = 0; i < families.length; i++)
-                {
-                    FamilyMemStore.put(lang.mixin(
-                        { id: i }, 
-                        families[i]
-                    ));
-                }
 
                 //IF THE GRID EXISTS IN THE REGISTRY, REMOVE IT
                 registry.remove('FamilyGrid');
@@ -584,7 +533,9 @@
                 {
                     var item = store[i];
                     if(pgs.indexOf(item.pg._id) == -1)
+                    {
                         pgs.push(item.pg._id);
+                    }
                 }
 
                 //for each unique group, store an object at its index with the groups id and an empty members array
@@ -614,7 +565,7 @@
                         {
                             //add the current parameter to this unique group with its id and value
                             var p = {};
-                            p._id = item.pi._id;
+                            p.id = item.pi.id;
                             p.value = item.p_value;
                             pgs[j].members.push(p);
                             matched = true; //flag the match to discontinue the search
@@ -624,6 +575,8 @@
 
                 //store the new pgs as the pgf's members
                 pgf.members = pgs;
+
+                console.log(pgf);
 
                 //submit the new pgf to the database
                 FamilyGrid.newPGF(pgf);
@@ -784,13 +737,14 @@
                 /*  DEFINE LAYOUT  */
                 var layout = [[
                   {'name': 'Group', 'field': 'pg_name', 'width': '20%'},
-                  {'name': 'Parameter', 'field': 'p_name', 'width': '33%'},
-                  {'name': 'Formula', 'field': 'p_formula', 'width': '47%'},
-                  {'name': 'Value', 'field': 'p_value', 'width': '47%', editable: true},
+                  {'name': 'Parameter', 'field': 'p_name', 'width': '25%'},
+                  {'name': 'Formula', 'field': 'p_formula', 'width': '35%'},
+                  {'name': 'Value', 'field': 'p_value', 'width': '15%', editable: true},
+                  {'name': 'Range', 'field': 'p_range', 'width': '5%', editable: true},
                 ]];
 
                 /*  SET UP STORE  */
-                var FamilyViewerMemStore = new Memory({data: new Array(), idProperty: 'p_name'});
+                var FamilyViewerMemStore = new Memory({data: new Array()});
                 FamilyViewerMemStore = Observable(FamilyViewerMemStore);
                 var FamilyViewerDataStore = new ObjectStore({
                     objectStore: FamilyViewerMemStore
@@ -798,9 +752,7 @@
                 window.FamilyViewerMemStore = FamilyViewerMemStore;
 
 
-                var holds = [];
-
-                /*  POPULATE THE STORE  */
+                /* POPULATE THE STORE */
                 for(var i = 0; i < pgs.length; i++)
                 {
                     var pg = pgs[i];
@@ -819,74 +771,34 @@
                     var pis = group.members;
                     var pgf_pis = pg.members;
 
-
-                    //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
-                    for(var k = 0; k<pis.length; k++)
+                    //DEFINE EACH VIEWER ROW OF THE CURRENT GROUP OF THE SELECTED FAMILY
+                    for(var j = 0; j < pis.length; j++)
                     {
                         var matched = false;
-                        var pi = pis[k];
+                        var pi = pis[j];
                         if(!pi)
                             continue;
 
-                        for(var l = 0; l < paramStore.data.length; l++)
+                        for(var k = 0; k < pgf_pis.length; k++)
                         {
-                            if(matched)
-                                break;
-                            var p = paramStore.data[l];
-
-                            if(pi == p._id)
+                            var pgf_pi = pgf_pis[k];
+                            if(pgf_pi.id == pi.id)
                             {
-                                row = {};
+                                var row = {};
                                 row.pg = group;
+                                row.pi = pi;
+                                console.log(pi);
                                 row.pg_name = group.name;
-                                row.pi = p;
-                                row.p_name = p.name;
-                                row.p_formula = p.members.formula;
-                                var matched_p = false;
-                                for(var m = 0; m < pgf_pis.length; m++)
+                                row.p_name = pi.name;
+                                row.p_formula = pi.formula;
+                                row.p_value = pgf_pi.value;
+                                row.p_range = pi.range;
+                                try
                                 {
-                                    if(matched_p)
-                                        break;
-                                    var pgf_p = pgf_pis[m];
-                                    if(p._id == pgf_p._id && pgf_p.value)
-                                    {
-                                        matched_p = true;
-                                        row.p_value = pgf_p.value;
-                                        FamilyViewerMemStore.put(row);
-                                        matched = true;
-                                    }
-                                    else if(m == pgf_pis.length - 1  && !matched_p)
-                                    {
-                                        row.p_value = p.members.formula;
-                                        holds.push(row);
-                                    }
+                                    FamilyViewerMemStore.add(row);
                                 }
-                                // if(pi.value)
-                                //     row.p_value = pi.value;
-                                // else
-                                //     row.p_value = p.members.formula;
-                                
+                                catch(e){}
                             }
-                        }
-                    }
-                }
-
-                for(var i = 0; i < holds.length; i++)
-                {
-                    var hold_item = holds[i];
-                    var matched_hold = false;
-                    for(var m = 0; m < FamilyViewerMemStore.data.length; m++)
-                    {
-                        var store_item = FamilyViewerMemStore.data[m];
-                        if(hold_item.pi._id == store_item.pi._id)
-                        {
-                            matched_hold = true;
-                            continue;
-                        }
-                        else if(m == FamilyViewerMemStore.data.length - 1 && !matched_hold)
-                        {
-                            hold_item.p_name = hold_item.p_name + ' [#]';
-                            FamilyViewerMemStore.put(hold_item);
                         }
                     }
                 }
@@ -894,10 +806,6 @@
                 //COMPUTE ALL THE VALUES
                 recompute_values(FamilyViewerMemStore);
 
-                // FamilyViewerGrid.rebuildStore(pgs);
-
-                
-                    //GET PIs OF CURRENT PG
 
                 registry.remove('FamilyViewerGrid');
 
@@ -954,10 +862,6 @@
             /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
             FamilyViewerGrid.analyzeChanges = function(pgf)
             {
-                // pgf.type = 'pgf';
-                // pgf.name = dom.byId("txtBox_familyName").value;
-                // pgf.members = []; //PGF MEMBERS ARE GROUPS PGF MEMBERS CONTAIN MEMBERS (PARAMETERS)
-
                 var groups = GroupMemStore.data;
 
                 var store = FamilyViewerMemStore.data;
@@ -992,7 +896,7 @@
                         if(pg._id == item.pg._id)
                         {
                             var p = {};
-                            p._id = item.pi._id;
+                            p.id = item.pi.id;
                             p.value = item.p_value;
                             pgs[j].members.push(p);
                             matched = true;
@@ -1062,13 +966,16 @@
                     var pgf = selected[0];
                     if(!pgf)
                         return alert("Select a Family to add to.");
-                    if(previewMemStore.data.length < 1)
-                        return alert("There must be items in the Preview Grid to add to an existing family.");
-                    var holds = [];
-                    for(var i = 0; i < previewMemStore.data.length; i++)
+
+                    selected = previewGrid.selection.getSelected();
+                    if(selected.length < 1)
+                        return alert("Select one or more items from the 'Preview Grid'");
+
+
+                    for(var i = 0; i < selected.length; i++)
                     {
                         var matched_p = false;
-                        mem_to_add = previewMemStore.data[i];
+                        var mem_to_add = selected[i];
                         for(var j = 0; j < pgf.members.length; j++)
                         {
                             if(matched_p)
@@ -1076,46 +983,49 @@
                             var group = pgf.members[j];
                             for(var k = 0; k < group.members.length; k++)
                             {
-                                if(mem_to_add.pi._id == group.members[k])
+                                if(mem_to_add.pi.id == group.members[k].id)
                                 {
                                     matched_p = true;
                                     break;
                                 }
                             }
-                        }
 
-                        if(!matched_p && (j == pgf.members.length - 1))
-                        {
-                            var matched_pg = false;
-                            for(var j = 0; j < pgf.members.length; j++)
+                            if(!matched_p && (j == pgf.members.length - 1))
                             {
-                                if(matched_pg)
-                                    break;
-                                var pg = pgf.members[j];
-                                if(mem_to_add.pg._id == pg)
+                                var matched_pg = false;
+                                for(var k = 0; k < pgf.members.length; k++)
                                 {
-                                    matched_pg = true;
-                                    var pi = {};
-                                    pi._id = mem_to_add.pi._id;
-                                    pi.value = mem_to_add.p_value;
-                                    pg.members.push(pi);
-                                }
-                                else if(!matched_pg && j == (pgf.members.length - 1))
-                                {
-                                    var new_pg = {};
-                                    new_pg._id = mem_to_add.pg._id;
-                                    new_pg.members = [];
-                                    var pi = {};
-                                    pi._id = mem_to_add.pi._id;
-                                    pi.value = mem_to_add.p_value;
-                                    new_pg.members.push(pi);
-                                    pgf.members.push(new_pg);
+                                    if(matched_pg)
+                                        break;
+                                    var pg = pgf.members[k];
+                                    if(mem_to_add.pg._id == pg._id)
+                                    {
+                                        matched_pg = true;
+                                        var pi = {};
+                                        pi.id = pg.members.length;
+                                        pi.value = mem_to_add.p_value;
+                                        pg.members.push(pi);
+                                    }
+                                    else if(!matched_pg && (k == (pgf.members.length - 1)))
+                                    {
+                                        var new_pg = {};
+                                        new_pg._id = mem_to_add.pg._id;
+                                        new_pg.members = [];
+                                        var pi = {};
+                                        pi.id = pgf.members.length;
+                                        pi.value = mem_to_add.p_value;
+                                        new_pg.members.push(pi);
+                                        pgf.members.push(new_pg);
+                                        matched_pg = true;
+                                    }
                                 }
                             }
                         }
                     }
+                    console.log(pgf);
                     return;
-                    FamilyGrid.update_pgf(pgf);
+
+                    // FamilyGrid.update_pgf(pgf);
                 }
             }, "button_add_to_existing_pgf");
 
@@ -1123,7 +1033,7 @@
             //REQUIRES A NAME
             var button_newPGF = new Button(
             {
-                label: 'Commit',
+                label: 'Commit New Family',
                 onClick: function()
                 {
                     if(dom.byId('txtBox_familyName').value.length < 1)
@@ -1195,40 +1105,23 @@
                             //GET PIs OF CURRENT PG
                             var pis = pg.members;
 
-                            //DEFINE THE THE ROW FOR THE PREVIEW GRID USING THE PI & PG DATA
+                            //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
                             for(var j = 0; j<pis.length; j++)
                             {
                                 var row = {};
                                 var pi = pis[j];
-                                for(var k = 0; k < paramStore.data.length; k++)
-                                {
-                                    if(pi == paramStore.data[k]._id)
-                                        pi = paramStore.data[k];
-                                }
-                                if(!pi.members)
-                                    continue;
                                 row.pg = pg;
                                 row.pi = pi;
                                 row.pg_name = pg.name;
                                 row.p_name = pi.name;
-                                row.p_formula = pi.members.formula;
-                                row.p_value = pi.members.formula;
+                                row.p_formula = pi.formula;
+                                row.p_value = pi.formula;
+                                row.p_range = pi.range;
                                 try
                                 {
                                     previewMemStore.add(row);
                                 }
                                 catch(e){}
-                            }
-                        }
-
-                        for(var i = 0; i < previewMemStore.data.length; i++)
-                        {
-                            var element1 = previewMemStore.data[i];
-                            for(var j = 0; j < previewMemStore.data.length; j++)
-                            {
-                                var element2 = previewMemStore.data[j];
-                                if ((element1.pi._id == element2.pi._id) && (element1.pg_name != element2.pg_name))
-                                    previewMemStore.remove(element2.p_name);
                             }
                         }
 
@@ -1313,7 +1206,7 @@
                 for(var i = 0;i < new_data.length; i++)
                 {
                     var element = new_data[i];
-                    store.remove(element.p_name);
+                    store.remove(element.id);
                     try
                     {
                         store.add(element); 
@@ -1353,49 +1246,67 @@
                 while(formula_elements.length > 0)
                 {
                     //FLAG FOR WHEN AN ELEMENT IS MATCHED
-                    var not_found = true;
+                    var matched = false;
 
                     //GET THE NEXT ELEMENT FROM THE ARRAY
                     var element = formula_elements.shift();
 
+                    //Remove whitespace from ends of string
+                    element = element.replace(/(^\s+|\s+$)/g, '');
+
+                    //If the string is empty, go to the next element
                     if(element == "")
                         continue;
 
-                    //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
-                    for(var i = 0; i < data.length; i++)
+                    // if(element.indexOf('\\$') != -1)
+                    if(/^[\\$]/.test(element))
                     {
-                        if(!not_found) //IF ELEMENT HAS BEEN MATCHED, BREAK 
-                            break;
-
-                        //STORE CURRENT PARAMETER
-                        var e = data[i];
-
-                        //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
-                        if(element == e.p_name)
+                        //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
+                        for(var i = 0; i < data.length; i++)
                         {
-                            v_temp = realizeValue(data, e.p_formula); //circular dependencies
-                            if(!v_temp == "")
+                            if(matched) //IF ELEMENT HAS BEEN MATCHED, BREAK 
+                                break;
+
+                            var temp;
+                            console.log(element);
+                            temp = element.slice(2, element.length);
+                            temp = temp.slice(0, temp.length-1);
+
+                            var pair = temp.split('.');
+                            var group = pair[0];
+                            var parameter = pair[1];
+
+                            //STORE CURRENT PARAMETER
+                            var e = data[i];
+
+                            //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
+                            if(group == e.pg_name && parameter == e.p_name)
                             {
-                                e.p_value = v_temp;
-                            }
-                            if(/[\+\-\*\/]/.test(e.p_value))
-                            {
-                                try
+                                v_temp = realizeValue(data, e.p_formula); //circular dependencies?
+                                if(!v_temp == "")
+                                    e.p_value = v_temp;
+
+                                if(/[\+\-\*\/]/.test(e.p_value))
                                 {
-                                    e.p_value = eval(e.p_value);
-                                    e.p_value = e.p_value.toFixed(3); //ROUND TO 3 DECIMALS
+                                    try
+                                    {
+                                        e.p_value = eval(e.p_value);
+                                        e.p_value = e.p_value.toFixed(3); //ROUND TO 3 DECIMALS
+                                    }
+                                    catch(error)
+                                    {
+                                        //if there's an error, ignore it and return the string as it was.
+                                    }
                                 }
-                                catch(error)
-                                {
-                                    //if there's an error, ignore it and return the string as it was.
-                                }
+                                output_elements.push(e.p_value);
+                                matched = true;
                             }
-                            output_elements.push(e.p_value);
-                            not_found = false;
                         }
+                        //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
+                        if(!matched)
+                            output_elements.push(element);
                     }
-                    //IF THE ELEMENT WAS NEVER MATCHED, IT'S PROBABLY A STRING OR AN OPERATOR, ADD IT TO THE OUTPUT
-                    if(not_found)
+                    else
                         output_elements.push(element);
 
                 }
@@ -1419,13 +1330,12 @@
                 var output_string = '';
                 if(output_elements.length < 1)
                     return "";
-                for (var i = 0; i < output_elements.length; i++)
-                {
-                    output_string += output_elements[i];
-                }
 
-                output_elements = output_string.split("'");
-                output_string = "";
+                // for (var i = 0; i < output_elements.length; i++)
+                //     output_string += output_elements[i];
+
+                // output_elements = output_string.split("'");
+                // output_string = "";
                 for(var i = 0; i < output_elements.length; i++)
                 {
                     try
@@ -1487,8 +1397,8 @@
 <!-- Layout -->
 <body class="claro">
     <table width = '100%' border = "1">
-        <col width = '47%'>
-        <col width = '18%'>
+        <col width = '53%'>
+        <col width = '12%'>
         <col width = '35%'>
         <tr>
             <td style = "text-align: center; padding: 5px">

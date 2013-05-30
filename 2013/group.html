@@ -19,26 +19,27 @@
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/form/resources/RangeSlider.css">
         
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css";
         #ParamGrid 
         {
-            height: 49.5em;
+            height: 36em;
             width: 100%;
         }
         #selectionGrid 
         {
-            height: 55em;
+            height: 59.5em;
             width: 100%;
         }
         #GroupGridDiv 
         {
-            height: 55em;
+            height: 59.5em;
             width: 100%;
         }
         #membersGrid
         {
-            height: 49.5em;
+            height: 53em;
             width: 100%;
         }
         .dojoxGridMasterView
@@ -48,6 +49,50 @@
         .dojoxGridMasterHeader
         {
             font-size: 8pt;
+        }
+        /*#txtBox_paramFormula
+        {
+            font-family: Calibri;
+            font-size: 9pt;
+            min-height: 56px
+        }*/
+        /*#txtBox_compParamName
+        {
+            font-family: Calibri;
+            font-size: 9pt;
+            min-height: 20px
+        }*/
+        #txtBox_paramName
+        {
+            min-width: 200pt;
+        }
+        #button_multiplication
+        {
+            width: 15px;
+        }
+        #button_division
+        {
+            width: 15px;
+        }
+        #button_addition
+        {
+            width: 15px;
+        }
+        #button_subtraction
+        {
+            width: 15px;
+        }
+        #button_add_member
+        {
+            font-size: 12pt;
+        }
+        #button_remove_member
+        {
+            font-size: 12pt;
+        }
+        #reportRangeSlider
+        {
+            width: 100%
         }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
@@ -62,16 +107,20 @@
         'dijit/registry',
         'dojo/_base/xhr', 
         'dojox/grid/_CheckBoxSelector',
+        'dojox/form/RangeSlider',
+        'dijit/form/HorizontalRule',
+        'dijit/form/HorizontalRuleLabels',
         'dijit/form/RadioButton',
         'dijit/form/Select',
         "dijit/form/Button",
         "dijit/form/TextBox",
+        "dijit/form/Textarea",
         'dojo/store/Observable',
         'dojo/store/Memory',
         'dojo/data/ObjectStore',
         'dojo/dom' , 
         'dojo/domReady!'],
-        function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RadioButton, Select, Button, TextBox, Observable, Memory, ObjectStore, dom)
+        function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RangeSlider, HorizontalRule, HorizontalRuleLabels, RadioButton, Select, Button, TextBox, Textarea, Observable, Memory, ObjectStore, dom)
         {
             var fields = new Array();
             var has_loaded = false;
@@ -85,7 +134,7 @@
             window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
 
             //MEMORY AND DATA STORE FOR PARAMETERS
-            var paramStore = new Memory({data: new Array()});
+            var paramStore = new Memory({data: new Array(), idProperty: '_id'});
                 paramStore = Observable(paramStore);
             var paramDataStore = new ObjectStore({
                 objectStore: paramStore
@@ -94,7 +143,7 @@
             window.paramDataStore = paramDataStore;
 
             //MEMORY AND DATA STORES FOR TEMPORARY MEMBERS
-            var membersStore = new Memory({data: new Array(), idProperty: '_id'});
+            var membersStore = new Memory({data: new Array(), idProperty: 'name'});
                 membersStore = Observable(membersStore);
             var membersDataStore = new ObjectStore({
                 objectStore: membersStore
@@ -133,7 +182,7 @@
             {
                 var groups = GroupGrid.getGroups();
                 GroupGrid.buildGrid(groups);
-                ParamGrid.buildGrid();
+                // ParamGrid.buildGrid();
                 SelectionGrid.buildGrid(new Array());
                 MembersGrid.buildGrid(new Array());
                 dom.byId('txtBox_groupName').value = ''; //clear name text box
@@ -193,8 +242,17 @@
                     var groups = this.selection.getSelected();
                     GroupGrid.selected_groups = groups;
 
+                    var group = groups[0];
+
+                    if(!group)
+                    {
+                        console.log("Error retrieving parameters of group.")
+                        return;
+                    }
+
                     //GET THE PIs OF THE SELECTED GROUP & REBUILD THE SELECTION STORE
-                    var parameters = GroupGrid.getFieldsOfGroups(groups);
+                    // var parameters = GroupGrid.getFieldsOfGroups(groups);
+                    var parameters = group.members;
                     SelectionGrid.rebuildStore(parameters);
 
                     /*  DISPLAY WHAT'S SELECTED IN THE PROMPT  */
@@ -318,6 +376,8 @@
                 var id = pg.id;
                 //delete the id from the object so it doesn't get stored in the db
                 delete pg.id;
+
+                console.log(pg);
                 //send request to update an existing PG
                 xhr.get(
                 {
@@ -333,10 +393,13 @@
                         //if an update is successful, we'll receive a message, notify the user.
                         alert(response);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
-                        ClearTextFields(); //clear text fields
+                        // ClearTextFields(); //clear text fields
                         GroupMemStore.remove(id); //remove the old group from the store
                         GroupMemStore.add(pg);
                         groupGrid.selection.clear(); //clear the selection
+                        selectionMemStore.setData(new Array());
+                        membersGrid.selection.clear();
+                        selectionGrid._refresh();
                     },
                     error:function(error)
                     {
@@ -395,77 +458,22 @@
 
             /********************************  **  **  **  **  **  **  ********************************/
 
-            /********************************     Parameter Grid      *********************************/
-
-            //OBJECT TO ASSOCIATE ALL FUNCTIONS AND PROPERTIES FOR THE FIXED PI GRID
-            var ParamGrid = new Object();
-
-            //BUILD THE GRID WITH THE GIVEN PARAMETERS
-            ParamGrid.buildGrid = function()
-            {
-                //DEFINE THE LAYOUT
-                var layout = 
-                [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Parameter', 'field': 'name', 'width': '100%'},
-                ]];
-
-                //get the parameters from the global store
-                var parameters = fullDbMemStore.query({type: 'p'});
-                paramStore.setData(parameters);
-
-                registry.remove('ParamGrid');
-
-                //CREATE THE DOJO GRID AND RENDER IT
-                var grid = new DataGrid({
-                    store: paramDataStore,
-                    structure: layout,
-                selectionMode: 'multiple'}, 'ParamGrid');
-                grid.startup(); //RENDER
-
-                //REGISTER NOTIFY EVENT TO REFRESH THE GRID
-                dojo.connect(paramStore, 'notify', function(){grid._refresh()});
-
-                //UPDATE THE DIV AND THE SELECTION PROPERTY
-                function reportSelection(node)
-                {
-                    ParamGrid.selected_fields = this.selection.getSelected();
-                    if(ParamGrid.selected_fields.length > 0)
-                    {
-                        var msg = "You have selected " + ((ParamGrid.selected_fields.length > 1) ? " ": " ");
-                    }
-                    else
-                        return;
-                    var names = baseArray.map(ParamGrid.selected_fields, function(item)
-                    {
-                        return item.name;
-                    }, this);
-                    node.innerHTML = msg + names.join(", ");
-                }
-
-                //REGISTER SELECTION_CHANGE WITH REPORTSELECTION METHOD                
-                grid.on("SelectionChanged", 
-                    lang.hitch(grid, reportSelection, dom.byId("serverResponse")), true);
-
-                //GLOBALIZE STORE DATA AND THE GRID
-                window.paramGrid = grid;
-            }
-
-            /******************************     END PARAMETER GRID      *********************************/
-
             /**********************************     MEMBERS GRID      *********************************/
 
             //OBJECT TO ASSOCIATE MEMBER GRID PROPERTIES AND FUNCTIONS
             var MembersGrid = {};
 
-            MembersGrid.buildGrid = function(members)
+            MembersGrid.buildGrid = function(parameters)
             {
                 //DEFINE THE LAYOUT
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Parameter', 'field': 'name', 'width': '100%'},
+                  {'name': 'Parameter', 'field': 'name', 'width': '23%'},
+                  {'name': 'Formula', 'field': 'formula', 'width': '70%'},
+                  {'name': 'Range', 'field': 'range', 'width': '7%'},
                 ]];
 
                 //SET MEMBERS STORE DATA TO THE PASSED MEMBERS
-                membersStore.setData(members);
+                membersStore.setData(parameters);
 
                 registry.remove('membersGrid');
 
@@ -496,15 +504,18 @@
             {
                 /*  DEFINE LAYOUT  */
                 var layout = [[
-                  {'name': 'Parameter', 'field': 'name', 'width': '100%'},
+                  {'name': 'Parameter', 'field': 'name', 'width': '25%', editable: true},
+                  {'name': 'Formula', 'field': 'formula', 'width': '75%', editable: true},
+                  {'name': 'Range', 'field': 'range', 'width': '7%', editable: true},
                 ]];
 
                 /*  SET UP DATA STORE  */
-                var selectionMemStore = new Memory({data: parameters, idProperty: '_id'});
+                var selectionMemStore = new Memory({data: parameters, idProperty: 'name'});
                 selectionMemStore = Observable(selectionMemStore);
                 var selectionDataStore = new ObjectStore({
                     objectStore: selectionMemStore
                 });
+
 
                 registry.remove('selectionGrid');
 
@@ -524,12 +535,15 @@
             /*  REMOVE A PARAMETER FROM A GROUP  */
             SelectionGrid.removeParameterFromGroup = function(group, parameter)
             {
-                selectionMemStore.remove(parameter._id); //remove the parameter from the selection store
+                selectionMemStore.remove(parameter.name); //remove the parameter from the selection store
                 group.members = []; //clear teh group's members
                 var store = selectionMemStore.data; // simplify the store reference
                 //for each item in the selection store, put the item in the group members
-                for(var i = 0;i < store.length; i++)
-                    group.members.push(store[i]._id);
+                for(var i = 0; i < store.length; i++)
+                {
+                    store[i].id = i;
+                    group.members.push(store[i]);
+                }
                 //send the update to the db
                 GroupGrid.update_pg(group);
             }
@@ -540,7 +554,6 @@
                 //IF THERE ARE NO PIs, GET OUT
                 if(!parameters)
                     return;
-                //CLEAR THE STORE
                 selectionMemStore.setData(parameters);
                 selectionGrid._refresh();
             }
@@ -553,7 +566,10 @@
 
 
             //Group Name Textbox
-            var txtBox_groupName = new TextBox({}, "txtBox_groupName");
+            var txtBox_groupName = new TextBox({style: "width: 100%"}, "txtBox_groupName");
+            var txtBox_paramName = new TextBox({style: "width: 85%;" },"txtBox_paramName");
+            var txtBox_paramFormula = new Textarea({style: 'width:100%; min-height:50px'},"txtBox_paramFormula");
+            var txtBox_compParamName = new Textarea({style: "width: 100%; max-height: 20px"},"txtBox_compParamName");
 
             //REGISTER THE ENTER KEY TO SUBMIT A NEW PG
             dojo.connect(txtBox_groupName, "onKeyUp", function(e)
@@ -562,11 +578,32 @@
                     button_newPG.onClick();
             });
 
+            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
+            dojo.connect(txtBox_paramName, "onKeyUp", function(e)
+            {
+                if(e.keyCode == 13)
+                    button_commit_new_pi.onClick();
+            });
+
+            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
+            dojo.connect(txtBox_compParamName, "onKeyUp", function(e)
+            {
+                if(e.keyCode == 13)
+                    button_add_computed_pi_to_members.onClick();
+            });
+
+            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
+            dojo.connect(txtBox_paramFormula, "onKeyUp", function(e)
+            {
+                if(e.keyCode == 13)
+                    button_add_computed_pi_to_members.onClick();
+            });
+
             //Confirm selection button for new group
             //require a name for the group
             var button_newPG = new Button(
             {
-                label: 'Commit New',
+                label: 'Commit New Group',
                 onClick: function()
                 {
                     var group = {}; //CREATE A NEW PG OBJECT
@@ -578,15 +615,27 @@
                         return alert('A name is required for the new group.');
 
                     if(membersStore.data.length < 1)
-                    {
-                        alert('You must add one or more parameters to the group.');
-                        return;
-                    }
+                        return alert('You must add one or more parameters to the group.');
+
                     group.members = [];
+
                     for(var i = 0; i < membersStore.data.length; i++)
                     {
-                        group.members.push(membersStore.data[i]._id);
+                        var mem_to_add = membersStore.data[i];
+
+                        //Add regex here to check that range is of the correct form [1-4]'-'[1-4];
+
+                        var param = {};
+                        param.id = group.members.length;
+                        param.type = "p";
+                        param.name = mem_to_add.name;
+                        param.formula = mem_to_add.formula;
+                        param.value = "";
+                        param.range = mem_to_add.range;
+                        // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
+                        group.members.push(param);
                     }
+                    console.log(group);
                     GroupGrid.new_pg(group);
                 }
             }, "button_newPG");
@@ -594,7 +643,7 @@
             //BUTTON USED TO ADD MEMBERS TO AN EXISTING GROUP
             var button_add_to_selected_group = new Button(
             {
-                label: "Add To Selected",
+                label: "Add Selected Members To Selected Group &#8594",
                 onClick: function()
                 {
                     //GET THE SELECTED GROUP
@@ -602,31 +651,71 @@
                     var group = selected[0];
                     if(!group)
                         return alert("Select a group to add the paramters to.");
+                    console.log(group);
 
-                    //ENSURE THE USER IS ACTUALLY TRYING TO ADD SOMETHING TO THE GROUP
-                    if(membersStore.data.length < 1)
-                        return alert("There must be parameters in the 'Selected Members' grid");
+                    selected = membersGrid.selection.getSelected();
+                    if(!selected || selected.length < 1)
+                        return alert("Select Members from the 'Working Members' grid to add to the selected Group.");
 
                     //FOR EACH ITEM IN THE MEMBERS STORE, MAKE SURE IT'S NOT ALREADY IN THE GROUP AND ADD IT
-                    for(var i = 0; i < membersStore.data.length; i++)
+                    for(var i = 0; i < selected.length; i++)
                     {
                         var matched = false; //flag if there's a match
-                        mem_to_add = membersStore.data[i];
+                        mem_to_add = selected[i];
+                        delete mem_to_add._id;
                         for(var j = 0; j < group.members.length; j++)
                         {
-                            if(mem_to_add._id == group.members[j])
+                            if(mem_to_add.name == group.members[j].name)
                             {
                                 matched = true; //if we find it exists, stop looking and don't add it
                                 break;
                             }
                         }
-                        if(!matched) //if we don't find it in the group, add it
-                            group.members.push(mem_to_add._id);
+                        if(!matched)
+                        { //if we don't find it in the group, add it
+                            // var _range = mem_to_add.range.split("-");
+
+                            var param = {};
+                            param.id = group.members.length;
+                            param.type = "p";
+                            param.name = mem_to_add.name;
+                            param.formula = mem_to_add.formula;
+                            param.value = "";
+                            param.range = mem_to_add.range;
+                            group.members.push(param);
+                        }
                     }
+                    console.log(group);
                     //send the update to the db
                     GroupGrid.update_pg(group);
                 }
             }, "button_add_to_selected_group");
+
+            var button_clone_group = new Button(
+            {
+                label: "Clone",
+                onClick: function()
+                {
+                    var selected = groupGrid.selection.getSelected();
+                    if(!selected || selected.length != 1)
+                        return alert("Select a group to clone.");
+
+                    var group = selected[0];
+                    var suggestion = group.name + " [copy]";
+                    var name = prompt("Give a name for the clone of \'" + group.name +"\'.", suggestion);
+                    if(!name)
+                        return;
+                    name = name.replace(/(^\s+|\s+$)/g, '');
+                    if(name.length < 1)
+                        return alert("Be a little more creative with your name.");
+
+                    var copy = {};
+                    copy.name = name;
+                    copy.type = 'pg';
+                    copy.members = group.members;
+                    GroupGrid.new_pg(copy);
+                }
+            }, "button_clone_group");
 
 
             //button to delete a selected group
@@ -652,80 +741,6 @@
                     }
                 }, "button_removeParameter");
 
-            //BUTTON TO ADD A MEMBER TO THE PENDING GROUP
-            var button_add_member = new Button(
-                {
-                    label: '-->', 
-                    onClick: function()
-                    {
-                        //GET THE SELECTED PARAMETERS
-                        var parameters = ParamGrid.selected_fields;
-                        if(!parameters)
-                            return;
-                        //ADD EACH PARAMETER AND RECURSIVELY ADD EACH PARAMETER'S DEPENDENCIES
-                        for(var i = 0; i < parameters.length; i++)
-                        {
-                            var dependencies = parameters[i].members.dependencies;
-                            addDependencies(dependencies);
-                            try //try to add it to the pending group
-                            {
-                                membersStore.add(parameters[i]);
-                            }
-                            catch(error) //if there's an error, it is already in the pending group
-                            {console.log(parameters[i].name + ' is already in that set')};
-                        }
-                        membersGrid._refresh();
-                        paramGrid.selection.clear(); //clear the selection
-                    }
-                }, "button_add_member");
-
-            //HELPER FUNCTION THAT ADDS ALL THE DEPENDENCIES OF A PARAMETER TO THE STANDARD
-            //SECTION OF THE GRID AUTOMATICALLY.
-            function addDependencies(dependencies)
-            {
-                for(var j = 0; j < dependencies.length; j++)
-                {
-                    var id = dependencies[j];
-
-                    var sub_d = [];
-
-                    //for each parameter find a match for the current dependency
-                    for(var k = 0; k < paramStore.data.length; k++)
-                    {
-                        var store_member = paramStore.data[k];
-                        if(id == store_member._id)
-                        {
-                            try
-                            {   
-                                //get the dependencies of this dependency 
-                                sub_d = store_member.members.dependencies;
-                                membersStore.add(store_member);
-                            }
-                            catch(error){}
-                        }
-                    }
-                    //add the dependencies of this dependency
-                    addDependencies(sub_d);
-                }
-            }
-
-
-            //button to remove selected report members
-            var button_remove_member = new Button(
-                {
-                    label: '<--', 
-                    onClick: function()
-                    {
-                        var mem_to_remove = membersGrid.selection.getSelected();
-                        for(var i = 0;i < mem_to_remove.length; i++)
-                        {
-                            if(!mem_to_remove[i])
-                                continue;
-                            membersStore.remove(mem_to_remove[i]._id);
-                        }
-                        membersGrid._refresh();
-                    }
-                }, "button_remove_member");
 
             //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
             var button_refresh_data = new Button(
@@ -737,23 +752,275 @@
                 }
             }, "button_refresh_data");
 
+            //BUTTON TO REMOVE A FIXED PI
+            var button_multiplication = new Button(
+            {
+                label: '&#8727', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '*'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '*';
+                    else
+                        dom.byId("txtBox_paramFormula").value += ';' + '*';   
+                },
+            }, 'button_multiplication');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_division = new Button(
+            {
+                label: '/', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '/'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '/';
+                    else
+                        dom.byId("txtBox_paramFormula").value += ';' + '/';   
+                },
+            }, 'button_division');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_addition = new Button(
+            {
+                label: '+', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '+'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '+';
+                    else
+                        dom.byId("txtBox_paramFormula").value += ';' + '+';   
+                },
+            }, 'button_addition');
+
+            //BUTTON TO REMOVE A FIXED PI
+            var button_subtraction = new Button(
+            {
+                label: '&#8722', 
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_paramFormula").value == "")
+                        dom.byId("txtBox_paramFormula").value = '-'; 
+                    else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                        dom.byId("txtBox_paramFormula").value += '-';
+                    else
+                        dom.byId("txtBox_paramFormula").value += ';' + '-';   
+                },
+            }, 'button_subtraction');
+
+
+            //CONSTRUCTS A PI FROM THE COMPUTED FORMULA AND NAME FIELDS
+            var button_add_pi_to_members = new Button(
+            {
+                label: 'Add To Group &#8594',
+                onClick: function()
+                {
+                    if(dom.byId("txtBox_compParamName").value < 1)
+                        return alert("Define a name for the parameter.")
+
+                    var formula = dom.byId("txtBox_paramFormula").value;
+                    formula = formula.replace(/(^\s+|\s+$)/g, '');
+
+                    var range_x = reportRangeSlider.value[0];
+                    var range_y = reportRangeSlider.value[1];
+
+                    var param = {};
+                    param.type = "p";
+                    param.name = dom.byId("txtBox_compParamName").value;
+                    param.formula = formula;
+                    param.value = "";
+                    param.range = range_x+"-"+range_y;
+                    // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
+
+                    try
+                    {
+                        membersStore.add(param);
+                        dom.byId("txtBox_compParamName").value = "";
+                        dom.byId("txtBox_paramFormula").value = "";
+                    }
+                    catch(error){alert("'"+param.name + "' Already exists in the working members")}
+                }
+            },'button_add_pi_to_members');
+
+
+            //ADDS THE SELECTED PARAMETER FROM THE WORKING MEMBERS GRID TO THE WORKING FORMULA
+            //REQUIRES ONE AND ONLY ONE PARAMETER TO BE SELECTED FROM THE MEMBERS GRID
+            //AND REQUIRES A NAME FOR THE GROUP TO BE PROVIDED
+            var button_add_parameter_to_formula = new Button(
+            {
+                label: '&#8595 Add Selected Member To Formula',
+                onClick: function()
+                {
+                    var selected = membersGrid.selection.getSelected();
+
+                    if(!selected[0])
+                        return alert('Select a Parameter from the Members Grid to Copy.');
+
+                    if(selected.length != 1)
+                        return alert("Select only one parameter to add to the formula.");
+
+                    var param_name = selected[0].name;
+
+                    if(txtBox_groupName.value.length < 1)
+                        return alert("Give the working group a name before adding computed parameters");
+
+                    var group_name = txtBox_groupName.value;
+
+                    membersGrid.selection.clear();
+
+                    add_param_to_formula(group_name, param_name);
+                }
+            }, "button_add_parameter_to_formula");
+
+
+            //
+            var button_group_commit_changes = new Button(
+            {
+                label: 'Commit Changes',
+                onClick: function()
+                {
+                    var group = groupGrid.selection.getSelected();
+                    group = group[0];
+                    // var copy = {};
+                    // copy._id = group._id;
+                    // copy.type = 'pg';
+                    // copy.name = group.name;
+                    // copy.members = [];
+                    group.members = [];
+
+                    for(var i = 0; i < selectionMemStore.data.length; i++)
+                    {
+                        var mem_to_add = selectionMemStore.data[i];
+
+                        //Add regex here to check that range is of the correct form [1-4]'-'[1-4];
+
+                        var param = {};
+                        param.id = group.members.length;
+                        param.type = "p";
+                        param.name = mem_to_add.name;
+                        param.formula = mem_to_add.formula;
+                        param.value = ""; //need to remove this
+                        param.range = mem_to_add.range;
+                        // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
+                        group.members.push(param);
+                    }
+                    console.log(group);
+                    GroupGrid.update_pg(group);
+                }
+            }, "button_group_commit_changes");
+
+
+            //ADDS THE SELECTED PARAMETER FROM THE GROUP VIEWER GRID TO THE WORKING FORMULA
+            var button_add_selected_group_parameter_to_formula = new Button(
+            {
+                label: '&#8592 Add Parameter To Formula',
+                onClick: function()
+                {
+                    //GET THE SELECTED GROUP FROM THE GROUP GRID
+                    var selected_group = groupGrid.selection.getSelected();
+                    if(selected_group.length != 1)
+                        return alert("Select a group, then select one of the group's parameters to add to the current working formula.");
+
+                    //GET THE FIRST ELEMENT OF THE SELECTION ARRAY
+                    selected_group = selected_group[0];
+
+                    //GET THE SELECTED PARAMETER FROM THE VIEWER GRID
+                    var selected = selectionGrid.selection.getSelected();
+
+                    //GET THE FIRST PARAMETER OF THE SELECTION ARRAY
+                    selected = selected[0];
+
+                    //IF THE VARIABLE TURNS OUT TO BE UNDEFINED, BAIL
+                    if(!selected)
+                        return alert('Select a Parameter from the Viewer Grid to Copy.');
+
+                    //SEND THE PARAMETER AND GROUP NAME TO THE FUNCTION THAT WILL BUILD THE FORMULA VARIABLE STRING
+                    var param_name = selected.name;
+                    var group_name = selected_group.name;
+                    add_param_to_formula(group_name, param_name);
+                }
+            }, "button_add_selected_group_parameter_to_formula");
+
+            
+            //RULES DIV FOR THE SLIDER
+            var rulesNode = dojo.create("div", {}, dojo.byId("reportRangeSlider"), "first");
+
+            //RULES DECLARATION. THESE ARE THE HASHES ONTOP OF THE SLIDER
+            var sliderRules = new dijit.form.HorizontalRule(
+            {
+                container: "topDecoration",
+                count: 4,
+                style: "height: 8px",
+            }, rulesNode);
+
+            //LABELS DIV FOR THE SLIDER
+            var labelsNode = dojo.create("div", {}, dojo.byId("reportRangeSlider"), "first");
+
+            //BOTTOM NUMBERS FOR THE SLIDER.
+            var sliderLabels = new dijit.form.HorizontalRuleLabels(
+            {
+                container: "bottomDecoration",
+                count: 4,
+                labels: [1,2,3,4],
+                labelStyle: "font-style: italic; font-size: 1.0em",
+            }, labelsNode);
+
+            //THE SLIDER
+            var reportRangeSlider = new dojox.form.HorizontalRangeSlider(
+            {
+                value: [1,4],
+                minimum: 1,
+                maximum: 4,
+                discreteValues: 4,
+                showButtons: false,
+                onChange: function(value)
+                {
+                    dom.byId("reportRange").innerHTML = "Report Range: " + value;
+                }
+            },"reportRangeSlider");
+
+            //RENDER THE SLIDER AND ITS RULERS
+            reportRangeSlider.startup();
+            sliderRules.startup();
+            sliderLabels.startup();
+
+            //DISPLAY THE VALUE OF THE SLIDER
+            dom.byId("reportRange").innerHTML = "Report Range: " + reportRangeSlider.value;
+
+
+            //ADDS THE SELECTED PARAMETER FROM THE WORKING GROUP MEMBERS GRID TO THE FORMULA WITH THE GIVEN GROUP NAME
+            //CONSTRUCTS A FORMULA VARIABLE USING THE GROUP NAME AND PARAMETER NAME
+            var add_param_to_formula = function(group_name, param_name) 
+            {
+                if(!param_name || !group_name)
+                    return alert("There was an error adding the field to the formula.");
+                if(dom.byId("txtBox_paramFormula").value == "")
+                    dom.byId("txtBox_paramFormula").value = '${'+group_name+'.'+param_name+'}'; 
+                else if(dom.byId("txtBox_paramFormula").value[dom.byId("txtBox_paramFormula").value.length-1] == ';')
+                    dom.byId("txtBox_paramFormula").value += '${'+group_name+'.'+param_name+'}';
+                else
+                    dom.byId("txtBox_paramFormula").value += ';' + '${'+group_name+'.'+param_name+'}';   
+            }
+
 
             //HELPER FUNCTION TO CHECK IF AN OBJECT POSSESSES ANY PROPERTIES
             function objectIsEmpty(map) 
             {
                for(var key in map) 
-               {
                   if (map.hasOwnProperty(key)) 
                      return false;
-               }
+
                return true;
             }
-            
+
             //CLEAR TEXT FIELDS AND GRID SELECTIONS
             function ClearTextFields()
             {
                 dom.byId('txtBox_groupName').value = '';
-                paramGrid.selection.clear();
                 membersStore.setData(new Array());
                 membersGrid._refresh();
             }
@@ -766,48 +1033,150 @@
 <!-- Layout -->
 <body class="claro">
     <table width = '100%' border = "1">
-        <col width = "45%">
-        <col width = "18%">
-        <col width = "35%">
+        <col width = "50%">
+        <col width = "14%">
+        <col width = "36%">
         <tr> <!-- Labels -->
             <td style = "text-align: center; padding: 5px">
                 <b>PG creator - Creates a New PG</b>
-                <div style="text-align: right"><button id="button_add_to_selected_group"></button><button id = "button_newPG"></button></div>
+                <table width="100%">
+                    <tr>
+                        <td align="left" valign="bottom">
+                            <div style="text-align: left"><button id="button_add_parameter_to_formula"></button></div>
+                        </td>
+                        <td valign="bottom">
+                            <div style="text-align: right"><button id="button_add_to_selected_group"></button><button id = "button_newPG"></button></div>
+                        </td>
+                    </tr>
+                </table>
+                
             </td>
-            <td style = "text-align: center; vertical-align: top; padding: 5px">
-                <b>PG lister - Lists All PGs</b>
-                <div style="text-align: right"><button id="button_delete_group"></button>
+            <td style = "text-align: center; padding: 5px">
+                <div style="vertical-align: top"><b>PG lister - Lists All PGs</b></div>
+                <div style="text-align: right; vertical-align: bottom"><button id="button_clone_group"></button><button id="button_delete_group"></button>
                 </div>
             </td>
             <td style = "text-align: center; vertical-align: top; padding: 5px">
                 <b>PG Viewer - Shows Selected PG</b>
                 <div style="text-align: right">
+                    <button id="button_group_commit_changes"></button>
+                    <button id="button_add_selected_group_parameter_to_formula"></button>
                     <button id="button_removeParameter"></button>
                 </div>
             </td>
         </tr>
         <tr> <!-- Grids -->
-            <td valign = "top" style = "padding: 5px">
-                <label for="txtBox_groupName" style = "padding: 5px">Name:</label><br>  
-                <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox" style ="width: 50%;"></input>
-                <br><br>
+            <td>
                 <table width="100%">
-                    <col width="47%">
-                    <col width="6%">
-                    <col width="47%">
+                    <col width="40%">
+                    <col width="60%">
                     <tr>
-                        <td>
-                            <div style="padding: 2px" align='center'><b>Parameter Classes</b></div>
-                            <div id="ParamGrid"></div>
+                        <td valign="top">
+                            <table width='100%'>
+                                <tr>
+                                    <td>
+                                        <table width="100%" style="padding: 3px; border:.1em solid black; background-color:#999999">
+                                            <tr>
+                                                <td>
+                                                    <label for="txtBox_compParamName">Parameter Name:</label><br>  
+                                                    <input id ='txtBox_compParamName' data-dojo-type="dijit/form/TextBox"></input>
+                                                </td>
+                                                <td valign="bottom">
+                                                        <button id='button_add_pi_to_members'></button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan='2'>
+                                                    <label for="txtBox_paramFormula">Parameter Formula:</label><br>  
+                                                    <input id ='txtBox_paramFormula' data-dojo-type="dijit/form/TextBox"> </input><br><br>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan='2'>
+                                                    <div style = "padding: 2px" >
+                                                        <div id="reportRange" style="font-size: 1em"></div>
+                                                        <br>
+                                                            <div align="center" id ="reportRangeSlider"></div>
+                                                        <br>
+                                                    </div>
+                                                </td>           
+                                            </tr>
+                                            <tr>
+                                                <td colspan='2'>
+                                                    <div style = "padding: 2px; align: left">
+                                                    <table id="operator" align="left" width="100%" style="padding: 3px; border:.1em solid black; background-color:#DDDDDD">
+                                                        <tr>
+                                                            <td colspan="100%" align="center">
+                                                                <b>Operators</b>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                <div style="text-align: center">
+                                                                    <button id="button_multiplication"></button>
+                                                                    <button id="button_division"></button>
+                                                                    <button id="button_addition"></button>
+                                                                    <button id="button_subtraction"></button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    </div>
+                                                    <br><br>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td valign="top">
+                                        <!-- <div style="padding: 2px" align='center'><b>Parameter Classes</b></div>
+                                        <div id="ParamGrid"></div>
+                                        <div align="right"><button id="button_delete_param_class"></button></div>  -->
+                                        <!-- <br>
+                                        <div style = "padding: 2px">
+                                            <label for="txtBox_paramName">Add New Parameter:</label>
+                                            <br> 
+                                            <input id ='txtBox_paramName' data-dojo-type="dijit/form/TextBox"></input>
+                                            <button id="button_commit_new_pi"></button>
+                                            <br>
+                                        </div>  -->
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
-                        <td>
-                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
-                            <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div>
-                        </td>
-                        <td>
-                            <div style="padding: 2px" align='center'><b>Selected Members</b></div>
-                            <div id="membersGrid"></div>
-                            <div id="reportMemGrid"></div>
+                        <td valign = "top">
+                            <table width='100%'>
+                                <tr>
+                                    <td width="45%" align="right" valign = "bottom" style = "padding-top: 50px">
+                                    </td>
+                                    <td width="55%" valign="top">
+                                        <div align="right" style = "padding: 2px">
+                                            <label for="txtBox_groupName">Group Name:</label><br>  
+                                            <input id="txtBox_groupName" data-dojo-type="dijit/form/TextBox"></input><br>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                <td colspan = '2'>
+                                    <table width="100%">
+                                        <col width="6%">
+                                        <col width="94%">
+                                        <tr>
+                                            <td>
+                                                <!-- <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
+                                                <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div> -->
+                                            </td>
+                                            <td>
+                                                <div style="padding: 2px" align='center'><b>Working Members</b></div>
+                                                <div id="membersGrid"></div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                </tr>
+                            </tr>
+                            </table>
                         </td>
                     </tr>
                 </table>
