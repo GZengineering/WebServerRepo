@@ -45,9 +45,12 @@
         {
             font-size: 8pt;
         }
-        .dojoxGridMasterHeader
+        .claro .dojoxGridHeader
         {
             font-size: 8pt;
+            font-weight: bold;
+            color: #DDDDDD !important;
+            background: #333333;
         }
     </style>
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
@@ -295,16 +298,16 @@
             {
                 /*  DEFINE LAYOUT  */
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Group', 'field': 'pg_name', 'width': '15%'},
-                  {'name': 'Parameter', 'field': 'p_name', 'width': '15%'},
+                  {'name': 'Group', 'field': 'pg_name', 'width': '12%'},
+                  {'name': 'Parameter', 'field': 'p_name', 'width': '18%'},
                   {'name': 'Formula', 'field': 'p_formula', 'width': '40%'},
                   {'name': 'Value', 'field': 'p_value', 'width': '23%', editable: true},
-                  {'name': 'Range', 'field': 'p_range', 'width': '7%', editable: true},
+                  {'name': 'Range', 'field': 'p_range', 'width': '3em', editable: true},
                 ]];
 
 
                 /*  SET UP DATA STORE  */
-                var previewMemStore = new Memory({data: new Array()});
+                var previewMemStore = new Memory({data: new Array(), idProperty: 'row_id'});
                 previewMemStore = Observable(previewMemStore);
                 var previewDataStore = new ObjectStore({
                     objectStore: previewMemStore
@@ -332,6 +335,7 @@
                         row.p_formula = pi.formula;
                         row.p_value = pi.formula;
                         row.p_range = pi.range;
+                        row.row_id = pg.name+'.'+pi.name;
                         try
                         {
                             previewMemStore.add(row);
@@ -471,7 +475,7 @@
 
             FamilyGrid.update_pgf = function(pgf)
             {
-                var id = pgf.id;
+                var id = pgf.name;
                 delete pgf.id;
 
                 xhr.get(
@@ -736,15 +740,15 @@
             {
                 /*  DEFINE LAYOUT  */
                 var layout = [[
-                  {'name': 'Group', 'field': 'pg_name', 'width': '20%'},
-                  {'name': 'Parameter', 'field': 'p_name', 'width': '25%'},
+                  {'name': 'Group', 'field': 'pg_name', 'width': '15%'},
+                  {'name': 'Parameter', 'field': 'p_name', 'width': '30%'},
                   {'name': 'Formula', 'field': 'p_formula', 'width': '35%'},
                   {'name': 'Value', 'field': 'p_value', 'width': '15%', editable: true},
-                  {'name': 'Range', 'field': 'p_range', 'width': '5%', editable: true},
+                  {'name': 'Range', 'field': 'p_range', 'width': '3em', editable: true},
                 ]];
 
                 /*  SET UP STORE  */
-                var FamilyViewerMemStore = new Memory({data: new Array()});
+                var FamilyViewerMemStore = new Memory({data: new Array(), idProperty: 'row_id'});
                 FamilyViewerMemStore = Observable(FamilyViewerMemStore);
                 var FamilyViewerDataStore = new ObjectStore({
                     objectStore: FamilyViewerMemStore
@@ -793,6 +797,7 @@
                                 row.p_formula = pi.formula;
                                 row.p_value = pgf_pi.value;
                                 row.p_range = pi.range;
+                                row.row_id = group.name+'.'+pi.name;
                                 try
                                 {
                                     FamilyViewerMemStore.add(row);
@@ -846,15 +851,15 @@
                     var p_ids = pg_ids[i].members;
                     for(var j = 0; j < p_ids.length; j++)
                     {
-                        if(p_ids[j]._id == member_to_remove.pi._id)
+                        if((p_ids[j].id == member_to_remove.pi.id) && (pg_ids[i]._id == member_to_remove.pg._id))
                         {
                             if(!confirm("Remove '" + member_to_remove.p_name + "'?"))
                                 return;
                             p_ids.splice(j,1);
                         }
                     }
+                    pg_ids[i].members = p_ids;
                 }
-                pgf.members.members = p_ids;
                 delete pgf.id;
                 FamilyViewerGrid.commitChanges(pgf);
             }
@@ -910,6 +915,7 @@
                 FamilyViewerGrid.commitChanges(pgf);
             }
 
+            //SAVES ANY CHANGES MADE TO THE SELECTED FAMILY
             FamilyViewerGrid.commitChanges = function(pgf)
             {
                 //TELL THE SERVER TO ADD NEW PF AND SEND THE NEW PF OBJECT                
@@ -949,7 +955,7 @@
 
 
             //Family Name Textbox
-            var txtBox_familyName = new TextBox({},"txtBox_familyName");
+            var txtBox_familyName = new TextBox({style: 'width: 300px'},"txtBox_familyName");
 
             dojo.connect(txtBox_familyName, "onKeyUp", function(e)
             {
@@ -957,6 +963,7 @@
                     button_newPGF.onClick();
             });
 
+            /*  STILL NOT WORKING  */
             var button_add_to_existing_pgf = new Button(
             {
                 label: "Add To Selected",
@@ -1064,7 +1071,7 @@
                     }
                 }, "button_clonePGF");
 
-            //DELETE PF BUTTON
+            //DELETE PARAMETER BUTTON
             var button_deleteParameter = new Button(
                 {
                     label: 'Delete', 
@@ -1117,6 +1124,7 @@
                                 row.p_formula = pi.formula;
                                 row.p_value = pi.formula;
                                 row.p_range = pi.range;
+                                row.row_id = pg.name+'.'+pi.name;
                                 try
                                 {
                                     previewMemStore.add(row);
@@ -1172,9 +1180,8 @@
                         {
                             if(!mem_to_remove[i])
                                 continue;
-                            // var dependencies = mem_to_remove[i].members.dependencies;
-                            // removeDependencies(dependencies);
-                            previewMemStore.remove(mem_to_remove[i].p_name);
+                            var mem_name = mem_to_remove[i].p_name;
+                            previewMemStore.remove(mem_to_remove[i].row_id);
                         }
                         // previewGrid._refresh();
                     }
@@ -1206,7 +1213,7 @@
                 for(var i = 0;i < new_data.length; i++)
                 {
                     var element = new_data[i];
-                    store.remove(element.id);
+                    store.remove(element.row_id);
                     try
                     {
                         store.add(element); 
@@ -1251,9 +1258,12 @@
                     //GET THE NEXT ELEMENT FROM THE ARRAY
                     var element = formula_elements.shift();
 
-                    //Remove whitespace from ends of string
-                    element = element.replace(/(^\s+|\s+$)/g, '');
+                    if(element.indexOf("group0.p1") != -1)
+                    {
+                        console.log("start debug here");
+                    }
 
+                    
                     //If the string is empty, go to the next element
                     if(element == "")
                         continue;
@@ -1261,20 +1271,28 @@
                     // if(element.indexOf('\\$') != -1)
                     if(/^[\\$]/.test(element))
                     {
+                        //Remove whitespace from ends of string
+                        element = element.replace(/(^\s+|\s+$)/g, '');
+                        if(element == "")
+                        {
+                            continue;
+                        }
+
+                        var temp;
+                        console.log(element);
+                        temp = element.slice(2, element.length);
+                        temp = temp.slice(0, temp.length-1);
+
+                        var pair = temp.split('.');
+                        var group = pair[0];
+                        var parameter = pair[1];
+
+
                         //FIND THE ELEMENTS FROM THE GROUP AND MATCH THEM TO THE ELEMENTS
                         for(var i = 0; i < data.length; i++)
                         {
                             if(matched) //IF ELEMENT HAS BEEN MATCHED, BREAK 
                                 break;
-
-                            var temp;
-                            console.log(element);
-                            temp = element.slice(2, element.length);
-                            temp = temp.slice(0, temp.length-1);
-
-                            var pair = temp.split('.');
-                            var group = pair[0];
-                            var parameter = pair[1];
 
                             //STORE CURRENT PARAMETER
                             var e = data[i];
@@ -1282,10 +1300,11 @@
                             //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                             if(group == e.pg_name && parameter == e.p_name)
                             {
-                                v_temp = realizeValue(data, e.p_formula); //circular dependencies?
+                                var v_temp = realizeValue(data, e.p_formula); //circular dependencies?
                                 if(!v_temp == "")
                                     e.p_value = v_temp;
 
+                                console.log(e.p_value);
                                 if(/[\+\-\*\/]/.test(e.p_value))
                                 {
                                     try
@@ -1331,25 +1350,16 @@
                 if(output_elements.length < 1)
                     return "";
 
-                // for (var i = 0; i < output_elements.length; i++)
-                //     output_string += output_elements[i];
-
-                // output_elements = output_string.split("'");
-                // output_string = "";
                 for(var i = 0; i < output_elements.length; i++)
                 {
                     try
                     {
                         var e = output_elements[i];
                         if(!e)
-                            break;
+                            continue;
                         e = eval(e);
                         e = e.toFixed(1);
-                        var index = e.indexOf('.0');
-                        if(index > -1)
-                        {
-                            e = e.substring(0, index);
-                        }
+                        e = e.replace('.0', '');
                         output_elements[i] = e;
                     }
                     catch(error){}
@@ -1363,8 +1373,22 @@
                 {
                     try
                     {
-                        output_string = eval(output_string);
-                        output_string = output_string.toFixed(3); //ROUND TO 3 DECIMALS
+                        console.log(output_string);
+                        var index = /w/gi.exec(output_string).index;
+
+                        if(index > 0)
+                        {
+                            var temp = output_string.substring(0, index);
+                            console.log(temp);
+                            temp = eval(temp);
+                            console.log(temp);
+                            var output_string = output_string.substring(index, output_string.length);
+                            console.log(output_string);
+                            temp = ''+temp;
+                            output_string = temp.concat(output_string);
+                            console.log(output_string);
+                        }
+
                     }
                     catch(error)
                     {
@@ -1372,6 +1396,8 @@
                     }
                 }
 
+                console.log(output_string);
+                
                 return output_string;
             }     
 
@@ -1416,7 +1442,7 @@
             </td>
         </tr>
         <tr>
-            <td valign = "top" style = "padding: 5px">
+            <td valign = "top" align="right" style = "padding: 5px">
                 <label for="txtBox_familyName">Name:</label><br>
                 <input id="txtBox_familyName" data-dojo-type="dijit/form/TextBox" style="width: 50%;"></input>
                 <table width = '100%'>

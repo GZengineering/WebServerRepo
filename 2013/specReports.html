@@ -45,12 +45,12 @@
         'dojo/domReady!'],
       function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
-
             window.report_grade = 4;
             window.selected_family = {};
 
             /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
             var has_loaded = false;
+            var _init = false;
 
             /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
             var fullDbMemStore = new Memory({data: new Array()});
@@ -75,7 +75,8 @@
                     },
                     load: function(response)
                     {
-                        fullDbMemStore.data = response;
+                        fullDbMemStore.setData(new Array());
+                        fullDbMemStore.setData(response);
                         BuildGrids();
                     },
                     error: function(error)
@@ -103,7 +104,8 @@
                 window.familyDataStore = familyDataStore;
 
                 //FILL THE DROP-DOWN OPTIONS
-                fillOptions(families);
+
+                fillOptions(familyStore.data);
             }
 
             //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
@@ -150,17 +152,19 @@
             //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
             var fillOptions = function(families)
             {
+                ProductSelect.set('options', new Array());
                 for(var i = 0;i < families.length; i++)
                 {
                     var p = families[i];
                     ProductSelect.options.push({label: p.name, value: p.name});
                 }
-                ProductSelect.set('value', ProductSelect.options[0]);
-                GradeSelect.options.push({label: "Light", value: 1});
-                GradeSelect.options.push({label: "Medium", value: 2});
-                GradeSelect.options.push({label: "Heavy", value: 3});
-                GradeSelect.options.push({label: "Comprehensive", value: 4});
-                GradeSelect.set('value', GradeSelect.options[3]);
+                if(!(GradeSelect.options.length > 0))
+                {
+                    GradeSelect.options.push({label: "Light", value: 1});
+                    GradeSelect.options.push({label: "Medium", value: 2});
+                    GradeSelect.options.push({label: "Heavy", value: 3});
+                    GradeSelect.options.push({label: "Comprehensive", value: 4});
+                }
                 if(!families || families.length < 1)
                 {
                     ProductSelect.options.push({label: "(Empty)", value: "(Empty)"});
@@ -168,7 +172,11 @@
                     buildTable("", report_grade);
                     return;
                 }
-                console.log(GradeSelect.get('value'));
+                ProductSelect.set('value', ProductSelect.options[0]);
+                GradeSelect.set('value', GradeSelect.options[3]);
+                console.log(ProductSelect.value);
+                var selected_family = familyStore.get(ProductSelect.value);
+                buildPGF(selected_family, GradeSelect.value);
             }
 
             //CONSTRUCTS A PGF OBJECT WITH THE GIVEN FAMILY DB REFERENCE AND A REPORT GRADE.
@@ -176,9 +184,9 @@
             buildPGF = function(family, grade)
             {
                 console.log(family);
-                var parameters = fullDbMemStore.query({type: "p"});
+                // var parameters = fullDbMemStore.query({type: "p"});
                 var groups = fullDbMemStore.query({type: "pg"});
-                console.log(parameters);
+                // console.log(parameters);
                 console.log(groups);
 
                 var rows = [];
@@ -190,6 +198,13 @@
 
                 pgs = family.members;
 
+                if(!pgs)
+                {
+                    buildTable(family, grade);
+                    return;
+                }
+
+                /* POPULATE THE STORE */
                 for(var i = 0; i < pgs.length; i++)
                 {
                     var pg = pgs[i];
@@ -198,8 +213,6 @@
                     for(var j = 0; j < groups.length; j++)
                     {
                         var g = groups[j];
-                        console.log(pg);
-                        console.log(g);
                         if(pg._id == g._id)
                         {
                             group = g;
@@ -207,40 +220,53 @@
                         }
                     }
 
-                    var pis = pg.members;
+                    var pis = group.members;
+                    var pgf_pis = pg.members;
+
                     var params = [];
 
-                    //DEFINE THE THE ROW FOR THE VIEWER GRID USING THE PI & PG DATA
-                    for(var k = 0; k<pis.length; k++)
+                    //DEFINE EACH VIEWER ROW OF THE CURRENT GROUP OF THE SELECTED FAMILY
+                    for(var j = 0; j < pis.length; j++)
                     {
                         var matched = false;
-                        var pi = pis[k];
+                        var pi = pis[j];
                         if(!pi)
                             continue;
 
-                        for(var l = 0; l < parameters.length; l++)
+                        for(var k = 0; k < pgf_pis.length; k++)
                         {
                             if(matched)
                                 break;
 
-                            var p = parameters[l];
+                            var pgf_pi = pgf_pis[k];
+                            console.log(pgf_pi);
+                            console.log(pi);
 
-                            if(p.members.report_range.x > grade || p.members.report_range.y < grade)
+                            var pi_range = pi.range.split("-");
+
+                            if(pi_range[0] > grade || pi_range[1] < grade)
                                 continue;
 
-                            if(pi._id == p._id)
+                            if(pgf_pi.id == pi.id)
                             {
                                 var param = {};
-                                row = {};
+                                var row = {};
+                                row.pg = group;
+                                row.pi = pi;
+                                console.log(pi);
                                 row.pg_name = group.name;
-                                row.p_name = p.name;
-                                param.name = p.name;
-                                param._id = p._id;
-                                param.members = p.members;
-                                row.p_value = pi.value;
-                                param.value = pi.value;
-                                param.type = p.type;
-                                rows.push(row);
+                                row.p_name = pi.name;
+                                row.p_formula = pi.formula;
+
+                                param.name = pi.name;
+                                param.value = pgf_pi.value;
+                                param.type = pi.type;
+
+                                row.p_value = pgf_pi.value;
+                                row.p_range = pi.range;
+                                row.row_id = group.name+'.'+pi.name;
+
+                                param.param_id = group.name+'.'+pi.name;
                                 params.push(param);
                                 matched = true;
                             }
@@ -254,7 +280,6 @@
                 }
                 console.log(pgf);
 
-                console.log(rows);
 
                 buildTable(pgf, grade);
             }

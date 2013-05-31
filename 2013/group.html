@@ -29,26 +29,29 @@
         }
         #selectionGrid 
         {
-            height: 59.5em;
+            min-height: 15em;
             width: 100%;
         }
         #GroupGridDiv 
         {
-            height: 59.5em;
+            min-height: 15em;
             width: 100%;
         }
         #membersGrid
         {
-            height: 53em;
+            min-height: 10em;
             width: 100%;
         }
         .dojoxGridMasterView
         {
             font-size: 8pt;
         }
-        .dojoxGridMasterHeader
+        .claro .dojoxGridHeader
         {
             font-size: 8pt;
+            font-weight: bold;
+            color: #DDDDDD !important;
+            background: #333333;
         }
         /*#txtBox_paramFormula
         {
@@ -133,14 +136,6 @@
                 });
             window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
 
-            //MEMORY AND DATA STORE FOR PARAMETERS
-            var paramStore = new Memory({data: new Array(), idProperty: '_id'});
-                paramStore = Observable(paramStore);
-            var paramDataStore = new ObjectStore({
-                objectStore: paramStore
-            });
-            window.paramStore = paramStore;
-            window.paramDataStore = paramDataStore;
 
             //MEMORY AND DATA STORES FOR TEMPORARY MEMBERS
             var membersStore = new Memory({data: new Array(), idProperty: 'name'});
@@ -228,6 +223,7 @@
                 var grid = new DataGrid({
                     store: GroupDataStore,
                     structure: layout,
+                    autoHeight: 30,
                     selectionMode: 'single',
                     }, 'GroupGridDiv');
                 grid.startup(); //RENDER
@@ -246,7 +242,6 @@
 
                     if(!group)
                     {
-                        console.log("Error retrieving parameters of group.")
                         return;
                     }
 
@@ -467,9 +462,9 @@
             {
                 //DEFINE THE LAYOUT
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Parameter', 'field': 'name', 'width': '23%'},
-                  {'name': 'Formula', 'field': 'formula', 'width': '70%'},
-                  {'name': 'Range', 'field': 'range', 'width': '7%'},
+                  {'name': 'Parameter', 'field': 'name', 'width': '5em'},
+                  {'name': 'Formula', 'field': 'formula', 'width': '70%', editable: true},
+                  {'name': 'Range', 'field': 'range', 'width':'3em', editable: true},
                 ]];
 
                 //SET MEMBERS STORE DATA TO THE PASSED MEMBERS
@@ -481,6 +476,7 @@
                 var grid = new DataGrid({
                     store: membersDataStore,
                     structure: layout,
+                    autoHeight: 22,
                 selectionMode: 'multiple'}, 'membersGrid');
                 grid.startup(); //RENDER
 
@@ -506,7 +502,7 @@
                 var layout = [[
                   {'name': 'Parameter', 'field': 'name', 'width': '25%', editable: true},
                   {'name': 'Formula', 'field': 'formula', 'width': '75%', editable: true},
-                  {'name': 'Range', 'field': 'range', 'width': '7%', editable: true},
+                  {'name': 'Range', 'field': 'range', 'width': '3em', editable: true},
                 ]];
 
                 /*  SET UP DATA STORE  */
@@ -524,7 +520,9 @@
                 var selectionGrid = new DataGrid({
                     store: selectionDataStore,
                     structure: layout,
-                    selectionMode: 'single'}, "selectionGrid");
+                    selectionMode: 'single',
+                    autoHeight: 25,
+                    loadingMessage: 'Loading Content'}, "selectionGrid");
                 selectionGrid.startup();
 
                 /*  GLOBALIZE GRID PROPERTIES  */
@@ -536,14 +534,22 @@
             SelectionGrid.removeParameterFromGroup = function(group, parameter)
             {
                 selectionMemStore.remove(parameter.name); //remove the parameter from the selection store
-                group.members = []; //clear teh group's members
+                for(var i = 0; i < group.members.length; i++)
+                {
+                    if(group.members[i].name == parameter.name)
+                    {
+                        group.members.splice(i, 1);
+                    }
+                }
+                // group.members = []; //clear teh group's members
                 var store = selectionMemStore.data; // simplify the store reference
                 //for each item in the selection store, put the item in the group members
-                for(var i = 0; i < store.length; i++)
-                {
-                    store[i].id = i;
-                    group.members.push(store[i]);
-                }
+                // for(var i = 0; i < store.length; i++)
+                // {
+                //     store[i].id = i;
+                //     group.members.push(store[i]);
+                // }
+                console.log(group);
                 //send the update to the db
                 GroupGrid.update_pg(group);
             }
@@ -567,7 +573,6 @@
 
             //Group Name Textbox
             var txtBox_groupName = new TextBox({style: "width: 100%"}, "txtBox_groupName");
-            var txtBox_paramName = new TextBox({style: "width: 85%;" },"txtBox_paramName");
             var txtBox_paramFormula = new Textarea({style: 'width:100%; min-height:50px'},"txtBox_paramFormula");
             var txtBox_compParamName = new Textarea({style: "width: 100%; max-height: 20px"},"txtBox_compParamName");
 
@@ -579,24 +584,17 @@
             });
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
-            dojo.connect(txtBox_paramName, "onKeyUp", function(e)
-            {
-                if(e.keyCode == 13)
-                    button_commit_new_pi.onClick();
-            });
-
-            //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
             dojo.connect(txtBox_compParamName, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
-                    button_add_computed_pi_to_members.onClick();
+                    button_add_pi_to_members.onClick();
             });
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
             dojo.connect(txtBox_paramFormula, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
-                    button_add_computed_pi_to_members.onClick();
+                    button_add_pi_to_members.onClick();
             });
 
             //Confirm selection button for new group
@@ -630,7 +628,6 @@
                         param.type = "p";
                         param.name = mem_to_add.name;
                         param.formula = mem_to_add.formula;
-                        param.value = "";
                         param.range = mem_to_add.range;
                         // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
                         group.members.push(param);
@@ -674,13 +671,16 @@
                         if(!matched)
                         { //if we don't find it in the group, add it
                             // var _range = mem_to_add.range.split("-");
-
+                            var id = 0;
+                            if(group.members[group.members.length-1].id)
+                            {
+                                id = group.members[group.members.length-1].id+1
+                            }
                             var param = {};
-                            param.id = group.members.length;
+                            param.id = id;
                             param.type = "p";
                             param.name = mem_to_add.name;
                             param.formula = mem_to_add.formula;
-                            param.value = "";
                             param.range = mem_to_add.range;
                             group.members.push(param);
                         }
@@ -740,6 +740,22 @@
                         SelectionGrid.removeParameterFromGroup(group, parameter);
                     }
                 }, "button_removeParameter");
+
+            //button to delete a selected parameter from the selected group
+            var button_removeWorkingMember = new Button(
+                {
+                    label: 'Delete Selected', 
+                    onClick: function()
+                    {
+                        var selected = membersGrid.selection.getSelected();
+                        for(var i = 0; i < selected.length; i++)
+                        {
+                            if(!selected[i])
+                                continue;
+                            membersStore.remove(selected[i].name);
+                        }
+                    }
+                }, "button_removeWorkingMember");
 
 
             //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
@@ -822,6 +838,9 @@
                     if(dom.byId("txtBox_compParamName").value < 1)
                         return alert("Define a name for the parameter.")
 
+                    var name = dom.byId("txtBox_compParamName").value;
+                    name = name.replace(/(^\s+|\s+$)/g, '');
+
                     var formula = dom.byId("txtBox_paramFormula").value;
                     formula = formula.replace(/(^\s+|\s+$)/g, '');
 
@@ -830,9 +849,8 @@
 
                     var param = {};
                     param.type = "p";
-                    param.name = dom.byId("txtBox_compParamName").value;
+                    param.name = name;
                     param.formula = formula;
-                    param.value = "";
                     param.range = range_x+"-"+range_y;
                     // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
 
@@ -869,6 +887,7 @@
                         return alert("Give the working group a name before adding computed parameters");
 
                     var group_name = txtBox_groupName.value;
+                    group_name = group_name.replace(/(^\s+|\s+$)/g, '');
 
                     membersGrid.selection.clear();
 
@@ -899,13 +918,11 @@
                         //Add regex here to check that range is of the correct form [1-4]'-'[1-4];
 
                         var param = {};
-                        param.id = group.members.length;
+                        param.id = mem_to_add.id;
                         param.type = "p";
                         param.name = mem_to_add.name;
                         param.formula = mem_to_add.formula;
-                        param.value = ""; //need to remove this
                         param.range = mem_to_add.range;
-                        // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
                         group.members.push(param);
                     }
                     console.log(group);
@@ -1158,21 +1175,33 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                <td colspan = '2'>
+                                <td colspan = '3'>
                                     <table width="100%">
+                                                    <col width="60%">
+                                                    <col width="40%">
+                                                    <tr>
+                                                        <td align="right">
+                                                            <div style="padding: 2px"><b>Working Members</b></div>
+                                                        </td>
+                                                        <td align="right">
+                                                            <button id="button_removeWorkingMember"></button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan = '2'>
+                                                            <div id="membersGrid"></div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                    <!-- <table width="100%">
                                         <col width="6%">
                                         <col width="94%">
                                         <tr>
                                             <td>
-                                                <!-- <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_add_member"></button></div>
-                                                <div style="text-align: center; padding-top: 50px; padding-bottom: 50px"><button id = "button_remove_member"></button></div> -->
-                                            </td>
-                                            <td>
-                                                <div style="padding: 2px" align='center'><b>Working Members</b></div>
-                                                <div id="membersGrid"></div>
+                                                
                                             </td>
                                         </tr>
-                                    </table>
+                                    </table> -->
                                 </td>
                                 </tr>
                             </tr>
