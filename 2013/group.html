@@ -229,6 +229,17 @@
                 grid.startup(); //RENDER
 
                 dojo.connect(GroupMemStore, 'notify', function(){grid._refresh()});
+
+                dojo.connect(grid, "onMouseDown", function(e)
+                {
+                    console.log(e);
+                    if(e.altKey == true)
+                    {
+                        alert(help_GroupGrid);
+                    }
+                });
+
+                var help_GroupGrid = "This grid displays all the groups that exist in the database.  Select a group to display its parameters in the PG Viewer.\nA parameter's name, formula, and range can be edited in the PG Viewer.";
                 
 
                 //UPDATE THE GROUP SELECTION AND DISPLAY IT IN THE RESPONSE DIV
@@ -462,7 +473,7 @@
             {
                 //DEFINE THE LAYOUT
                 var layout = [{type: 'dojox.grid._CheckBoxSelector'},[
-                  {'name': 'Parameter', 'field': 'name', 'width': '5em'},
+                  {'name': 'Parameter', 'field': 'name', 'width': '5em', editable: true},
                   {'name': 'Formula', 'field': 'formula', 'width': '70%', editable: true},
                   {'name': 'Range', 'field': 'range', 'width':'3em', editable: true},
                 ]];
@@ -482,6 +493,17 @@
 
                 //REGISTER NOTIFY EVENT TO REFRESH THE GRID
                 dojo.connect(membersStore, 'notify', function(){grid._refresh()});
+
+                dojo.connect(grid, "onMouseDown", function(e)
+                {
+                    console.log(e);
+                    if(e.altKey == true)
+                    {
+                        alert(help_membersGrid);
+                    }
+                });
+
+                var help_membersGrid = "This grid displays all the parameters that will make up a new group.  This grid is fully editable before committing the new group.\nThis grid can also be used to add parameters to a selected group.  Check the boxes next to the parameters you wish to add to the selected group.";
 
                 //GLOBALIZE STORE DATA AND THE GRID
                 window.membersGrid = grid;
@@ -524,6 +546,17 @@
                     autoHeight: 25,
                     loadingMessage: 'Loading Content'}, "selectionGrid");
                 selectionGrid.startup();
+
+                dojo.connect(selectionGrid, "onMouseDown", function(e)
+                {
+                    console.log(e);
+                    if(e.altKey == true)
+                    {
+                        alert(help_selectionGrid);
+                    }
+                });
+
+                var help_selectionGrid = "This grid displays all the parameters of the selected group.  The grid is fully editable.\nBe careful editing data once its been entered,  it is easy to create circular dependencies and ruin parameter references.";
 
                 /*  GLOBALIZE GRID PROPERTIES  */
                 window.selectionGrid = selectionGrid;
@@ -583,12 +616,32 @@
                     button_newPG.onClick();
             });
 
+            dojo.connect(txtBox_groupName, "onMouseDown", function(e)
+            {
+                if(e.altKey == true)
+                {
+                    alert(help_txtBox_groupName);
+                }
+            });
+
+            var help_txtBox_groupName = "Type a name for a new group here.  A new group is required to have a unique name.  \nAlso, to create a computed parameter a name must first be given to the group before references can be made.";
+
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
             dojo.connect(txtBox_compParamName, "onKeyUp", function(e)
             {
                 if(e.keyCode == 13)
                     button_add_pi_to_members.onClick();
             });
+
+            dojo.connect(txtBox_compParamName, "onMouseDown", function(e)
+            {
+                if(e.altKey == true)
+                {
+                    alert(help_txtBox_compParamName);
+                }
+            });
+
+            var help_txtBox_compParamName = "Type a name for a new parameter in this field.\nIf you want a computed field, type the formula for the computed field in the Formula Text Area.\nInstead of typing parameter references by hand, it's simplist if you select the parameter you wish to reference from the 'Working Members Grid' or the 'PG Viewer' and use the 'Add Member to Formula' buttons.\nAlso notice the Report Range Slider.  Use the slider to define which reports you want this parameter to be displayed in.\nAll this data can be changed at a later time if needed.";
 
             //REGISTER THE RETURN KEY TO THE COMMIT BUTTON FOR THE PARAMETER NAME TEXTBOX
             dojo.connect(txtBox_paramFormula, "onKeyUp", function(e)
@@ -597,11 +650,28 @@
                     button_add_pi_to_members.onClick();
             });
 
+            dojo.connect(txtBox_paramFormula, "onMouseDown", function(e)
+            {
+                if(e.altKey == true)
+                {
+                    alert(help_paramFormula);
+                }
+            });
+
+            var help_paramFormula = "This is where you define a formula for a parameter.  Define a formula to mathematically calculate values of parameters.  It's also a good way to define a special way for data to print how you desire on end reports.\nUse the Operators below to quickly add math operators to the function, also use the 'Add To Formula' buttons to add selected parameters to the formula.\nNaming of parameters and groups is very important to how formulas work so be careful.\nNotice how each element is separated by ';' and parameter references begine with a '$' and are encapsulated by '{' and '}' identifiers.  \nThese identifiers are important, do not remove them!";
+
             //Confirm selection button for new group
             //require a name for the group
             var button_newPG = new Button(
             {
                 label: 'Commit New Group',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_newPG);
+                    }
+                },
                 onClick: function()
                 {
                     var group = {}; //CREATE A NEW PG OBJECT
@@ -637,10 +707,19 @@
                 }
             }, "button_newPG");
 
+            var help_newPG = "Commits a new group to the database.  A new group requires a unique name and requires data in the 'Working Members' Grid.\nParameters can reference parameters from other groups.\nGroups can be edited once saved using the 'PG Viewer' Grid.";
+
             //BUTTON USED TO ADD MEMBERS TO AN EXISTING GROUP
             var button_add_to_selected_group = new Button(
             {
                 label: "Add Selected Members To Selected Group &#8594",
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_add_to_selected_group);
+                    }
+                },
                 onClick: function()
                 {
                     //GET THE SELECTED GROUP
@@ -691,9 +770,18 @@
                 }
             }, "button_add_to_selected_group");
 
+            var help_add_to_selected_group = "Adds the selected items from the 'Working Members' grid to the selected group.\nIf a parameter that already exists in the group is being added, it is simply ignored.";
+
             var button_clone_group = new Button(
             {
                 label: "Clone",
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_clone_group);
+                    }
+                },
                 onClick: function()
                 {
                     var selected = groupGrid.selection.getSelected();
@@ -717,21 +805,39 @@
                 }
             }, "button_clone_group");
 
+            var help_clone_group = "Clones the selected group.  A new, unique name must be given to the clone.";
+
 
             //button to delete a selected group
             var button_delete_group = new Button(
                 {
-                    label: 'Delete', 
+                    label: 'Delete',
+                    onMouseDown: function(e)
+                    {   
+                        if(e.altKey == true)
+                        {
+                            alert(help_delete_group);
+                        }
+                    }, 
                     onClick: function()
                     {
                         GroupGrid.removePG(GroupGrid.selected_groups);
                     }
                 }, "button_delete_group");
 
+            var help_delete_group = "Deletes the selected group along with all of its parameters.";
+
             //button to delete a selected parameter from the selected group
             var button_removeParameter = new Button(
                 {
-                    label: 'Delete', 
+                    label: 'Delete',
+                    onMouseDown: function(e)
+                    {   
+                        if(e.altKey == true)
+                        {
+                            alert(help_remove_parameter);
+                        }
+                    }, 
                     onClick: function()
                     {
                         var group = GroupGrid.selected_groups[0];
@@ -741,10 +847,19 @@
                     }
                 }, "button_removeParameter");
 
+            var help_remove_parameter = "Removes the selected parameter from the selected group.\nWarning: be careful what you delete. Other parameters may depend upon the parameter you're removing.  If you remove a referenced parameter, be sure to change the references or replace the one you remove.";
+
             //button to delete a selected parameter from the selected group
             var button_removeWorkingMember = new Button(
                 {
                     label: 'Delete Selected', 
+                    onMouseDown: function(e)
+                    {   
+                        if(e.altKey == true)
+                        {
+                            alert(help_removeWorkingMember);
+                        }
+                    },
                     onClick: function()
                     {
                         var selected = membersGrid.selection.getSelected();
@@ -757,21 +872,39 @@
                     }
                 }, "button_removeWorkingMember");
 
+            var help_removeWorkingMember = "Removes the selected parameters from the 'Working Members' grid. Be careful not to remove parameters that are referenced by other parameters and if you must remove them, either change your references or replace the ones you remove.";
+
 
             //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
             var button_refresh_data = new Button(
             {
                 label: 'Refresh All Data',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_refresh_data);
+                    }
+                },
                 onClick: function()
                 {
                     init();
                 }
             }, "button_refresh_data");
 
+            var help_refresh_data = "Gets all the latest data from the database.\nNote that you will lose any changes that have not been submitted to the database.\nIf you are experiencing errors, try refreshing the data first.\nIf that doesn't help, refresh the web page.\nIf there is still no success correcting the errors, contact the administrator.";
+
             //BUTTON TO REMOVE A FIXED PI
             var button_multiplication = new Button(
             {
-                label: '&#8727', 
+                label: '&#8727',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_operator);
+                    }
+                }, 
                 onClick: function()
                 {
                     if(dom.byId("txtBox_paramFormula").value == "")
@@ -783,10 +916,19 @@
                 },
             }, 'button_multiplication');
 
+            var help_operator = "Use these buttons to quickly add operators to your working formula.\nNotice there are ';' separators. These are important, don't remove them.";
+
             //BUTTON TO REMOVE A FIXED PI
             var button_division = new Button(
             {
-                label: '/', 
+                label: '/',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_operator);
+                    }
+                },  
                 onClick: function()
                 {
                     if(dom.byId("txtBox_paramFormula").value == "")
@@ -801,7 +943,14 @@
             //BUTTON TO REMOVE A FIXED PI
             var button_addition = new Button(
             {
-                label: '+', 
+                label: '+',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_operator);
+                    }
+                },  
                 onClick: function()
                 {
                     if(dom.byId("txtBox_paramFormula").value == "")
@@ -816,7 +965,14 @@
             //BUTTON TO REMOVE A FIXED PI
             var button_subtraction = new Button(
             {
-                label: '&#8722', 
+                label: '&#8722',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_operator);
+                    }
+                },  
                 onClick: function()
                 {
                     if(dom.byId("txtBox_paramFormula").value == "")
@@ -833,6 +989,13 @@
             var button_add_pi_to_members = new Button(
             {
                 label: 'Add To Group &#8594',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_add_pi_to_members);
+                    }
+                }, 
                 onClick: function()
                 {
                     if(dom.byId("txtBox_compParamName").value < 1)
@@ -864,6 +1027,8 @@
                 }
             },'button_add_pi_to_members');
 
+            var help_add_pi_to_members = "Add the parameter to the 'Working Members' grid where parameters are collected to define a group.\nOnly a name is required for a parameter.  Define a formula to compute a value based on other parameters or to define how something is printed on end reports.";
+
 
             //ADDS THE SELECTED PARAMETER FROM THE WORKING MEMBERS GRID TO THE WORKING FORMULA
             //REQUIRES ONE AND ONLY ONE PARAMETER TO BE SELECTED FROM THE MEMBERS GRID
@@ -871,6 +1036,13 @@
             var button_add_parameter_to_formula = new Button(
             {
                 label: '&#8595 Add Selected Member To Formula',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_add_parameter_to_formula);
+                    }
+                }, 
                 onClick: function()
                 {
                     var selected = membersGrid.selection.getSelected();
@@ -895,11 +1067,20 @@
                 }
             }, "button_add_parameter_to_formula");
 
+            var help_add_parameter_to_formula = "Adds the selected parameter from the 'Working Members' grid.  A name for the group is required before it can be added to the formula.\nIf you change the group name after you've added references to parameters, you'll have to edit the formulas of parameters that contain those references.";
+
 
             //
             var button_group_commit_changes = new Button(
             {
                 label: 'Commit Changes',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_commit_changes);
+                    }
+                }, 
                 onClick: function()
                 {
                     var group = groupGrid.selection.getSelected();
@@ -930,11 +1111,20 @@
                 }
             }, "button_group_commit_changes");
 
+            var help_commit_changes = "Commits any changes made to a group's parameters in the 'PG Viewer'.\nBe sure to commit changes before selecting a different group, or you will lose any changes.";
+
 
             //ADDS THE SELECTED PARAMETER FROM THE GROUP VIEWER GRID TO THE WORKING FORMULA
             var button_add_selected_group_parameter_to_formula = new Button(
             {
                 label: '&#8592 Add Parameter To Formula',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_add_group_param_to_formula);
+                    }
+                }, 
                 onClick: function()
                 {
                     //GET THE SELECTED GROUP FROM THE GROUP GRID
@@ -961,6 +1151,8 @@
                     add_param_to_formula(group_name, param_name);
                 }
             }, "button_add_selected_group_parameter_to_formula");
+
+            var help_add_group_param_to_formula = "Adds the highlighted parameter to the formula text area.";
 
             
             //RULES DIV FOR THE SLIDER
@@ -994,11 +1186,20 @@
                 maximum: 4,
                 discreteValues: 4,
                 showButtons: false,
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_slider);
+                    }
+                }, 
                 onChange: function(value)
                 {
                     dom.byId("reportRange").innerHTML = "Report Range: " + value;
                 }
             },"reportRangeSlider");
+
+            var help_slider = "Use this slider to define the range of which reports you want the parameter to be diplayed in.\n1-Light: The lightest report.  It displays the simplest end-user data.  Typically used in Marketing.  \n2-Medium: slightly more detail than the Light report.  Will display a few more complex parameters, but nothing non-user friendly. \n3-Heavy: Displays more detail than the Medium report.  This will be most of a family's data except a few low-level, highly comprehensive parameters.  \n4-Comprehensive: Displays all of a family's data.  Not recommended for end users.  This data is highly comprehensive and may be difficult for most to understand.";
 
             //RENDER THE SLIDER AND ITS RULERS
             reportRangeSlider.startup();
@@ -1177,31 +1378,22 @@
                                 <tr>
                                 <td colspan = '3'>
                                     <table width="100%">
-                                                    <col width="60%">
-                                                    <col width="40%">
-                                                    <tr>
-                                                        <td align="right">
-                                                            <div style="padding: 2px"><b>Working Members</b></div>
-                                                        </td>
-                                                        <td align="right">
-                                                            <button id="button_removeWorkingMember"></button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td colspan = '2'>
-                                                            <div id="membersGrid"></div>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                    <!-- <table width="100%">
-                                        <col width="6%">
-                                        <col width="94%">
+                                        <col width="60%">
+                                        <col width="40%">
                                         <tr>
-                                            <td>
-                                                
+                                            <td align="right">
+                                                <div style="padding: 2px"><b>Working Members</b></div>
+                                            </td>
+                                            <td align="right">
+                                                <button id="button_removeWorkingMember"></button>
                                             </td>
                                         </tr>
-                                    </table> -->
+                                        <tr>
+                                            <td colspan = '2'>
+                                                <div id="membersGrid"></div>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </td>
                                 </tr>
                             </tr>
@@ -1218,8 +1410,19 @@
             </td>
         </tr>
         <tr>
-            <td colspan = '100%' style = "padding: 10px">
-                <div id="serverResponse">Awaiting Action...</div>
+            <td colspan = "100%">
+                <table border='1'>
+                    <col width = "60%">
+                    <col width = "40%">
+                    <tr>
+                        <td style = "padding: 10px">
+                            <div id="serverResponse">Awaiting Action...</div>
+                        </td>
+                        <td style = "padding: 5px">
+                            <div id = "parseDisplay" style = "padding: 2px">Need Help? Alt+Click elements to get a description of their purpose and capabilities. On grids, Alt+Click a header or any row item to display the grid's help tip.</div>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
     </table>

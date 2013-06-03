@@ -4,9 +4,6 @@
 <head>
     <title>Specs: Product Spec Reports</title>
 
-
-
-
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
@@ -112,34 +109,60 @@
             var GradeSelect = new Select(
             {
                 options: [],
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_GradeSelect);
+                    }
+                },
             }, "GradeSelect");
+
+            var help_GradeSelect = "Lists the 4 different report types.  \n1-Light: The lightest report.  It displays the simplest end-user data.  Typically used in Marketing.  \n2-Medium: slightly more detail than the Light report.  Will display a few more complex parameters, but nothing non-user friendly. \n3-Heavy: Displays more detail than the Medium report.  This will be most of a family's data except a few low-level, highly comprehensive parameters.  \n4-Comprehensive: Displays all of a family's data.  Not recommended for end users.  This data is highly comprehensive and may be difficult for most to understand.";
 
             //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
             dojo.connect(GradeSelect, "onChange", function(value)
             {
-                // selected_family = familyStore.get(value);
                 report_grade = value;
                 console.log(report_grade);
                 console.log(selected_family);
                 buildPGF(selected_family, report_grade);
-                // buildTable(family, report_grade);
             });
 
             //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
             var ProductSelect = new Select(
             {
                 options: [],
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_ProductSelect);
+                    }
+                },
             }, "ProductSelect");
+
+            var help_ProductSelect = "Lists all the products stored in the database.  Select a family to view its report given the range from the report range selector.";
 
             //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
             var button_refresh_data = new Button(
             {
                 label: 'Refresh All Data',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_refresh_data);
+                    }
+                },
                 onClick: function()
                 {
                     init();
                 }
             }, "button_refresh_data");
+
+            var help_refresh_data = "Gets all the latest data from the database.\nNote that you will lose any changes that have not been submitted to the database.\nIf you are experiencing errors, try refreshing the data first.\nIf this doesn't help, refresh the web page.\nIf there is still no success correcting the errors, contact the administrator.";
+
 
             //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
             dojo.connect(ProductSelect, "onChange", function(value)
