@@ -1657,7 +1657,7 @@
                         }
                         console.log(output_string);
                         //if the string contains a times or divide followed by a plus or a minus, don't evaluate it yet.
-                        if(!(output_string.match(/[*\/](?:\++|\-+)/g)))
+                        if(!(output_string.match(/[*\/+-][*\/+-]/)))
                             var output_string = eval(output_string);
                         console.log(output_string);
 
