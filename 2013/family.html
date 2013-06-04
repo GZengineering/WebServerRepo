@@ -1135,6 +1135,8 @@
 
                     console.log(pgs);
 
+                    var add_these = [];
+
                     //store the new pgs as the pgf's members
 
                     for(var i = 0; i < pgs.length; i++)
@@ -1146,9 +1148,33 @@
                             var selected_pg = selected_pgf.members[j];
                             if(pg._id == selected_pg._id)
                             {
-                                console.log(pg._id + " is already in " + selected_pgf.name);
-                                delete pgs[i];
-                                break;
+                                /*****/
+                                //Check that the selected pgf's current group has the same parameters as that of the group it
+                                //references from the database.
+                                //if it doesn't have all the parameters, add
+                                for(var k = 0; k < selected_pg.members.length; k++)
+                                {
+                                    var matched_p = false;
+                                    var selected_p = selected_pg.members[k];
+                                    for(var m = 0; m < pg.members.length; m++)
+                                    {
+                                        var p = pg.members[m];
+                                        if(selected_p.id == p.id)
+                                        {
+                                            matched_p = true;
+                                            break;
+                                        }
+                                        if(!matched_p && (m == pg.members.length -1))
+                                        {
+                                            add_these.push(pgs[i]);
+                                        }
+                                    }
+                                }
+                                /*****/
+                                // console.log(pg._id + " is already in " + selected_pgf.name);
+
+                                // delete pgs[i];
+                                // break;
                             }
                         }
                         console.log(pgs);
@@ -1504,11 +1530,6 @@
                     //GET THE NEXT ELEMENT FROM THE ARRAY
                     var element = formula_elements.shift();
 
-                    if(element.indexOf("group0.p1") != -1)
-                    {
-                        console.log("start debug here");
-                    }
-
                     
                     //If the string is empty, go to the next element
                     if(element == "")
@@ -1635,10 +1656,11 @@
                             output_string = temp.concat(output_string);
                         }
                         console.log(output_string);
-                        if(!(/(\*|\/)(?:\++|\-+)/g.test(output_string)))
+                        //if the string contains a times or divide followed by a plus or a minus, don't evaluate it yet.
+                        if(!(output_string.match(/\*(?:\++|\-+)|\/(?:\++|\-+)/g)))
                             var output_string = eval(output_string);
                         console.log(output_string);
-
+                        //(/\*|\/(?:\++|\-+)/g.test(output_string))
 
                     }
                     catch(error)
