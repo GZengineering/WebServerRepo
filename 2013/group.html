@@ -91,7 +91,9 @@
 
     <!-- Dojo Execution -->
     <script>
+
     require(['dojo/_base/lang', 
+        'dojo/on',
         'dojox/grid/DataGrid' , 
         'dojo/data/ItemFileWriteStore',
         "dojo/_base/array",
@@ -111,8 +113,9 @@
         'dojo/data/ObjectStore',
         'dojo/dom' , 
         'dojo/domReady!'],
-        function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RangeSlider, HorizontalRule, HorizontalRuleLabels, RadioButton, Select, Button, TextBox, Textarea, Observable, Memory, ObjectStore, dom)
+        function(lang, on, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RangeSlider, HorizontalRule, HorizontalRuleLabels, RadioButton, Select, Button, TextBox, Textarea, Observable, Memory, ObjectStore, dom)
         {
+
             var fields = new Array();
             var has_loaded = false;
 
