@@ -479,6 +479,7 @@
                     store: membersDataStore,
                     structure: layout,
                     autoHeight: 22,
+                    singleClickEdit: true,
                 selectionMode: 'multiple'}, 'membersGrid');
                 grid.startup(); //RENDER
 
@@ -728,8 +729,8 @@
                     for(var i = 0; i < selected.length; i++)
                     {
                         var matched = false; //flag if there's a match
-                        mem_to_add = selected[i];
-                        delete mem_to_add._id;
+                        var mem_to_add = selected[i];
+                        delete mem_to_add.id;
                         for(var j = 0; j < group.members.length; j++)
                         {
                             if(mem_to_add.name == group.members[j].name)
@@ -742,7 +743,7 @@
                         { //if we don't find it in the group, add it
                             // var _range = mem_to_add.range.split("-");
                             var id = 0;
-                            if(group.members[group.members.length-1].id)
+                            if(group.members[group.members.length-1])
                             {
                                 id = group.members[group.members.length-1].id+1
                             }

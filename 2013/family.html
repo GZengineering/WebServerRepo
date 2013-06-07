@@ -808,28 +808,32 @@
                         if(!pi)
                             continue;
 
+                        var row = {};
+                        row.pg = group;
+                        row.pi = pi;
+                        console.log(pi);
+                        row.pg_name = group.name;
+                        row.p_name = pi.name;
+                        row.p_formula = pi.formula;
+                        row.p_value = pi.formula;
+                        row.p_range = pi.range;
+                        row.row_id = group.name+'.'+pi.name;
+                        
+
                         for(var k = 0; k < pgf_pis.length; k++)
                         {
                             var pgf_pi = pgf_pis[k];
                             if(pgf_pi.id == pi.id)
                             {
-                                var row = {};
-                                row.pg = group;
-                                row.pi = pi;
-                                console.log(pi);
-                                row.pg_name = group.name;
-                                row.p_name = pi.name;
-                                row.p_formula = pi.formula;
-                                row.p_value = pgf_pi.value;
-                                row.p_range = pi.range;
-                                row.row_id = group.name+'.'+pi.name;
-                                try
-                                {
-                                    FamilyViewerMemStore.add(row);
-                                }
-                                catch(e){}
+                                if(pgf_pi.value)
+                                    row.p_value = pgf_pi.value;
                             }
                         }
+                        try
+                        {
+                            FamilyViewerMemStore.add(row);
+                        }
+                        catch(e){}
                     }
                 }
 
@@ -1616,7 +1620,14 @@
                 var output_string = '';
                 if(output_elements.length < 1)
                     return "";
+                for (var i = 0; i < output_elements.length; i++)
+                {
+                    output_string += output_elements[i];
+                }
 
+
+                output_elements = output_string.split("'");
+                output_string = "";
                 for(var i = 0; i < output_elements.length; i++)
                 {
                     try
@@ -1635,6 +1646,7 @@
                 {
                     output_string += output_elements[i];
                 }
+
 
                 if(/[\+\-\*\/]/.test(output_string))
                 {
