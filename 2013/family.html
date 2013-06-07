@@ -1649,26 +1649,7 @@
                 }
 
 
-                output_elements = output_string.split("'");
-                output_string = "";
-                for(var i = 0; i < output_elements.length; i++)
-                {
-                    try
-                    {
-                        var e = output_elements[i];
-                        if(!e)
-                            continue;
-                        e = eval(e);
-                        e = e.toFixed(1);
-                        e = e.replace('.0', '');
-                        output_elements[i] = e;
-                    }
-                    catch(error){}
-                }
-                for (var i = 0; i < output_elements.length; i++)
-                {
-                    output_string += output_elements[i];
-                }
+                
 
 
                 if(/[\+\-\*\/]/.test(output_string))
@@ -1712,6 +1693,27 @@
                     output_string = output_string.toFixed(1);
                 }
                 catch(e){/*ignore the error*/}
+
+                output_elements = output_string.split("'");
+                output_string = "";
+                for(var i = 0; i < output_elements.length; i++)
+                {
+                    try
+                    {
+                        var e = output_elements[i];
+                        if(!e)
+                            continue;
+                        e = eval(e);
+                        e = e.toFixed(1);
+                        e = e.replace('.0', '');
+                        output_elements[i] = e;
+                    }
+                    catch(error){}
+                }
+                for (var i = 0; i < output_elements.length; i++)
+                {
+                    output_string += output_elements[i];
+                }
                 
                 return output_string;
             }     
