@@ -79,7 +79,6 @@
                     error: function(error)
                     {
                         var msg = 'There was an error getting the db. Error: ' + error;
-                        console.log(msg);
                         alert(msg);
                     }
                 });
@@ -124,8 +123,6 @@
             dojo.connect(GradeSelect, "onChange", function(value)
             {
                 report_grade = value;
-                console.log(report_grade);
-                console.log(selected_family);
                 buildPGF(selected_family, report_grade);
             });
 
@@ -168,7 +165,6 @@
             dojo.connect(ProductSelect, "onChange", function(value)
             {
                 selected_family = familyStore.get(value);
-                console.log(selected_family);
                 buildPGF(selected_family, report_grade);
             });
 
@@ -197,7 +193,6 @@
                 }
                 ProductSelect.set('value', ProductSelect.options[0]);
                 GradeSelect.set('value', GradeSelect.options[3]);
-                console.log(ProductSelect.value);
                 var selected_family = familyStore.get(ProductSelect.value);
                 buildPGF(selected_family, GradeSelect.value);
             }
@@ -206,11 +201,7 @@
             //THE GRADE DETERMINES WHAT PARAMETERS ARE PUT INTO THE OBJECT FOR DISPLAY.
             buildPGF = function(family, grade)
             {
-                console.log(family);
-                // var parameters = fullDbMemStore.query({type: "p"});
                 var groups = fullDbMemStore.query({type: "pg"});
-                // console.log(parameters);
-                console.log(groups);
 
                 var rows = [];
 
@@ -262,8 +253,6 @@
                                 break;
 
                             var pgf_pi = pgf_pis[k];
-                            console.log(pgf_pi);
-                            console.log(pi);
 
                             var pi_range = pi.range.split("-");
 
@@ -276,7 +265,6 @@
                                 var row = {};
                                 row.pg = group;
                                 row.pi = pi;
-                                console.log(pi);
                                 row.pg_name = group.name;
                                 row.p_name = pi.name;
                                 row.p_formula = pi.formula;
@@ -301,7 +289,6 @@
                     temp.members = params;
                     pgf.members.push(temp);
                 }
-                console.log(pgf);
 
 
                 buildTable(pgf, grade);
@@ -392,10 +379,6 @@
 
                         var parameter = group.members[j];
 
-                        console.log(group);
-                        console.log(parameter);
-
-                        // var realized_value = realizeValue(family, parameter.members.value);
 
                         //ADD ROW FOR CURRENT PARAMETER
                         html_table += "<tr>"; 

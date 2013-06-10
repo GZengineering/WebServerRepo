@@ -387,8 +387,7 @@ function group(response, request, collection, url)
       var oid = new ObjectID(doc._id);
       doc._id = oid;
 
-      collection.save(doc);
-      collection.find(doc).toArray(
+      collection.save(doc,
         function(error, result)
         {
           if(error)
@@ -397,13 +396,15 @@ function group(response, request, collection, url)
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write("Error saving '"+doc.name+"' :: " + error);
             response.end();
+            return;
           }
-          else if(result[0])
+          else
           {
             console.log("Doc '"+doc.name+"' Saved successfully");
             response.writeHead(200, {"Content-Type": "text/plain"});
             response.write("Group '"+doc.name+"' Saved successfully");
             response.end();
+            return;
           }
         }
       );

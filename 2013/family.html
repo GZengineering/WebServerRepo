@@ -217,7 +217,6 @@
 
                 dojo.connect(grid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_GroupGrid);
@@ -392,7 +391,6 @@
 
                 dojo.connect(grid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_PreviewGrid);
@@ -481,7 +479,6 @@
 
                 dojo.connect(grid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_familyGrid);
@@ -535,7 +532,6 @@
 
             FamilyGrid.update_pgf = function(pgf)
             {
-                console.log(pgf);
                 var id = pgf.id;
                 delete pgf.id;
 
@@ -562,7 +558,7 @@
                             FamilyViewerGrid._refresh();
                             familyGrid.selection.clear();
                         }
-                        catch(e){ console.log(e); }
+                        catch(e){ /*Ignore the error*/ }
 
                     },
                     error:function(error)
@@ -638,8 +634,6 @@
 
                 //store the new pgs as the pgf's members
                 pgf.members = pgs;
-
-                console.log(pgf);
 
                 //submit the new pgf to the database
                 FamilyGrid.newPGF(pgf);
@@ -834,7 +828,6 @@
                         var row = {};
                         row.pg = group;
                         row.pi = pi;
-                        console.log(pi);
                         row.pg_name = group.name;
                         row.p_name = pi.name;
                         row.p_formula = pi.formula;
@@ -880,7 +873,6 @@
 
                 dojo.connect(familyViewerGrid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_familyViewerGrid);
@@ -935,14 +927,11 @@
                                     return;
                                 }
                             }
-                            console.log('match');
                             pg_ids.splice(j,1);
                             break;
                         }
                     }
-                    console.log(pg_ids);
                 }
-                console.log(pgf);
                 FamilyViewerGrid.commitChanges(pgf);
 
             }
@@ -1027,7 +1016,7 @@
                             FamilyViewerGrid._refresh();
                             familyGrid.selection.clear();
                         }
-                        catch(e){ console.log(e); }
+                        catch(e){ /* Ignore the error */ }
 
                         //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
                         //ADD THE OBJECT TO THE STORE
@@ -1058,7 +1047,6 @@
 
             dojo.connect(txtBox_familyName, "onMouseDown", function(e)
             {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_txtBox_familyName);
@@ -1082,8 +1070,6 @@
                 label: "Add To Selected",
                 onMouseDown: function(e)
                 {   
-                    console.log(e);
-
                     if(e.altKey == true)
                     {
                         alert(help_button_add_to_existing_pgf);
@@ -1160,8 +1146,6 @@
                         }
                     }
 
-                    console.log(pgs);
-
                     var add_these = [];
 
                     //store the new pgs as the pgf's members
@@ -1197,14 +1181,8 @@
                                         }
                                     }
                                 }
-                                /*****/
-                                // console.log(pg._id + " is already in " + selected_pgf.name);
-
-                                // delete pgs[i];
-                                // break;
                             }
                         }
-                        console.log(pgs);
                     }
 
                     for(var i = 0; i < pgs.length; i++)
@@ -1394,7 +1372,7 @@
                         for(var i = 0; i < previewMemStore.data.length; i++)
                         {
                             var element = previewMemStore.data[i];
-                            var v_temp = realizeValue(previewMemStore.data, element.p_formula);
+                            var v_temp = realizeValue(previewMemStore.data, element);
                             if(!v_temp == "")
                             {
                                 element.p_value = v_temp;
@@ -1502,7 +1480,7 @@
                 for(var i = 0; i < store.data.length; i++)
                 {
                     var element = store.data[i];
-                    var v_temp = realizeValue(store.data, element.p_formula);
+                    var v_temp = realizeValue(store.data, element);
                     if(!v_temp == "")
                     {
                         element.p_value = v_temp;
@@ -1527,8 +1505,15 @@
 
             //PARSE THE GIVEN DEFINITION STRING
             //RETURNS AN EMPTY STRING IF THE FORMULA IS EMPTY
-            function realizeValue(data, formula)
+            function realizeValue(data, object_to_evaluate)
             {
+                var formula = "";
+                if(!object_to_evaluate.p_formula)
+                    return "";
+                else
+                {
+                    formula = object_to_evaluate.p_formula;
+                }
                 //SPLIT THE STRING BY ';' AND STORE THE ELEMENTS IN AN ARRAY
                 if(formula.length < 1)
                     return "";
@@ -1573,12 +1558,15 @@
                         }
 
                         var temp;
-                        console.log(element);
                         temp = element.slice(2, element.length);
                         temp = temp.slice(0, temp.length-1);
 
                         var pair = temp.split('.');
                         var group = pair[0];
+                        if(group.length < 1)
+                        {
+                            group = object_to_evaluate.pg_name;
+                        }
                         var parameter = pair[1];
 
 
@@ -1594,11 +1582,10 @@
                             //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                             if(group == e.pg_name && parameter == e.p_name)
                             {
-                                var v_temp = realizeValue(data, e.p_formula); //circular dependencies?
+                                var v_temp = realizeValue(data, e); //circular dependencies?
                                 if(!v_temp == "")
                                     e.p_value = v_temp;
 
-                                console.log(e.p_value);
                                 if(/[\+\-\*\/]/.test(e.p_value))
                                 {
                                     try
@@ -1656,37 +1643,27 @@
                 {
                     try
                     {
-                        console.log(output_string);
                         var match = /[A-Za-z]/g.exec(output_string);
-                        console.log(match);
 
                         if(match)
                         {
                             var temp = output_string.substring(0, match.index);
-                            console.log(temp);
                             temp = eval(temp);
-                            console.log(temp);
                             var output_string = output_string.substring(match.index, output_string.length);
-                            console.log(output_string);
                             temp = ''+temp;
                             output_string = temp.concat(output_string);
                         }
-                        console.log(output_string);
                         //if the string contains a times or divide followed by a plus or a minus, don't evaluate it yet.
                         if(!(output_string.match(/[*\/+-][*\/+-]/)))
                             var output_string = eval(output_string);
-                        console.log(output_string);
 
                     }
                     catch(error)
                     {
-                        console.log(error);
                         //if there's an error, ignore it and return the string as it was.
                         console.log("error evaluating: " + output_string);
                     }
                 }
-
-                console.log(output_string);
 
                 try
                 {

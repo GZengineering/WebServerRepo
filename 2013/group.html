@@ -213,7 +213,7 @@
             {
                 //DEFINE THE LAYOUT
                 var layout = [[
-                  {'name': 'Group', 'field': 'name', 'width': '100%'},
+                  {'name': 'Group', 'field': 'name', 'width': '100%', 'editable': true},
                 ]];
 
                 //ALLOCATE THE STORE
@@ -244,7 +244,6 @@
 
                 dojo.connect(grid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_GroupGrid);
@@ -299,7 +298,7 @@
                 //MAP THE BACKSPACE AND DELETE KEYS TO THE DELETE GROUP BUTTON
                 dojo.connect(grid,"onKeyUp", function(e)
                 {
-                    if(e.keyCode == 46 || e.keyCode == 8)
+                    if(e.keyCode == 46)
                     {
                         button_delete_group.onClick();
                     }
@@ -395,7 +394,6 @@
                 //delete the id from the object so it doesn't get stored in the db
                 delete pg.id;
 
-                console.log(pg);
                 //send request to update an existing PG
                 xhr.get(
                 {
@@ -509,7 +507,6 @@
 
                 dojo.connect(grid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_membersGrid);
@@ -562,7 +559,6 @@
 
                 dojo.connect(selectionGrid, "onMouseDown", function(e)
                 {
-                    console.log(e);
                     if(e.altKey == true)
                     {
                         alert(help_selectionGrid);
@@ -587,16 +583,8 @@
                         group.members.splice(i, 1);
                     }
                 }
-                // group.members = []; //clear teh group's members
                 var store = selectionMemStore.data; // simplify the store reference
-                //for each item in the selection store, put the item in the group members
-                // for(var i = 0; i < store.length; i++)
-                // {
-                //     store[i].id = i;
-                //     group.members.push(store[i]);
-                // }
-                console.log(group);
-                //send the update to the db
+               
                 GroupGrid.update_pg(group);
             }
 
@@ -712,10 +700,8 @@
                         param.name = mem_to_add.name;
                         param.formula = mem_to_add.formula;
                         param.range = mem_to_add.range;
-                        // param.dependencies = "STUB"; /* PARSE THE FORMULA TO GET THE DEPENDENCIES */
                         group.members.push(param);
                     }
-                    console.log(group);
                     GroupGrid.new_pg(group);
                 }
             }, "button_newPG");
@@ -740,7 +726,6 @@
                     var group = selected[0];
                     if(!group)
                         return alert("Select a group to add the paramters to.");
-                    console.log(group);
 
                     selected = membersGrid.selection.getSelected();
                     if(!selected || selected.length < 1)
@@ -777,7 +762,6 @@
                             group.members.push(param);
                         }
                     }
-                    console.log(group);
                     //send the update to the db
                     GroupGrid.update_pg(group);
                 }
@@ -1068,11 +1052,12 @@
 
                     var param_name = selected[0].name;
 
-                    if(txtBox_groupName.value.length < 1)
-                        return alert("Give the working group a name before adding computed parameters");
+                    // if(txtBox_groupName.value.length < 1)
+                    //     return alert("Give the working group a name before adding computed parameters");
 
-                    var group_name = txtBox_groupName.value;
-                    group_name = group_name.replace(/(^\s+|\s+$)/g, '');
+                    // var group_name = txtBox_groupName.value;
+                    // group_name = group_name.replace(/(^\s+|\s+$)/g, '');
+                    var group_name = '';
 
                     membersGrid.selection.clear();
 
@@ -1098,11 +1083,10 @@
                 {
                     var group = groupGrid.selection.getSelected();
                     group = group[0];
-                    // var copy = {};
-                    // copy._id = group._id;
-                    // copy.type = 'pg';
-                    // copy.name = group.name;
-                    // copy.members = [];
+                    if(!group)
+                    {
+                        return alert("Select a group to update.");
+                    }
                     group.members = [];
 
                     for(var i = 0; i < selectionMemStore.data.length; i++)
@@ -1119,7 +1103,6 @@
                         param.range = mem_to_add.range;
                         group.members.push(param);
                     }
-                    console.log(group);
                     GroupGrid.update_pg(group);
                 }
             }, "button_group_commit_changes");
@@ -1227,7 +1210,7 @@
             //CONSTRUCTS A FORMULA VARIABLE USING THE GROUP NAME AND PARAMETER NAME
             var add_param_to_formula = function(group_name, param_name) 
             {
-                if(!param_name || !group_name)
+                if(!param_name)
                     return alert("There was an error adding the field to the formula.");
                 if(dom.byId("txtBox_paramFormula").value == "")
                     dom.byId("txtBox_paramFormula").value = '${'+group_name+'.'+param_name+'}'; 
