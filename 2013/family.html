@@ -1502,6 +1502,44 @@
 
             /****************************   HELPER FUNCTIONS  *********************************/
 
+            var roundTo = function(x, precision)
+            {
+                if(typeof x == 'string')
+                {
+                    try
+                    {
+                        x = eval(x);
+                    }
+                    catch(e){}
+                }
+                if(typeof precision == 'string')
+                {
+                    try
+                    {
+                        precision = eval(precision);
+                    }
+                    catch(e){}
+                }
+
+                x = precision * Math.round(x/precision);
+                var s = ''+precision; //turn the precision to a string to search it for a decimal point
+                var d = s.indexOf('.'); //get the index of the decimal point
+                var l = s.length-1-d; //get the index of the last element
+                s = ''+x;
+                if(s.indexOf('.') > -1)
+                {
+                    x = x.toFixed(l);
+                    try
+                    {
+                        x = eval(x);
+                    }
+                    catch(e){}
+                }
+                return x;
+            }
+
+            window.roundTo = roundTo;
+
 
             //PARSE THE GIVEN DEFINITION STRING
             //RETURNS AN EMPTY STRING IF THE FORMULA IS EMPTY
@@ -1524,6 +1562,7 @@
 
                 //STRING FOR FINAL OUTPUT
                 var output = '';
+
 
                 //IF THERE ARE NO PIs OR THE ARRAY IS NULL,
                 //REPORT AN ERROR
@@ -1557,11 +1596,28 @@
                             continue;
                         }
 
+
                         var temp;
                         temp = element.slice(2, element.length);
                         temp = temp.slice(0, temp.length-1);
 
-                        var pair = temp.split('.');
+                        var set = temp.split(',');
+                        if(set[1])
+                        {
+                            var round_precision = set[1];
+                        }
+
+                        var pair = {};
+
+                        if(set[0])
+                        {
+                            pair = set[0].split('.');
+                        }
+                        else
+                        {
+                            pair = temp.split('.');
+                        }
+
                         var group = pair[0];
                         if(group.length < 1)
                         {
@@ -1582,23 +1638,38 @@
                             //IF THE ELEMENT AND THE PARAMETER NAME MATCH, GET THE PARAMETERS VALUE
                             if(group == e.pg_name && parameter == e.p_name)
                             {
+                                //make a copy object with the right info, so we don't recursively change sub parameter's values
+                                var d = {};
+                                d.p_name = e.p_name;
+                                d.pg_name = e.pg_name;
+                                d.p_formula = e.p_formula;
+                                d.p_value = e.p_value;
+
                                 var v_temp = realizeValue(data, e); //circular dependencies?
                                 if(!v_temp == "")
-                                    e.p_value = v_temp;
+                                {
+                                    d.p_value = v_temp;
+                                }
+                                if(round_precision)
+                                {
+                                    d.p_value = roundTo(d.p_value, round_precision);
+                                }
 
-                                if(/[\+\-\*\/]/.test(e.p_value))
+                                // e.p_value = d.p_value;
+
+                                if(/[\+\-\*\/]/.test(d.p_value))
                                 {
                                     try
                                     {
-                                        e.p_value = eval(e.p_value);
-                                        e.p_value = e.p_value.toFixed(3); //ROUND TO 3 DECIMALS
+                                        d.p_value = eval(d.p_value);
+                                        // e.p_value = e.p_value.toFixed(3); //ROUND TO 3 DECIMALS
                                     }
                                     catch(error)
                                     {
                                         //if there's an error, ignore it and return the string as it was.
                                     }
                                 }
-                                output_elements.push(e.p_value);
+                                output_elements.push(d.p_value);
                                 matched = true;
                             }
                         }
@@ -1665,13 +1736,13 @@
                     }
                 }
 
-                try
-                {
-                    output_string = output_string.toFixed(1);
-                }
-                catch(e){/*ignore the error*/}
+                // try
+                // {
+                //     output_string = output_string.toFixed(1);
+                // }
+                // catch(e){/*ignore the error*/}
 
-                output_elements = output_string.split("'");
+                output_elements = (''+output_string).split("'");
                 output_string = "";
                 for(var i = 0; i < output_elements.length; i++)
                 {
@@ -1681,7 +1752,7 @@
                         if(!e)
                             continue;
                         e = eval(e);
-                        e = e.toFixed(1);
+                        // e = e.toFixed(1);
                         e = e.replace('.0', '');
                         output_elements[i] = e;
                     }
@@ -1690,6 +1761,14 @@
                 for (var i = 0; i < output_elements.length; i++)
                 {
                     output_string += output_elements[i];
+                }
+
+                //remove repeating zeros greater than 3
+                var zeros = output_string.indexOf('000');
+                if(zeros > -1)
+                {
+                    console.log(output_string + ', ' + zeros);
+                    output_string = output_string.substring(0, zeros);
                 }
                 
                 return output_string;
