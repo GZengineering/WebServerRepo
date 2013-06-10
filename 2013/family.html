@@ -1597,6 +1597,11 @@
                         }
 
 
+                        if(element.indexOf('p2') > -1)
+                        {
+                            console.log('debug');
+                        }
+
                         var temp;
                         temp = element.slice(2, element.length);
                         temp = temp.slice(0, temp.length-1);
@@ -1609,7 +1614,7 @@
 
                         var pair = {};
 
-                        if(set[0])
+                        if(round_precision)
                         {
                             pair = set[0].split('.');
                         }
@@ -1752,7 +1757,6 @@
                         if(!e)
                             continue;
                         e = eval(e);
-                        // e = e.toFixed(1);
                         e = e.replace('.0', '');
                         output_elements[i] = e;
                     }
@@ -1763,9 +1767,10 @@
                     output_string += output_elements[i];
                 }
 
-                //remove repeating zeros greater than 3
-                var zeros = output_string.indexOf('000');
-                if(zeros > -1)
+                //remove repeating zeros greater than 3 after the decimal
+                var d = output_string.indexOf('.'); //decimal position
+                var zeros = output_string.indexOf('000'); //zeros position
+                if(zeros > d && d > -1)
                 {
                     console.log(output_string + ', ' + zeros);
                     output_string = output_string.substring(0, zeros);
