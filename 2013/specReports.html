@@ -368,10 +368,8 @@
                     html_table += "</tr>";
                     rowCount++;
                     html_table += "<tr>"; 
-                    html_table += "<td "+get_row_style('pg',rowCount)+">";
+                    html_table += "<td colspan='2'"+ get_row_style('pg',rowCount)+">";
                     html_table += group.name;
-                    html_table += "</td>";
-                    html_table += "<td align=right "+get_row_style('pg',rowCount)+"> ";
                     html_table += "</td>";
                     html_table += "</tr>";
                     rowCount++; //INCREMENT ROW COUNT
