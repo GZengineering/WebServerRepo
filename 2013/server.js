@@ -45,7 +45,7 @@ handle["/parameter_js"] = requestHandlers.parameter_js;
 handle["/main"] = requestHandlers.param_app;
 handle["/dojo_css"] = requestHandlers.dojo_css;
 
-
+var s = {};
 //open the connection to the collection
 db.open(function(error, db)
 	{
@@ -68,7 +68,12 @@ function start(route, handle) {
     route(handle, pathname, response, request, DBCollection, url);
   }
 
-  http.createServer(onRequest).listen(port);
+  s = http.createServer(onRequest).listen(port);
+  s.on('connection', function(sock)
+	{
+		console.log('-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --');
+		console.log('New Client Connection: ' + sock.remoteAddress);
+	});
 }
 
 //route the request to the appropriate files
@@ -78,5 +83,7 @@ function route(handle, pathname, response, request, collection, url) {
   else //Look for the file or handle an error
   	requestHelpers.return_html(pathname, response);
 }
+
+
 
 start(route, handle);

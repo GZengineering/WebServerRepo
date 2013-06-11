@@ -1540,7 +1540,6 @@
             //RETURNS AN EMPTY STRING IF THE FORMULA IS EMPTY
             function realizeValue(data, object_to_evaluate)
             {
-                console.log(object_to_evaluate);
                 var formula = "";
                 if(!object_to_evaluate.p_formula)
                     return "";
@@ -1662,11 +1661,17 @@
                                 {
                                     d.p_value = roundTo(d.p_value, round_precision);
                                 }
-                                // else
-                                // {
-                                //     d.p_value = roundTo(d.p_value, 0.01);
-                                //     console.log(d.p_value);
-                                // }
+                                else
+                                {
+                                    var temp = d.p_value.replace(/(^\s+|\s+$)/g, '');
+                                    var rgx = /^(\d+\.?\d*)$/;
+                                    if(temp.match(rgx))
+                                    {
+                                        d.p_value = roundTo(temp, 0.001);
+                                    }
+                                    // d.p_value = roundTo(d.p_value, 0.001);
+                                    console.log(d.p_value);
+                                }
 
                                 if(/[\+\-\*\/]/.test(d.p_value))
                                 {
