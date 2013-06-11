@@ -302,9 +302,9 @@
 
                 var html_table = '';
 
-                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:400pt\"";
+                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:500pt\"";
 
-                var header_style = "style=\"height:15.0pt;width:136pt; font-size:11.0pt;color:white;font-weight:700;text-decoration:none;text-underline-style: none;text-line-through:none;font-family:Cambria;border-top:1.0pt solid black; border-right:.5pt solid black;border-bottom:.1em solid black;border-left: .1em solid black;background:#404040;mso-pattern:black none; padding: 2px\"";
+                var header_style = "style=\"height:14.0pt;width:136pt; font-size:11.0pt;color:white;font-weight:700;text-decoration:none;text-underline-style: none;text-line-through:none;font-family:Cambria;border-top:1.0pt solid black; border-right:.5pt solid black;border-bottom:.1em solid black;border-left: .1em solid black;background:#404040;mso-pattern:black none; padding: 2px\"";
 
                 var report_grade_desc = "Light";
                 if(grade == 2)
@@ -361,11 +361,14 @@
                         continue;
 
                     //ADD ROW FOR CURRENT GROUP
-                    html_table += "<tr>";
-                    html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
-                    html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
-                    html_table += "</tr>";
-                    rowCount++;
+                    if(rowCount > 1)
+                    {
+                        html_table += "<tr>";
+                        html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
+                        html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
+                        html_table += "</tr>";
+                        rowCount++;
+                    }
                     html_table += "<tr>"; 
                     html_table += "<td "+get_row_style('pg',rowCount)+">";
                     html_table += group.name;
@@ -407,16 +410,16 @@
             function get_row_style(type, rowCount)
             {
                 //STYLE FOR A GROUP (OR FAMILY) ON ODD ROWS
-                var odd_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+                var odd_style_group = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
 
                 //STYLE FOR A GROUP (OR FAMILY) ON EVEN ROWS
-                var even_style_group = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+                var even_style_group = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
 
                 //STYLE FOR A PARAMETER ON ODD ROWS
-                var odd_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+                var odd_style_parameter = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
 
                 //STYLE FOR A PARAMETER ON EVEN ROWS
-                var even_style_parameter = "style=\"height:15.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+                var even_style_parameter = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
 
                 //IF THE COUNT IS EVEN AND IT'S A GROUP OR A FAMILY, DO EVEN_STYLE_GROUP
                 if(rowCount%2 == 0 && (type == 'pg' || type == 'pgf'))
