@@ -134,9 +134,7 @@ function upload(response, request) {
   console.log("\nRequest handler 'upload' was called.");
 
   var form = new formidable.IncomingForm();
-  console.log("about to parse");
   form.parse(request, function(error, fields, files) {
-  console.log("parsing done");
 
     /* Possible error on Windows systems:
        tried to rename to an already existing file */
@@ -231,7 +229,6 @@ function individual (response, request, collection, url)
               console.log('Parameter Class \'' + param_class.name + '\' saved successfully');
               var s = JSON.stringify(result[0]);
               s = JSON.stringify(param_class);
-                console.log(s);
                 response.writeHead(200, {"Content-Type": "text/plain"});
                 response.write(s);
                 response.end();
@@ -274,7 +271,6 @@ function individual (response, request, collection, url)
 
   if(FieldQuery.action == 'change_parameters')
   {
-    console.log(FieldQuery.parameters);
     var parameters = eval('('+FieldQuery.parameters+')');
     var saved = [];
     var errorCount = 0;
@@ -286,7 +282,6 @@ function individual (response, request, collection, url)
     {
       var doc = parameters.shift()
       var s = JSON.stringify(doc);
-      console.log(s);
 
       var oid = new ObjectID(doc._id);
       doc._id = oid;
@@ -295,7 +290,6 @@ function individual (response, request, collection, url)
       collection.find(doc).toArray(
         function(error, result)
         {
-          console.log(result[0]);
           if(error)
           {
             console.log("Error saving '"+doc.name+"' :: " + error);
@@ -324,7 +318,6 @@ function individual (response, request, collection, url)
   if(FieldQuery.action == 'remove_param_class')
   {
     var param_class = eval('('+FieldQuery.param_class+')');
-    console.log(param_class._id);
     var oid = new ObjectID(param_class._id);
     collection.findAndRemove({'_id':oid}, 
     function(error, result)
@@ -382,7 +375,6 @@ function group(response, request, collection, url)
   {
       var doc = eval('('+FieldQuery.pg+')');
       var s = JSON.stringify(doc);
-      console.log(s);
 
       var oid = new ObjectID(doc._id);
       doc._id = oid;
@@ -463,7 +455,6 @@ function group(response, request, collection, url)
   if(FieldQuery.action == 'remove_pg')
   {
     var pg = eval('('+FieldQuery.pg+')');
-    console.log(pg._id);
     var oid = new ObjectID(pg._id);
     collection.findAndRemove({'_id':oid}, 
       function(error, result)
@@ -501,7 +492,6 @@ function family(response, request, collection, url)
   if(FieldQuery.action == 'remove_pf')
   {
     var pf = eval('('+FieldQuery.pf+')');
-    console.log(pf._id);
     var oid = new ObjectID(pf._id);
     collection.findAndRemove({'_id':oid}, 
       function(error, result)
@@ -570,7 +560,6 @@ function family(response, request, collection, url)
   {
       var doc = eval('('+FieldQuery.pgf+')');
       var s = JSON.stringify(doc);
-      console.log(s);
 
       var oid = new ObjectID(doc._id);
       doc._id = oid;
