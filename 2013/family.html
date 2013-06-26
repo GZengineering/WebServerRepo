@@ -1505,6 +1505,22 @@
             //Rounds 'x' to the precision requested.
             var roundTo = function(x, precision)
             {
+                var temp = precision; //copy the precision
+                precision = {}; //create a precision object for more properties
+                precision.value = temp; //pass the value back to the value property of precision
+                var rx1 = /[+-]$/; //regex to find a + or - sign at the end of a string
+                var m = (''+precision.value).search(rx1); //convert value to string, search for index of + or -
+                if(m != -1) //if the regex is matched
+                {
+                    precision.a = precision.value.substring(0, m); //set the number to property 'a'
+                    precision.b = precision.value[m]; //set + or - to property 'b'
+                }
+                else
+                {
+                    precision.a = precision.value; //otherwise, the precision is just a number, set the number to property 'a'
+                    precision.b = null; //and property 'b' to null
+                }
+
                 if(typeof x == 'string')
                 {
                     try
@@ -1513,27 +1529,38 @@
                     }
                     catch(e){}
                 }
-                if(typeof precision == 'string')
+                if(typeof precision.a == 'string')
                 {
                     try
                     {
-                        precision = eval(precision);
+                        precision.a = eval(precision.a);
                     }
                     catch(e){}
                 }
-
-                x = precision * Math.round(x/precision);
-                var s = ''+precision; //turn the precision to a string to search it for a decimal point
+                switch(precision.b)
+                {
+                    case null: //if 'b' is null, ignore
+                        break;
+                    case '+': //if 'b' is '+', add half the value of the precision to the value
+                        x += precision.a/2;
+                        break;
+                    case '-': //if 'b' is '-', minus half the value of the precision to the value 
+                        x -= precision.a/2;       
+                        break; 
+                }
+                //round based on the given precision
+                x = precision.a * Math.round(x/precision.a);
+                var s = ''+precision.a; //turn the precision to a string to search it for a decimal point
                 var d = s.indexOf('.'); //get the index of the decimal point
                 var l = s.length-d-1; //get the index of the last element
                 if(s.indexOf('.') > -1)
                 {
-                    x = x.toFixed(l);
+                    x = x.toFixed(l); //make sure the decimal count is appropriate
                 }
-                return ''+x;
+                return ''+x; //return x as a string
             }
 
-            window.roundTo = roundTo;
+            window.roundTo = roundTo; //make the function available on client console for testing
 
 
             //PARSE THE GIVEN DEFINITION STRING
@@ -1604,20 +1631,24 @@
                             continue;
                         }
 
-
+                        if(element.indexOf(' x ') != -1)
+                            console.log('---found the element---');
                         var temp;
                         temp = element.slice(2, element.length);
                         temp = temp.slice(0, temp.length-1);
+                        round_precision = 0.0001;
+                        var round_flag = false;
 
                         var set = temp.split(',');
                         if(set[1])
                         {
-                            var round_precision = set[1];
+                            round_precision = set[1];
+                            round_flag = true;
                         }
 
                         var pair = {};
 
-                        if(round_precision)
+                        if(round_flag)
                         {
                             pair = set[0].split('.');
                         }
@@ -1657,8 +1688,9 @@
                                 {
                                     d.p_value = v_temp;
                                 }
-                                if(round_precision)
+                                if(round_flag)
                                 {
+                                    round_flag = false;
                                     d.p_value = roundTo(d.p_value, round_precision);
                                 }
                                 else
@@ -1670,7 +1702,7 @@
                                         d.p_value = roundTo(temp, 0.001);
                                     }
                                     // d.p_value = roundTo(d.p_value, 0.001);
-                                    console.log(d.p_value);
+                                    //console.log(d.p_value);
                                 }
 
                                 if(/[\+\-\*\/]/.test(d.p_value))
@@ -1728,7 +1760,6 @@
                 } 
 
 
-
                 if(/[\+\-\*\/]/.test(output_string))
                 {
                     try
@@ -1764,10 +1795,15 @@
 
                         var temp = e.replace(/(^\s+|\s+$)/g, '');
                         var rgx = /^(\d+\.?\d*)$/;
-                        if(temp.match(rgx))
+                        if(temp.match(rgx) && round_val > 0)
                         {
                             e = roundTo(temp, round_val);
                         }
+                        // rgx = /\.[0]+$/;
+                        // if(e.match(rgx))
+                        // {
+                        //     e = e.substring(0, e.indexOf('.'));
+                        // }
 
                         output_elements[i] = e;
                     }
@@ -1778,7 +1814,6 @@
                     output_string += output_elements[i];
                 }
 
-                
                 return output_string;
             }
 
