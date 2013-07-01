@@ -273,7 +273,9 @@
                                 param.value = pgf_pi.value;
                                 param.type = pi.type;
 
-                                if(param.value.match(/[$]+|(^\s+|\s+$)|[\/\*]+/) || param.value.match("NaN") || param.value.length == 0)
+                                param.value.replace(/(^\s+|\s+$)/, '');
+
+                                if(param.value.match(/[$]+|[\/\*]+/) || param.value.match("NaN") || param.value.length == 0)
                                 {
                                     continue;
                                 }
