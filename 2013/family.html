@@ -1793,8 +1793,6 @@
                     try
                     {
                         var e = output_elements[i];
-                        if(e.match("15"))
-                            console.log("check it");
                         if(!e)
                             continue;
                         e = eval(e);
@@ -1824,6 +1822,15 @@
                         e = e.replace(rgx, temp1);
                     }
                     output_string += e;
+                }
+
+                var rx = /([$]{1,1}[\{]{1,1}[^$\{]*[\}])|(NaN)/g;
+                output_string = output_string.replace(rx, '$');
+
+                var rx2 = /([^0-9][\*\/])|([\*\/][^0-9])|(^[\*\/])|([\*\/]$)/;
+                if(output_string.match(rx2))
+                {
+                    output_string = "$incomputable";
                 }
 
                 return output_string;
