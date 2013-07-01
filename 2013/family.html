@@ -145,7 +145,7 @@
                     var paramDataStore = new ObjectStore({
                         objectStore: paramStore
                     });
-
+                    
                 //GLOBALIZE THE PARAMETER STORE
                 window.paramStore = paramStore;
                 window.paramDataStore = paramDataStore;
@@ -665,7 +665,7 @@
                         //UPDATE THE SERVER RESPONSE
                         dom.byId("serverResponse").innerHTML = "Response from server: "+pgf.name+" successfully added.";
                         dom.byId("txtBox_familyName").value = '';
-
+                        PreviewGrid.buildGrid(new Array());
                         FamilyMemStore.add(pgf);
                         //BECAUSE OF STRANGE ERRORS TRYING TO ADD TO THE STORE IN PREVIOUS VERSIONS
                         //JUST GET THE ENTIRE DB AGAIN FROM THE SERVER.
@@ -1594,6 +1594,9 @@
                     console.log('Parse Error: ' + output);
                     return output;
                 } 
+                
+                var round_val = 0.1;
+
                 //WHILE ELEMENTS REMAIN
                 while(formula_elements.length > 0)
                 {
@@ -1608,18 +1611,16 @@
                     if(element == "")
                         continue;
 
-                    var round_rx = /round\((\d+\.?\d*)\)/;
+                    var round_rx = /round\((\d+\.?\d*[+-]*)\)/;
 
                     var m = element.match(round_rx);
 
-                    var round_val = 0.1;
 
                     if(m)
                     {
                         round_val = m[1];
                         continue;
                     }
-
 
                     // if(element.indexOf('\\$') != -1)
                     if(/^[\\$]/.test(element))
@@ -1634,7 +1635,7 @@
                         var temp;
                         temp = element.slice(2, element.length);
                         temp = temp.slice(0, temp.length-1);
-                        round_precision = 0.0001;
+                        var round_precision = 0.0001;
                         var round_flag = false;
 
                         var set = temp.split(',');
@@ -1714,6 +1715,10 @@
                                         //if there's an error, ignore it and return the string as it was.
                                     }
                                 }
+                                // if(d.p_value.match(rx) && round_precision != 0.0001)
+                                // {
+                                //     d.p_value = roundTo(d.p_value, round_precision);
+                                // }
                                 output_elements.push(d.p_value);
                                 matched = true;
                             }
@@ -1729,7 +1734,10 @@
                 //IF THERE ARE NO MORE ELEMENTS BUILD THE STRING AND RETURN IT
                 if(formula_elements.length < 1)
                 {
+
                     output = build_output_string(output_elements, round_val);
+                    // if(output.match(rx) && round_precision != 0.0001)
+                    //     output = roundTo(output, round_precision);
                     return output;
                 }
                 else //IF WE GET HERE AND HAVEN'T REPORTED THE STRING AND WE STILL HAVE ELEMENTS, THERE'S AN ERROR
@@ -1785,18 +1793,15 @@
                     try
                     {
                         var e = output_elements[i];
+                        if(e.match("15"))
+                            console.log("check it");
                         if(!e)
                             continue;
                         e = eval(e);
 
                         e = '' + e;
 
-                        var temp = e.replace(/(^\s+|\s+$)/g, '');
-                        var rgx = /^(\d+\.?\d*)$/;
-                        if(temp.match(rgx) && round_val > 0)
-                        {
-                            e = roundTo(temp, round_val);
-                        }
+                        
                         // rgx = /\.[0]+$/;
                         // if(e.match(rgx))
                         // {
@@ -1809,7 +1814,16 @@
                 }
                 for (var i = 0; i < output_elements.length; i++)
                 {
-                    output_string += output_elements[i];
+                    var e = output_elements[i];
+                    var temp = e.replace(/(^\s+|\s+$)/g, '');
+                    var rgx = /(\d+\.?\d*)/;
+                    var m = temp.match(rgx);
+                    if(m && round_val != 0)
+                    {
+                        var temp1 = roundTo(m[1], round_val);
+                        e = e.replace(rgx, temp1);
+                    }
+                    output_string += e;
                 }
 
                 return output_string;

@@ -273,6 +273,11 @@
                                 param.value = pgf_pi.value;
                                 param.type = pi.type;
 
+                                if(param.value.match(/[$]+|(^\s+|\s+$)|[\/\*]+/) || param.value.match("NaN") || param.value.length == 0)
+                                {
+                                    continue;
+                                }
+
                                 row.p_value = pgf_pi.value;
                                 row.p_range = pi.range;
                                 row.row_id = group.name+'.'+pi.name;
@@ -334,6 +339,26 @@
                     dom.byId("ReportGrid").innerHTML = html_table;
                     return;
                 }
+                var empty_count = 0;
+                for(var i = 0; i < family.members.length; i++)
+                {
+                    if(family.members[i].members.length < 1)
+                    {
+                        empty_count++;
+                    }
+                }
+                if(empty_count == family.members.length)
+                {
+                    html_table += "<tr>";
+                    html_table += "<td colspan = '2' "+get_row_style('pgf',rowCount)+">";
+                    html_table += "NO DATA TO DISPALY FOR THE SELECTED PRODUCT";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
+                    html_table += "</table>";
+                    dom.byId("ReportGrid").innerHTML = html_table;
+                    return;
+                }
 
                 //FAMILY NAME ROW
                 html_table += "<tr>"; 
@@ -387,6 +412,11 @@
 
                         var parameter = group.members[j];
 
+                        // if(parameter.value.match(/[$]+|(^\s+|\s+$)|[\/\*]+/) || parameter.value.match("NaN") || parameter.value.length == 0)
+                        // {
+                        //     continue;
+                        // }
+
 
                         //ADD ROW FOR CURRENT PARAMETER
                         html_table += "<tr>"; 
@@ -399,6 +429,7 @@
                         html_table += "</tr>";
                         rowCount++; //INCREMENT ROW COUNT
                     }
+
                 }
 
                 //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
