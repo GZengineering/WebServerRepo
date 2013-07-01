@@ -1825,10 +1825,10 @@
                 }
 
                 var rx = /([$]{1,1}[\{]{1,1}[^$\{]*[\}])|(NaN)/g;
-                output_string = output_string.replace(rx, '$');
+                // output_string = output_string.replace(rx, '$');
 
                 var rx2 = /([^0-9][\*\/])|([\*\/][^0-9])|(^[\*\/])|([\*\/]$)/;
-                if(output_string.match(rx2))
+                if(output_string.match(rx2) || output_string.match(rx))
                 {
                     output_string = "$incomputable";
                 }
