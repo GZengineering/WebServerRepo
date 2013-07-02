@@ -412,7 +412,8 @@ function group(response, request, collection, url)
         if(error)
         {
           console.log('Error: ' + error);
-          response.write(new Object({msg: "ERROR: can't find " + pg.name}));
+          var r = JSON.stringify(new Object({msg: "ERROR: can't find " + pg.name}));
+          response.write(r);
           response.end();
         }
         else
@@ -420,7 +421,7 @@ function group(response, request, collection, url)
           if(result.length == 1)
           {
             response.writeHead(200, {"Content-Type": "text/plain"});
-            response.write(new Object());
+            response.write(JSON.stringify(new Object()));
             response.end();
           }
           else if(result.length == 0)
