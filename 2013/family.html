@@ -943,6 +943,11 @@
 
                 var store = FamilyViewerMemStore.data;
 
+                if(store.length < 1)
+                {
+                    return alert("Something seems to have gone wrong.  Reselect the Family, and try editing the contents again.");
+                }
+
                 var matched = false;
                 var members = [];
                 var pgs = [];
