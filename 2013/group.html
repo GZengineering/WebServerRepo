@@ -840,6 +840,10 @@
                         var group = GroupGrid.selected_groups[0];
                         var selected_parameters = selectionGrid.selection.getSelected();
                         var parameter = selected_parameters[0];
+                        if(!confirm("Are you sure you want to remove '" + parameter.name + "' from '" + group.name + "'?"))
+                        {
+                            return;
+                        }
                         SelectionGrid.removeParameterFromGroup(group, parameter);
                     }
                 }, "button_removeParameter");

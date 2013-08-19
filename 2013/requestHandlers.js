@@ -20,7 +20,7 @@ function db_data (response, request, collection, url)
 {
   fs.readFile('./db.json', function (err, file) 
   {
-      response.writeHead(200, {"Content-Type": "text/html"});
+      response.writeHead(200, {"Content-Type": "text/file"});
       response.write(file);
       response.end();
   });
@@ -43,7 +43,7 @@ function dump (response, request, collection, url)
             if(i != result.length-1)
               db_as_json += '\n';
           }
-          response.writeHead(200, {"Content-Type": "text/plain"});
+          response.writeHead(200, {"Content-Type": "text/file"});
           response.write(db_as_json);
           response.end();
           _writeFile("db.json", db_as_json);
@@ -433,12 +433,20 @@ function group(response, request, collection, url)
             collection.find({'type': 'pg', 'name': pg.name, 'members' : pg.members}).toArray(
               function(error, doc)
               {
-                if(doc)
+                if(doc) 
                 {
                   var string = JSON.stringify(doc[0]);
                   console.log('New pg: \'' + pg.name + '\' added');
                   response.writeHead(200, {"Content-Type": "text/plain"});
-                  response.write(string);
+                  if(typeof string !== 'string')
+                  {
+                    console.log("Error: Object couldn't be converted to a string");
+                    response.write(FieldQuery.pg);
+                  }
+                  else
+                  {
+                    response.write(string);
+                  }
                   response.end();
                 }
                 else if(error)
@@ -545,7 +553,15 @@ function family(response, request, collection, url)
           var string = JSON.stringify(doc[0]);
           console.log('pf: \'' + pf.name + '\' Updated');
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(string);
+          if(typeof string !== 'string')
+          {
+            console.log("Error: Object couldn't be converted to a string");
+            response.write(FieldQuery.pf);
+          }
+          else
+          {
+            response.write(string);
+          }
           response.end();
         }
         else if(error)
@@ -623,7 +639,15 @@ function family(response, request, collection, url)
                   var string = JSON.stringify(doc[0]);
                   console.log('New pf: \'' + pf.name + '\' added');
                   response.writeHead(200, {"Content-Type": "text/plain"});
-                  response.write(string);
+                  if(typeof string !== 'string')
+                  {
+                    console.log("Error: Object couldn't be converted to a string");
+                    response.write(FieldQuery.pf);
+                  }
+                  else
+                  {
+                    response.write(string);
+                  }
                   response.end();
                 }
                 else if(error)
@@ -655,7 +679,15 @@ function global(response, request, collection, url)
         {
           var objString = JSON.stringify(result);
           response.writeHead(200, {"Content-Type": "text/plain"});
-          response.write(objString);
+          if(typeof objString !== 'string')
+          {
+            console.log("Error: Object couldn't be converted to a string");
+            response.write('--empty--');
+          }
+          else
+          {
+            response.write(objString);
+          }
           response.end();
         }
         else
