@@ -42,9 +42,9 @@ function return_js(file, response)
     });
 }
 
-function return_json(file, response) 
+function return_bson(file, response) 
 {
-  fs.readFile(file, function (err, json) 
+  fs.readFile(file, function (err, bson) 
     {
       if(err)
       {
@@ -54,8 +54,8 @@ function return_json(file, response)
       }
       else 
       {
-        response.writeHead(200, {"Content-Type": "file/json"});       
-        response.write(json);
+        response.writeHead(200, {"Content-Type": "file/bson", "Content-Disposition": "inline; filename=DataBase.bson"});       
+        response.write(bson);
         response.end();
       }
     });
@@ -82,6 +82,6 @@ function return_css(file, response)
 
 
 exports.return_html = return_html;
-exports.return_json = return_json;
+exports.return_bson = return_bson;
 exports.return_js = return_js;    
 exports.return_css = return_css;    

@@ -8,8 +8,11 @@ var querystring = require("querystring"),
     formidable = require("formidable"),
     requestHelpers = require('./requestHelpers'),
     express = require('express'),
-    app = express();
-    ObjectID = require('mongodb').ObjectID;
+    app = express(),
+    ObjectID = require('mongodb').ObjectID,
+    http = require('http'),
+    spawn = require('child_process').spawn;
+
 
 function dojo_css (response, request, collection, url)
 {
@@ -18,48 +21,88 @@ function dojo_css (response, request, collection, url)
 
 function db_data (response, request, collection, url)
 {
-  fs.readFile('./db.json', function (err, file) 
-  {
-      response.writeHead(200, {"Content-Type": "text/file"});
-      response.write(file);
-      response.end();
-  });
+  requestHelpers.return_bson('./dump/GZ/DataBase.bson', response);
+
+  // var _DIR = './dump/GZ/';
+  // var filename = 'DataBase.bson';
+  // var file = fs.createWriteStream(_DIR + filename);
+
+  // // http.get({host: url.host, port: 80, path: _DIR+filename}, function(res)
+  // // {
+  // //   res.on('data', function(data)
+  // //   {
+  // //     file.write(data);
+  // //   }).on('end', function()
+  // //   {
+  // //     file.end();
+  // //     console.log(filename + ' dowloaded');
+  // //   });
+  // // });
+  
+
+  // fs.readFile('./dump/GZ/DataBase.bson', function (err, data) 
+  // {
+  //     // console.log(filename + ' dowloaded');
+  //     response.writeHead(200, {"Content-Type": "file"});
+  //     response.write(data);
+  //     response.end(); 
+  // });
 }    
 
 function dump (response, request, collection, url)
 {
+  var _Date = new Date();
+  var date = {};
+      date.year = _Date.getFullYear();
+      date.month = _Date.getMonth() + 1;
+      date.day = _Date.getDate();
+
+  var filename = 'DataBase_'+date.year+date.month+date.day;
+  console.log(filename);
+
   var FieldQuery = url.parse(request.url,true).query;
-  collection.find().toArray(
-      function(error, result)
-      {
-        //If there's something returned from the db, send it to the page as
-        //a JSON object
-        if(result!=null)
-        {
-          var db_as_json = '';
-          for(var i = 0; i < result.length; i++)
-          {
-            db_as_json += JSON.stringify(result[i]);
-            if(i != result.length-1)
-              db_as_json += '\n';
-          }
-          response.writeHead(200, {"Content-Type": "text/file"});
-          response.write(db_as_json);
-          response.end();
-          _writeFile("db.json", db_as_json);
-        }
-        //If there's an error, log it.
-        else if(error)
-        {
-          console.log("\nError in 'getFields':" + error + '\n');
-        }
-      });
+  var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', './dump/'+filename]
+      , mongodump = spawn('C:/mongodb/bin/mongodump.exe', args);
+    mongodump.stdout.on('data', function (data) {
+      console.log('stdout: ' + data);
+    });
+    mongodump.stderr.on('data', function (data) {
+      console.log('stderr: ' + data);
+    });
+    mongodump.on('exit', function (code) {
+      console.log('mongodump exited with code ' + code);
+    });
+  // collection.find().toArray(
+  //     function(error, result)
+  //     {
+  //       //If there's something returned from the db, send it to the page as
+  //       //a JSON object
+  //       if(result!=null)
+  //       {
+  //         var db_as_json = '';
+  //         for(var i = 0; i < result.length; i++)
+  //         {
+  //           db_as_json += JSON.stringify(result[i]);
+  //           if(i != result.length-1)
+  //             db_as_json += '\n';
+  //         }
+  //         response.writeHead(200, {"Content-Type": "text/file"});
+  //         response.write(db_as_json);
+  //         response.end();
+  //         _writeFile("db.json", db_as_json);
+  //       }
+  //       //If there's an error, log it.
+  //       else if(error)
+  //       {
+  //         console.log("\nError in 'getFields':" + error + '\n');
+  //       }
+  //     });
 }
 
 function update_db_from_file(response, request, collection, url)
 {
   var spawn = require('child_process').spawn,
-      mongoimport = spawn('../../../mongodb/bin/mongoimport', ['--db', 'GZ', '--collection', 'DataBase', '--file', 'db.json', '--upsert',  '--journal']);
+      mongoimport = spawn('C:/mongodb/bin/mongorestore', ['--collection', 'DataBase', '--db', 'GZ', './dump/GZ/DataBase.bson']);
       
   mongoimport.stdout.on('data', function(data)
   {
@@ -135,15 +178,25 @@ function upload(response, request) {
 
   var form = new formidable.IncomingForm();
   form.parse(request, function(error, fields, files) {
+    if(error)
+    {
+      response.writeHead(500, {"Content-Type": "text/plain"});
+      response.end("Error: " + error + "\n");
+      return;
+    } 
 
-    /* Possible error on Windows systems:
-       tried to rename to an already existing file */
-    fs.rename(files.upload.path, "db.json", function(err) {
-      if (err) {
-        fs.unlink("db.json");
-        fs.rename(files.upload.path, "db.json");
-      }
-    });
+
+    // /* Possible error on Windows systems:
+    //    tried to rename to an already existing file */
+    // fs.renameSync(files.upload.path, "DataBase.bson", function(error)
+    //   {
+    //     if(error)
+    //     {
+    //       response.writeHead(500, {"Content-Type": "text/plain"});
+    //       response.end("Error: " + error + "\n");
+    //     }
+    //   }); 
+      
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write("upload successful");
     response.end();

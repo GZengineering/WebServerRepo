@@ -8,15 +8,15 @@
         <table border ="1" ALIGN = "center" >
             </tr>
             <tr>
-                <td style ="padding: 5px 10px"><a>Home<a></td>
-                <td style ="padding: 5px 10px"><a href = "/Inventory">Inventory Manager</a></td>
-                <td style ="padding: 5px 10px"><a href = "/SpecManager">Spec Manager<a></td>
+                <td style ="padding: 5px 10px"><a href = "/group">Group</a></td>
+                <td style ="padding: 5px 10px"><a href = "/family">Family<a></td>
+                <td style ="padding: 5px 10px"><a href = "/specReports">Reports</a></td>
             </tr>
         </table>
         <!-- Title Bar End -->
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/claro/claro.css">
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css">
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/nihilo/nihilo.css">
+        <!-- <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/claroGrid.css"> -->
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/form/resources/FileInput.css" />
 
         <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js"
@@ -55,30 +55,30 @@
                         }
                     }, "download_button");
 
-                    var update_button = new Button(
-                    {
-                        label: 'Update',
-                        onClick: function()
-                        {
-                            update_db();
-                        }
-                    }, "update_button");
+                    // var update_button = new Button(
+                    // {
+                    //     label: 'Update',
+                    //     onClick: function()
+                    //     {
+                    //         update_db();
+                    //     }
+                    // }, "update_button");
 
-                    function update_db()
-                    {
-                        xhr.post(
-                        {
-                            url: '/update_db',
-                            load:function(response)
-                            {
-                                console.log('update successful');
-                            },
-                            error:function(error)
-                            {
-                                console.log('update failed: ' + error);
-                            }
-                        });
-                    }
+                    // function update_db()
+                    // {
+                    //     xhr.post(
+                    //     {
+                    //         url: '/update_db',
+                    //         load:function(response)
+                    //         {
+                    //             console.log('update successful');
+                    //         },
+                    //         error:function(error)
+                    //         {
+                    //             console.log('update failed: ' + error);
+                    //         }
+                    //     });
+                    // }
 
                     var upload_button = new Button(
                     {
@@ -123,16 +123,16 @@
         </script>    
 
     </head>
-        <body class = "claro">
+        <body class = "nihilo">
             Download database as text file
             <button id = "download_button"></button>
-            <button id = "update_button"></button>
+            <!-- <button id = "update_button"></button> -->
             <form method="post" action="/upload" id="upload_form"
-            enctype="multipart/form-data" class="claro" >
+            enctype="multipart/form-data" class="nihilo" >
                 <fieldset>
                     <legend>Upload</legend>
                     <input id='NameBox' type="text" name="Name" />
-                    <input class="claro" name="uploadedfile" multiple="true"
+                    <input class="nihilo" name="uploadedfile" multiple="true"
                         type="file" data-dojo-type="dojox.form.Uploader"
                         data-dojo-props='label:"Select Some Files"' id="uploader" />
                     <input type="submit" label="Submit" data-dojo-type="dijit/form/Button"></input>

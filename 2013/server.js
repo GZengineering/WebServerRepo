@@ -14,11 +14,13 @@ var http = require("http"),
 		}),
 	Db = mongo.Db,
 	dbName = 'GZ',
+	backup = require('./backup');
 	collectionName = 'DataBase',
 	db = new Db(dbName, MongoServer);
 var OpenDB, 
 	DBCollection;	
 var requestHelpers = require('./requestHelpers');
+var timer = setInterval(function(){backup.clock()}, 60000); //check to do backup every hour
 
 /**
   * Request Handlers
@@ -73,6 +75,8 @@ function start(route, handle) {
 	{
 		console.log('-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --');
 		console.log('New Client Connection: ' + sock.remoteAddress);
+		backup.dump();
+		backup.ls();
 	});
 }
 
