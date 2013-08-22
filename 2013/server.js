@@ -20,7 +20,7 @@ var http = require("http"),
 var OpenDB, 
 	DBCollection;	
 var requestHelpers = require('./requestHelpers');
-var timer = setInterval(function(){backup.clock()}, 60000); //check to do backup every hour
+var timer = setInterval(function(){backup.clock()}, 60*60*1000); //check to do backup every hour
 
 /**
   * Request Handlers
@@ -75,8 +75,7 @@ function start(route, handle) {
 	{
 		console.log('-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --');
 		console.log('New Client Connection: ' + sock.remoteAddress);
-		backup.dump();
-		backup.ls();
+		backup.clock();
 	});
 }
 

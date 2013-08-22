@@ -429,9 +429,6 @@ function group(response, request, collection, url)
       var doc = eval('('+FieldQuery.pg+')');
       var s = JSON.stringify(doc);
 
-      var oid = new ObjectID(doc._id);
-      doc._id = oid;
-
       collection.save(doc,
         function(error, result)
         {
@@ -632,9 +629,6 @@ function family(response, request, collection, url)
   {
       var doc = eval('('+FieldQuery.pgf+')');
       var s = JSON.stringify(doc);
-
-      var oid = new ObjectID(doc._id);
-      doc._id = oid;
 
       collection.save(doc);
       collection.find(doc).toArray(
