@@ -336,8 +336,8 @@ function individual (response, request, collection, url)
       var doc = parameters.shift()
       var s = JSON.stringify(doc);
 
-      var oid = new ObjectID(doc._id);
-      doc._id = oid;
+      // var oid = new ObjectID(doc._id);
+      // doc._id = oid;
 
       collection.save(doc);
       collection.find(doc).toArray(
@@ -592,8 +592,8 @@ function family(response, request, collection, url)
   if(FieldQuery.action == 'change_pf')
   {
     var pf = eval('('+FieldQuery.pf+')');
-    var oid = new ObjectID(pf._id);
-    pf._id = oid;
+    // var oid = new ObjectID(pf._id);
+    // pf._id = oid;
     collection.save(pf);
     collection.find(pf).toArray(
       function(error, doc)

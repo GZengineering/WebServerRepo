@@ -59,6 +59,7 @@ db.open(function(error, db)
 				console.dir(MongoServer);
 				console.log('\n\n\n\t' + '\x1b[31;1m' + 'The server has started on' + '\x1b[32;1m Port: ' + port + '\n\n\n' + '\033[0m');
 				console.log('\n\nDatabase used : \x1b[33;1m\''+dbName+'\' \033[0m \t Collection used: \x1b[33;1m\''+collectionName+'\'\033[0m\n');
+				backup.clock();
 			})
 	});	
 
@@ -75,7 +76,6 @@ function start(route, handle) {
 	{
 		console.log('-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --');
 		console.log('New Client Connection: ' + sock.remoteAddress);
-		backup.clock();
 	});
 }
 
