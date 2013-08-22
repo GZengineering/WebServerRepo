@@ -250,6 +250,8 @@ function rmdir(dir)
 	    {
 	    	console.log(data);
 	    });
+
+	    console.log("\nBackup complete.\n");
 	}
 	else //if the bat file wasn't found, log a warning
 	{
