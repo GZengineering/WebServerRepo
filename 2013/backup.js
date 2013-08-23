@@ -48,7 +48,8 @@ function dump (date)
 {
   var _Date = new Date();
 
-  var filename = 'DataBase_'+date.year+date.month+1+date.day+'_'+date.hour;
+  var filename = 'DataBase_'+date.year+date.month+date.day+'_'+date.hour;
+  console.log("filename: " + filename);
   
 
   var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', 'C:/dump/'+filename]
