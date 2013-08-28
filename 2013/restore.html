@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<html lang='en' style= 'background-color:#666666; padding: 20px 50px 50px'>
+<head>
+    <title>Database Restore</title>
+
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/nihiloGrid.css">
+        
+    <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/nihilo/nihilo.css"> -->
+    <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/nihiloGrid.css";
+        #ProductSelect
+        {
+            min-width: 10em
+        }
+        #GradeSelect
+        {
+            min-width: 10em
+        }
+    </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
+    </script>
+
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
+        'dojo/data/ItemFileWriteStore',
+        'dojox/grid/DataGrid', 
+        "dojo/_base/array",
+        'dijit/registry',
+        'dojo/_base/xhr', 
+        'dijit/form/RadioButton',
+        'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button",
+        'dijit/form/TextBox', 
+        'dijit/form/Select', 
+        'dojo/store/Observable',
+        'dojo/store/Memory',
+        'dojo/data/ObjectStore',
+        'dojo/dom', 
+        'dojo/domReady!'],
+      function(lang, ItemFileWriteStore, DataGrid, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
+        {
+        	var has_loaded = false;
+
+             /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            var getVersions = function()
+            {
+                xhr.get(
+                {
+                    url:'/getVersions',
+                    handleAs: 'json',
+                    content:
+                    {
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                    	console.log(response);
+                    	parseFilesToJSON(response, function(files)
+                    	{
+            				VersionGrid.buildGrid(files);
+                    	});
+                    },
+                    error: function(error)
+                    {
+                        var msg = 'There was an error getting the dump files. Error: ' + error;
+                        dom.byId("serverResponse").innerHTML = 'Response: ' + msg;
+                        console.log(msg);
+                    }
+                });
+            }
+
+            //parses the file names 
+            var parseFilesToJSON = function(filenames, callback)
+            {
+            	if(!filenames)
+            		throw "no filenames were given";
+            	if(typeToString(filenames) !== "array")
+            	{
+            		throw "the parameter passed wasn't an array";
+            	}
+            	var bsons = [];
+            	for(var i = 0; i < filenames.length; i++)
+            	{
+            		var f = filenames[i];
+            		if(f.indexOf('.bson') !== -1)
+            		{
+            			bsons.push(f);
+            		}
+            	}
+            	for(var i = 0; i < bsons.length; i++)
+            	{
+            		var file = {};
+            		var f = bsons[i];
+            		file.filename = f;
+            		var date = f.replace(/(\D+)/g, '');
+            		var year = date.substring(0,4);
+            		var month = date.substring(4,6);
+            		var day = date.substring(6,8);
+            		var hour = date.substring(8,10);
+                    var min = date.substring(10, date.length);
+            		var _date = new Date(year, month-1, day, hour, min, 0 , 0);
+            		file.disName = _date.toLocaleString();
+            		bsons[i] = file;
+            	}
+
+            	callback(bsons);
+            }
+
+        	var VersionGrid = {};
+
+        	VersionGrid.buildGrid = function(items)
+        	{
+        		console.log('building grid');
+
+        		 //DEFINE THE LAYOUT
+                var layout = [[
+                  {'name': 'Version', 'field': 'disName', 'width': '100%', editable: false},
+                ]];
+
+                registry.remove('VersionGrid');
+
+                /*  CREATE A DATA STORE TO CONTAIN ALL THE BACKUP VERSIONS ON THE SERVER  */
+	            var versionStore = new Memory({data: new Array()});
+	                versionStore = Observable(versionStore);
+	            var vDataStore = new ObjectStore({
+	                    objectStore: versionStore
+	                });
+	            window.versionStore = versionStore; //MAKE IT GLOBAL
+	            window.vDataStore = vDataStore;
+
+                //SET MEMBERS STORE DATA TO THE PASSED MEMBERS
+                versionStore.setData(items);
+
+                //CREATE THE DOJO GRID AND RENDER IT
+                var grid = new DataGrid({
+                    store: vDataStore,
+                    structure: layout,
+                    autoHeight: 22,
+                selectionMode: 'single'}, 'VersionGrid');
+                grid.startup(); //RENDER
+
+                //REGISTER NOTIFY EVENT TO REFRESH THE GRID
+                dojo.connect(versionStore, 'notify', function(){grid._refresh()});
+
+                dojo.connect(grid, "onMouseDown", function(e)
+                {
+                    if(e.altKey == true)
+                    {
+                        alert(help_versionGrid);
+                    }
+                });
+
+                var help_versionGrid = "This grid displays all the versions of the database that have been dumped.\nIt dumps the data every 4 hours and keeps dumps for 4 months.";
+
+                //GLOBALIZE STORE DATA AND THE GRID
+                window.versionGrid = grid;
+
+        	}
+
+            //Executes the request to restore to the selected version
+        	var button_restore = new Button(
+        	{
+        		label: "Restore",
+                onMouseDown: function(e)
+                {
+                     if(e.altKey)
+                    {
+                        alert(help_restoreButton);
+                    }
+                },
+        		onClick: function(){
+                    var f = versionGrid.selection.getSelected();
+                    f = f[0];
+                    if(!f)
+                    {
+                        return alert("Select a version from the list to which you would like to restore.");
+                    }
+                    if(confirm("Are you sure you wish to restore the database to " + f.disName))
+                    {
+                        restore(f);
+                    }
+                },
+        	}, "restore");
+
+            var help_restoreButton = "This restores the database to the selected version.  A version of the current status of the database will be dumped prior to restoration.  Note: this means that for a short period of time, the latest version in this list may not necessarily be the most up to date version of the data. The data will be backed up sometime in the next 4 hours, or when it is forced to dump by using the 'Force Dump' button.";
+
+            var help_dumpButton = "This forces a data dump of the current version of the database.";
+
+            var button_dump = new Button(
+            {
+                label: 'Force Dump',
+                onMouseDown: function(e)
+                {
+                    if(e.altKey)
+                        alert(help_dumpButton);
+                },
+                onClick: function()
+                {
+                    dump();
+                }
+            }, "dump");
+
+            var dump = function()
+            {
+                serverResponse.innerHTML = "<b align = 'center'>Response: Dumping current version...</b>";
+
+                xhr.get(
+                {
+                    url: '/restore',
+                    content:
+                    {
+                        loaded: has_loaded = true,
+                        action: 'dump'
+                    },
+                    load: function(response) 
+                    {
+                        console.log(response);
+                        serverResponse.innerHTML = 'Response: ' + response;
+                        setTimeout(function(){getVersions()}, 2500);
+                        var d = new Date();
+                        d.setSeconds(0);
+                        d = d.toLocaleString();
+                        alert("The current version (" + d + ") of the database has been dumped.");
+                    },
+                    error: function(error)
+                    {
+                        console.log(error);
+                        serverResponse.innerHTML = 'Response: Error - ' + error;
+                        alert("There was an error dumping the database.");
+                    }
+                });
+            };
+
+
+            //the action/request to restore to the selected version
+        	var restore = function(file)
+        	{
+                serverResponse.innerHTML = "<b align = 'center'>Response: Dumping current version...</b>";
+                setTimeout(function(){serverResponse.innerHTML = '<b>Response: Restoring database to ' + file.disName + '...</b>'}, 2000);
+                xhr.get(
+                {
+                    url: '/restore',
+                    content: {
+                        action: 'restoreToFile',
+                        filename: file.filename,
+                        loaded: has_loaded = true,
+                    },
+                    load:function(response)
+                    {
+                        console.log(response);
+                        serverResponse.innerHTML = 'Response: ' + response;
+                        getVersions();
+                        alert("The Database has been restored to: " + file.disName);
+                    },
+                    error:function(error)
+                    {
+                        console.log(error);
+                        serverResponse.innerHTML = 'Response: Error - ' + error;
+                        alert("There was an error restoring the database.");
+                    }
+                });
+        	}
+
+            //use this to get data type.  More accurate than 'typeof'
+        	var typeToString = function(obj) {
+  				return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+			}
+
+            //run the request to the list of versions.
+        	getVersions();
+
+        });
+    </script>
+</head>
+<body class="nihilo">
+    <table width ='30%' border = "0">
+        <col width = '100%'>
+        <tr>
+            <td>
+                <table width = "100%">
+                <tr>
+                    <td align = "center" valign = "bottom">
+                        <a href="group">Group Creator</a>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <h1>|</h1>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <a href="family">Family Creator</a>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <h1>|</h1>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <a href="specReports">Report Viewer</a>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <h1>|</h1>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <a href="restore">Database Restore</a>
+                    </td>
+                </tr>
+            </table>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <table width="100%" style="padding-top: 10px">
+                    <col width = "40%">
+                    <col width = "60%">
+                    <tr>
+                        <td valign="bottom" colspan="100%">
+                            <h1 align = 'center'><u> Database Restore  </u></h1>
+                        </td>   
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px; text-align:left">
+                <div id = "VersionGrid"></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="100%">
+                <table width="100%" border = "0">
+                <col width = "85%">
+                <col width = "15%">
+                    <tr>
+                         <td align='right'>
+                            <button id="dump"></button>
+                        </td>
+                        <td align='right'>
+                            <button id="restore"></button>
+                        </td>
+                    </tr>
+                </table>
+            </td>           
+        </tr>
+        <tr>
+            <td colspan = "100%" style = "padding: 10px">
+            <div id="serverResponse"></div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
