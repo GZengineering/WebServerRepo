@@ -1,13 +1,13 @@
 ::rmdir.bat
-@echo off
+::@echo off
 IF "%1"=="" GOTO end1
 
-IF exist %1 GOTO rm
+IF exist ".\dump\%1" GOTO rm
 GOTO end4
 
 :rm
-rmdir %1 /s /q
-IF not exist %1 GOTO end2
+rmdir ".\dump\%1" /s /q
+IF not exist ".\dump\%1" GOTO end2
 GOTO end3
 
 :end1

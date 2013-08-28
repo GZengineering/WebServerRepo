@@ -25,7 +25,6 @@
     <!-- Dojo Execution -->
     <script>
     require(['dojo/_base/lang', 
-        'dojox/grid/DataGrid' , 
         'dojo/data/ItemFileWriteStore' ,
         "dojo/_base/array",
         'dijit/registry',
@@ -40,7 +39,7 @@
         'dojo/data/ObjectStore',
         'dojo/dom' , 
         'dojo/domReady!'],
-      function(lang, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
+      function(lang, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
         {
             window.report_grade = 4;
             window.selected_family = {};
@@ -499,6 +498,12 @@
                     </td>
                     <td align = "center" valign = "bottom">
                         <a href="specReports">Report Viewer</a>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <h1>|</h1>
+                    </td>
+                    <td align = "center" valign = "bottom">
+                        <a href="restore">Database Restore</a>
                     </td>
                 </tr>
             </table>

@@ -2,11 +2,11 @@
 @echo off
 IF "%1"=="" GOTO end1
 
-IF exist C:\dump\%1 GOTO mv
+IF exist .\dump\%1 GOTO mv
 GOTO end4
 
 :mv
-xcopy "C:\dump\%1\GZ\*.*" "C:\dump\%1.*" /s /y
+xcopy ".\dump\%1\GZ\*.*" ".\dump\%1.*" /s /y
 GOTO end2
 
 :end1

@@ -6,7 +6,7 @@ IF exist %1 GOTO rm
 GOTO end4
 
 :rm
-DEL C:\dump\%1* /s /q
+DEL ".\dump\%1*" /s /q
 IF not exist %1* GOTO end2
 GOTO end3
 

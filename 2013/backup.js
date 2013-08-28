@@ -3,7 +3,7 @@ var fs = require('fs');
 var child_process = require('child_process');
 var spawn = child_process.spawn;
 
-function clock()
+function clock(force)
 {
 	//store current date in JSON
 	var d = new Date();
@@ -15,7 +15,16 @@ function clock()
 	date.min = d.getMinutes();
 	date.timeString = d.toLocaleString();
 
-	if(date.hour % 4 == 0 || date.hour == 0)
+	if(date.month < 10)
+		date.month = '0' + date.month;
+	if(date.day < 10)
+		date.day = '0' + date.day;
+	if(date.hour < 10)
+		date.hour = '0' + date.hour;
+	if(date.min < 10)
+		date.min = '0' + date.min;
+
+	if(date.hour % 4 == 0 || date.hour == 0 || force)
 	{
 		dump(date);
 	}
@@ -48,11 +57,11 @@ function dump (date)
 {
   var _Date = new Date();
 
-  var filename = 'DataBase_'+date.year+date.month+date.day+'_'+date.hour;
+  var filename = 'DataBase_'+date.year+date.month+date.day+'_'+date.hour+date.min;
   console.log("filename: " + filename);
   
 
-  var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', 'C:/dump/'+filename]
+  var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', './dump/'+filename]
       , mongodump = spawn('C:/mongodb/bin/mongodump.exe', args);
 
       //log any errors
@@ -78,7 +87,7 @@ function check_move(file)
 	}
 
 	//Search 'C:/' for the 'rmfile.bat' file
-	fs.readdir('C:/', function(err, files)
+	fs.readdir('./', function(err, files)
 	{
 		//if files were found, loop through them
 		if(files)
@@ -102,10 +111,11 @@ function check_move(file)
 function move(file)
 {
 	console.log("\nMoving backup files to root dump folder\n");
+	console.log(file);
 	//if the bat file was found spawn it and send the filename
 	if(file)
 	{
-		var _move = spawn('C:/move.bat', [file]);
+		var _move = spawn('move.bat', [file]);
 
 		_move.stderr.on('data', function (data)
 	    {
@@ -118,14 +128,14 @@ function move(file)
 	    });
 
 	    //once the files are moved, remove the folders created by mongodump
-    	var timer = setTimeout(function(){check_rmdir('C:\\dump\\'+file)}, 3000);
+    	var timer = setTimeout(function(){check_rmdir(file)}, 3000);
 
 	    // check_rmdir('C:\\dump\\'+file);   
 	}
 	else //if the bat file wasn't found, log a warning
 	{
-		console.log("\nWARNING: 'move.bat' file missing from 'C:/'");
-		console.log("Old backups will not be removed with the 'move.bat' file in the 'C:/'\n");
+		console.log("\nWARNING: 'move.bat' file missing from project root");
+		console.log("Old backups will not be removed with the 'move.bat' file in the project root\n");
 	}
 	return;
 }
@@ -155,7 +165,7 @@ function check_rmfile(file)
 	}
 
 	//Search 'C:/' for the 'rmfile.bat' file
-	fs.readdir('C:/', function(err, files)
+	fs.readdir('./', function(err, files)
 	{
 		//if files were found, loop through them
 		if(files)
@@ -182,7 +192,7 @@ function rmfile(file)
 	//if the bat file was found spawn it and send the filename
 	if(file)
 	{
-		var _rmfile = spawn('C:/rmfile.bat', [file]);
+		var _rmfile = spawn('rmfile.bat', [file]);
 
 		_rmfile.stderr.on('data', function (data)
 	    {
@@ -196,22 +206,22 @@ function rmfile(file)
 	}
 	else //if the bat file wasn't found, log a warning
 	{
-		console.log("\nWARNING: 'rmfile.bat' file missing from 'C:/'");
-		console.log("Old backups will not be removed with the 'rmfile.bat' file in the 'C:/'\n");
+		console.log("\nWARNING: 'rmfile.bat' file missing from project root");
+		console.log("Old backups will not be removed with the 'rmfile.bat' file in the project root\n");
 	}
 	return;
 }
 
 //check that the rmdir.bat file existss
-function check_rmdir(dir)
+function check_rmdir(filename)
 {
 	//If no file was passed, bail
-	if(!dir)
+	if(!filename)
 	{
 		return;
 	}
 	//Search 'C:/' for the 'rmfile.bat' file
-	fs.readdir('C:/', function(err, files)
+	fs.readdir('./', function(err, files)
 	{
 		//if files were found, loop through them
 		if(files)
@@ -219,11 +229,11 @@ function check_rmdir(dir)
 			for(var i = 0; i < files.length; i++)
 			{
 				//save the filename as a string
-				var filename = ''+files[i];
+				var fname = ''+files[i];
 				//if the filename contains 'rmdir.bat', we have found the bat file
-				if(filename.indexOf('rmdir.bat') !== -1)
+				if(fname.indexOf('rmdir.bat') !== -1)
 				{
-					rmdir(dir);
+					rmdir(filename);
 					break;
 				}
 			}
@@ -233,14 +243,16 @@ function check_rmdir(dir)
 }
 
 //removes the specified directory
-function rmdir(dir)
+function rmdir(filename)
 {
 	console.log("\nRemoving MongoDump directories...\n");
 
+	console.log(filename);
+
 	//if the bat file was found spawn it and send the filename
-	if(dir)
+	if(filename)
 	{
-		var _rmdir = spawn('C:/rmdir.bat', [dir]);
+		var _rmdir = spawn('rmdir.bat', [filename]);
 
 	    _rmdir.stderr.on('data', function (data)
 	    {

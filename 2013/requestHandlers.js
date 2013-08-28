@@ -11,7 +11,8 @@ var querystring = require("querystring"),
     app = express(),
     ObjectID = require('mongodb').ObjectID,
     http = require('http'),
-    spawn = require('child_process').spawn;
+    spawn = require('child_process').spawn,
+    backup = require('./backup');
 
 
 function dojo_css (response, request, collection, url)
@@ -131,30 +132,100 @@ function _writeFile(filename, data)
   })
 }
 
+function restore(response, request, collection, url)
+{
+  console.log("\nRequest for 'Restore' called.");
+  var fieldquery = url.parse(request.url,true).query;
+  if(!fieldquery.loaded)
+  {
+    requestHelpers.return_html('./restore.html', response);
+  }
+
+  if(fieldquery.action == 'dump')
+  {
+    backup.clock(true);
+    setTimeout(function(){
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write('dump completed');
+        response.end();   
+    }, 3000);
+  }
+
+  if(fieldquery.action == 'restoreToFile')
+  {
+    backup.clock(true);
+    setTimeout(function(){
+      var f = fieldquery.filename;
+      f = './dump/' + f;
+      console.log('Attempting to revert database to file: ' + fieldquery.filename);
+
+      var spawn = require('child_process').spawn,
+        mongoimport = spawn('C:/mongodb/bin/mongorestore', ['--collection', 'DataBase', '--db', 'GZ', f]);
+
+      var result;  
+        
+      mongoimport.stdout.on('data', function(data)
+      {
+        console.log('stdout: ' + data);
+      });
+
+      mongoimport.stderr.on('data', function(data)
+      {
+        console.log('stderr ' + data);
+        result = 'error: ' + data;
+      });
+
+      mongoimport.on('close', function(code)
+      {
+        console.log('process exited with code: ' + code);
+        if(code !== 0)
+        {
+          result = 'error: exited with code' + code;
+        }
+        else
+        {
+          result = 'Database restored successfully';
+        }
+      });
+
+      setTimeout(function(){
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.write(result);
+        response.end();   
+      }, 2000);
+    }, 3000);
+    
+   
+  }
+
+}
+
 //
 function Home(response, request, collection, url) {
   console.log("\nRequest handler for 'Home' called.");
   var FieldQuery = url.parse(request.url,true).query;
 
-  if(!FieldQuery.hasOwnProperty('Event'))
-  {
-    fs.readFile('./Home.html', function (err, html) 
-    {
-      if(err)
-      {
-         response.writeHead(404, {"Content-Type": "text/plain"});
-         response.write(err + "\n");
-         response.end();
-      }
-      else 
-      {
-        response.writeHead(200, {"Content-Type": "text/html"});       
-        response.write(html);
-        response.end();
-        console.log('loading Home Page');
-      }
-    });
-  }
+  requestHelpers.return_html('/group.html', response);
+
+  // if(!FieldQuery.hasOwnProperty('Event'))
+  // {
+  //   fs.readFile('./Home.html', function (err, html) 
+  //   {
+  //     if(err)
+  //     {
+  //        response.writeHead(404, {"Content-Type": "text/plain"});
+  //        response.write(err + "\n");
+  //        response.end();
+  //     }
+  //     else 
+  //     {
+  //       response.writeHead(200, {"Content-Type": "text/html"});       
+  //       response.write(html);
+  //       response.end();
+  //       console.log('loading Home Page');
+  //     }
+  //   });
+  // }
 }    
 
 function favicon(response, request, collection, url)
@@ -529,10 +600,23 @@ function group(response, request, collection, url)
       }
       else
       {
-        console.log('Removal of Group: ' + pg.name + ' Failed');
-        response.writeHead(200, {"Content-Type": "text/plain"});
-        response.write('Failure to Remove Group\' '+ pg.name + ' \' : Group not found.');
-        response.end();
+        collection.findAndRemove({'_id': pg._id}, function(err, doc)
+        {
+          if(result)
+          {
+            console.log('Removal of Group: ' + pg.name + ' Succeeded');
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Group \'' + pg.name + '\' successfully removed');
+            response.end();
+          }
+          else
+          {
+            console.log('Removal of Group: ' + pg.name + ' Failed');
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write('Failure to Remove Group\' '+ pg.name + ' \' : Group not found.');
+            response.end();
+          }
+        });
       }
     });
   }
@@ -713,6 +797,32 @@ function family(response, request, collection, url)
   }
 }
 
+function getVersions(response, request, collection, url)
+{
+  console.log('Handling request to get db restore versions');
+  fs.readdir('./dump/', function(err, files)
+  {
+    if(err)
+    {
+      console.log('Error reading dump directory: ' + err);
+      response.writeHead(200, {"Content-Type": "text/plain"});
+      response.write('Error retrieving database dump files.');
+      response.end();
+    }
+    else if(files)
+    {
+      console.log('success reading dump directory.');
+      response.writeHead(200, {"Content-Type": "text/plain"});
+      var s = JSON.stringify(files);
+      if(s)
+        response.write(s);
+      else
+        response.write('error converting files to string.');        
+      response.end();
+    }
+  });
+}
+
 function global(response, request, collection, url)
 {
   console.log("\nHandler '/global' requested");
@@ -834,19 +944,21 @@ function viewBuilder(response, request, collection, url)
 
 // exports.UnitClassArray = UnitClassArray;
 exports.dojo_css = dojo_css;
-exports.db_data = db_data;
-exports.update_db = update_db_from_file;
-exports.parameter_js = parameter_js; 
+// exports.db_data = db_data;
+// exports.update_db = update_db_from_file;
+// exports.parameter_js = parameter_js; 
 exports.favicon = favicon;
-exports.param_app = param_app;
-exports.ideaBacklogEntry = ideaBacklogEntry;
+// exports.param_app = param_app;
+// exports.ideaBacklogEntry = ideaBacklogEntry;
 exports.specReports = specReports;
-exports.viewBuilder = viewBuilder;
+// exports.viewBuilder = viewBuilder;
 exports.family = family;
 exports.global = global;
+exports.getVersions = getVersions;
 exports.group = group;
-exports.individual = individual;
-exports.upload = upload;
-exports.show = show;
+// exports.individual = individual;
+// exports.upload = upload;
+// exports.show = show;
 exports.Home = Home;
-exports.dump = dump;
+// exports.dump = dump;
+exports.restore = restore;

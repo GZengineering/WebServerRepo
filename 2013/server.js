@@ -28,24 +28,26 @@ var timer = setInterval(function(){backup.clock()}, 60*60*1000); //check to do b
 
 var requestHandlers = require("./requestHandlers");
 var handle = {};
-handle["/"] = requestHandlers.Home;
-handle["/dump"] = requestHandlers.dump;
-handle["/update_db"] = requestHandlers.update_db;
-handle["/db_data"] = requestHandlers.db_data;
-handle["/upload"] = requestHandlers.upload;
-handle["/show"] = requestHandlers.show;
-handle["/Home"] = requestHandlers.Home;
-handle["/ideaBacklogEntry"] = requestHandlers.ideaBacklogEntry;
-handle["/individual"] = requestHandlers.individual;
+handle["/"] = requestHandlers.specReports;
+// handle["/dump"] = requestHandlers.dump;
+// handle["/update_db"] = requestHandlers.update_db;
+// handle["/db_data"] = requestHandlers.db_data;
+// handle["/upload"] = requestHandlers.upload;
+// handle["/show"] = requestHandlers.show;
+handle["/Home"] = requestHandlers.specReports;
+// handle["/ideaBacklogEntry"] = requestHandlers.ideaBacklogEntry;
+// handle["/individual"] = requestHandlers.individual;
 handle["/group"] = requestHandlers.group;
 handle["/favicon.ico"] = requestHandlers.favicon;
 handle["/family"] = requestHandlers.family;
 handle["/global"] = requestHandlers.global;
+handle["/getVersions"] = requestHandlers.getVersions;
 handle["/specReports"] = requestHandlers.specReports;
-handle["/viewBuilder"] = requestHandlers.viewBuilder;
-handle["/parameter_js"] = requestHandlers.parameter_js;
-handle["/main"] = requestHandlers.param_app;
+// handle["/viewBuilder"] = requestHandlers.viewBuilder;
+// handle["/parameter_js"] = requestHandlers.parameter_js;
+// handle["/main"] = requestHandlers.param_app;
 handle["/dojo_css"] = requestHandlers.dojo_css;
+handle["/restore"] = requestHandlers.restore;
 
 var s = {};
 //open the connection to the collection
@@ -68,7 +70,7 @@ function start(route, handle) {
   function onRequest(request, response) {
     var pathname = url.parse(request.url).pathname;
     console.log("Request for " + pathname + " received.");
-    route(handle, pathname, response, request, DBCollection, url);
+    route(handle, pathname, response, request, DBCollection, url);	
   }
 
   s = http.createServer(onRequest).listen(port);
@@ -81,10 +83,14 @@ function start(route, handle) {
 
 //route the request to the appropriate files
 function route(handle, pathname, response, request, collection, url) {
-  if (typeof handle[pathname] === 'function') //the pathname is associated with a handler, handle it
-    handle[pathname](response, request, collection, url);
-  else //Look for the file or handle an error
+  if (handle[pathname]) 
+  	{//the pathname is associated with a handler, handle it
+    	handle[pathname](response, request, collection, url);
+	}
+  else 
+  {//Look for the file or handle an error
   	requestHelpers.return_html(pathname, response);
+  }
 }
 
 
