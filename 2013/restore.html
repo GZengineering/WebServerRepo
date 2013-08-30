@@ -72,6 +72,29 @@
                 });
             }
 
+             /*  NORMALIZES THE DATA IN THE DB. ENSURES IDs ARE OBJECTIDs AND REMOVES '__isDirty' TAGS  */
+            var normalize = function()
+            {
+                xhr.get(
+                {
+                    url:'/restore',
+                    content:
+                    {
+                        action: 'normalize',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        return alert(response);
+                    },
+                    error: function(error)
+                    {
+                        return alert(error);
+                    }
+                });
+            }
+            window.normalize = normalize;
+
             //parses the file names 
             var parseFilesToJSON = function(filenames, callback)
             {
@@ -95,7 +118,16 @@
             		var file = {};
             		var f = bsons[i];
             		file.filename = f;
+
+                    if(f.search(/(\d+)/g) == -1)
+                    {
+                        file.disName = "[ \\\\ The file's date couldn't be parsed // ]";
+                        bsons[i] = file;
+                        continue;
+                    }
+                    
             		var date = f.replace(/(\D+)/g, '');
+
             		var year = date.substring(0,4);
             		var month = date.substring(4,6);
             		var day = date.substring(6,8);
@@ -157,7 +189,6 @@
 
                 //GLOBALIZE STORE DATA AND THE GRID
                 window.versionGrid = grid;
-
         	}
 
             //Executes the request to restore to the selected version
@@ -180,7 +211,15 @@
                     }
                     if(confirm("Are you sure you wish to restore the database to " + f.disName))
                     {
-                        restore(f);
+                        restore(f, true);
+                        // if(confirm("Would you like to dump the current version of the database?"))
+                        // {
+                        //     restore(f, true);
+                        // }
+                        // else
+                        // {
+                        //     restore(f, false);
+                        // }
                     }
                 },
         	}, "restore");
@@ -236,15 +275,26 @@
 
 
             //the action/request to restore to the selected version
-        	var restore = function(file)
+            //file: the file object contains a filename property to send to the server for the version to back up to.
+            //dump: a bool that determines whether or not to dump the current version of the db prior to reverting back.
+        	var restore = function(file, dump)
         	{
-                serverResponse.innerHTML = "<b align = 'center'>Response: Dumping current version...</b>";
-                setTimeout(function(){serverResponse.innerHTML = '<b>Response: Restoring database to ' + file.disName + '...</b>'}, 2000);
+                if(dump)
+                {
+                    serverResponse.innerHTML = "<b align = 'center'>Response: Dumping current version...</b>";
+                    setTimeout(function(){serverResponse.innerHTML = '<b>Response: Restoring database to ' + file.disName + '. This may take several seconds...</b>'}, 2000);
+                }
+                else
+                {
+                    serverResponse.innerHTML = '<b>Response: Restoring database to ' + file.disName + '. This may take several seconds...</b>';
+                }
+                
                 xhr.get(
                 {
                     url: '/restore',
                     content: {
                         action: 'restoreToFile',
+                        dump: dump,
                         filename: file.filename,
                         loaded: has_loaded = true,
                     },
@@ -268,6 +318,22 @@
         	var typeToString = function(obj) {
   				return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 			}
+
+            var help_refreshButton = "Refreshes the Database dump list.";
+
+            var button_refresh = new Button(
+            {
+                label: 'Refresh Data',
+                onMouseDown: function(e)
+                {
+                    if(e.altKey)
+                        alert(help_refreshButton);
+                },
+                onClick: function()
+                {
+                    getVersions();
+                }
+            }, "refresh");
 
             //run the request to the list of versions.
         	getVersions();
@@ -313,8 +379,11 @@
                     <col width = "40%">
                     <col width = "60%">
                     <tr>
-                        <td valign="bottom" colspan="100%">
-                            <h1 align = 'center'><u> Database Restore  </u></h1>
+                        <td align="left">
+                            <button id ="refresh"></button>
+                        </td>
+                        <td valign="bottom" >
+                            <h1 align='left'><u> Database Restore  </u></h1>
                         </td>   
                     </tr>
                 </table>

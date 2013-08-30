@@ -1,10 +1,21 @@
 //backup.js
 var fs = require('fs');
+var ncp = require('ncp').ncp;
+var chmodr = require('chmodr');
+var rimraf = require('rimraf');
 var child_process = require('child_process');
 var spawn = child_process.spawn;
+// var mongo_dir = 'C:/mongodb/'; //windows
+
+var r = /^([^\\]*[\\]).*\\.*/;
+r.test(process.cwd());
+var root = RegExp.$1;
+var mongo_dir = root+'mongodb/'; //mac/linux/windows - crossplatform
+
 
 function clock(force)
 {
+	console.log(root);
 	//store current date in JSON
 	var d = new Date();
 	var date = {};
@@ -59,10 +70,16 @@ function dump (date)
 
   var filename = 'DataBase_'+date.year+date.month+date.day+'_'+date.hour+date.min;
   console.log("filename: " + filename);
+
+  var mongodump_path = mongo_dir+'bin/mongodump';
+
+  console.log(mongodump_path);
+
+  // console.log(__root);
   
 
-  var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', './dump/'+filename]
-      , mongodump = spawn('C:/mongodb/bin/mongodump.exe', args);
+  var args = ['--db', 'GZ', '--collection', 'DataBase', '--out', './dump/']
+      , mongodump = spawn(mongodump_path, args);
 
       //log any errors
     mongodump.stderr.on('data', function (data) {
@@ -70,7 +87,7 @@ function dump (date)
     });
 
     //move the files to the root of the dump folder and timestamp them
-    var timer = setTimeout(function(){check_move(filename)}, 3000);
+    var timer = setTimeout(function(){move(filename)}, 3000);
     // check_move(filename);
    
 	console.log('Backup dumped -- ' + filename);
@@ -86,24 +103,26 @@ function check_move(file)
 		return;
 	}
 
+	
+
 	//Search 'C:/' for the 'rmfile.bat' file
-	fs.readdir('./', function(err, files)
-	{
-		//if files were found, loop through them
-		if(files)
-		{
-			for(var i = 0; i < files.length; i++)
-			{
-				//save the filename as a string
-				var filename = ''+files[i];
-				//if the filename contains 'rmfile.bat', we have found the bat file
-				if(filename.indexOf('move.bat') !== -1)
-				{
-					move(file);
-				}
-			}
-		}
-	})
+	// fs.readdir('./', function(err, files)
+	// {
+	// 	//if files were found, loop through them
+	// 	if(files)
+	// 	{
+	// 		for(var i = 0; i < files.length; i++)
+	// 		{
+	// 			//save the filename as a string
+	// 			var filename = ''+files[i];
+	// 			//if the filename contains 'rmfile.bat', we have found the bat file
+	// 			if(filename.indexOf('move.bat') !== -1)
+	// 			{
+	// 				move(file);
+	// 			}
+	// 		}
+	// 	}
+	// })
 }
 
 //using move.bat, move the files from the auto generated
@@ -111,24 +130,97 @@ function check_move(file)
 function move(file)
 {
 	console.log("\nMoving backup files to root dump folder\n");
-	console.log(file);
+
 	//if the bat file was found spawn it and send the filename
 	if(file)
 	{
-		var _move = spawn('move.bat', [file]);
 
-		_move.stderr.on('data', function (data)
-	    {
-	    	console.log(data);
-	    });
+		var src_dir = './dump/GZ/';
+		var dest_dir = './dump/';
 
-	    _move.stdout.on('data', function (data)
-	    {
-	    	console.log(data);
-	    });
+		ncp(src_dir, dest_dir, function(err)
+		{
+			if(err)
+			{
+				return console.error(err);
+			}
+			console.log('files moved');
+			var dot_rx = /[.]/;
+			var src_dir = './dump/GZ/';
+			var dest_dir = './dump/';
+
+			// fs.readdir(src_dir, function(err, files)
+			// {
+			// 	//if files were found, loop through them
+			// 	if(files)
+			// 	{
+			// 		for(var i = 0; i < files.length; i++)
+			// 		{
+			// 			var f = files[0];
+						// var ext = f.substr(f.search(dot_rx), f.length);
+						fs.rename(dest_dir+'DataBase.bson', dest_dir+file+'.bson', function(err)
+							{
+								if(err)
+								{
+									return console.error('error: ' + err);
+								}
+								// move(file);
+							});	
+
+						fs.rename(dest_dir+'DataBase.metadata.json', dest_dir+file+'.metadata.json', function(err)
+							{
+								if(err)
+								{
+									return console.error('error: ' + err);
+								}
+								// move(file);
+							});	
+
+						console.log('files renamed');
+
+						rmdir(file);
+
+			// 		}
+			// 	}
+			// });
+		});
+
+		// fs.readdir(src_dir, function(err, files)
+		// {
+		// 	//if files were found, loop through them
+		// 	if(files)
+		// 	{
+		// 		// for(var i = 0; i < files.length; i++)
+		// 		// {
+		// 			var f = files[0];
+		// 			var ext = f.substr(f.search(dot_rx), f.length);
+		// 			try
+		// 			{
+		// 				fs.createReadStream(f).pipe(fs.createWriteStream(dest_dir+file+ext));	
+		// 			}
+		// 			catch(err)
+		// 			{
+		// 				console.log('error' + err);
+		// 				return;
+		// 			}
+		// 		// }
+		// 	}
+		// })
+
+		// var _move = spawn('move.bat', [file]);
+
+		// _move.stderr.on('data', function (data)
+	 //    {
+	 //    	console.log(data);
+	 //    });
+
+	 //    _move.stdout.on('data', function (data)
+	 //    {
+	 //    	console.log(data);
+	 //    });
 
 	    //once the files are moved, remove the folders created by mongodump
-    	var timer = setTimeout(function(){check_rmdir(file)}, 3000);
+    	// var timer = setTimeout(function(){check_rmdir(file)}, 3000);
 
 	    // check_rmdir('C:\\dump\\'+file);   
 	}
@@ -245,24 +337,28 @@ function check_rmdir(filename)
 //removes the specified directory
 function rmdir(filename)
 {
-	console.log("\nRemoving MongoDump directories...\n");
-
-	console.log(filename);
-
 	//if the bat file was found spawn it and send the filename
 	if(filename)
 	{
-		var _rmdir = spawn('rmdir.bat', [filename]);
 
-	    _rmdir.stderr.on('data', function (data)
-	    {
-	    	console.log(data);
-	    });
+		rimraf('./dump/GZ', function(err)
+		{
+			if(err){console.error('error: ' + err)}
+			console.log("MongoDump directories removed");
+			console.log('\nData dump process completed.\n');	
+		});
 
-	    _rmdir.stdout.on('data', function (data)
-	    {
-	    	console.log(data);
-	    });
+		// var _rmdir = spawn('rmdir.bat', [filename]);
+
+	 //    _rmdir.stderr.on('data', function (data)
+	 //    {
+	 //    	console.log(data);
+	 //    });
+
+	 //    _rmdir.stdout.on('data', function (data)
+	 //    {
+	 //    	console.log(data);
+	    // });
 	}
 	else //if the bat file wasn't found, log a warning
 	{

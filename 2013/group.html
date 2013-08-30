@@ -142,7 +142,6 @@
         'dojo/domReady!'],
         function(lang, on, DataGrid, ItemFileWriteStore, baseArray, registry, xhr, _CheckBoxSelector, RangeSlider, HorizontalRule, HorizontalRuleLabels, RadioButton, Select, Button, TextBox, Textarea, Observable, Memory, ObjectStore, dom)
         {
-
             var fields = new Array();
             var has_loaded = false;
 
@@ -317,35 +316,59 @@
                 window.GroupMemStore = GroupMemStore;
             }
 
-
             GroupGrid.new_pg = function(pg)
             {
+                console.log(pg);
                 //send request to create a new PG
                 xhr.get(
                 {
-                    url:"/group", 
+                    url:"/global", 
                     handleAs: 'json',
                     content: 
                     {
-                        action: 'new_pg',
-                        pg: JSON.stringify(pg),
+                        action: 'new',
+                        doc: JSON.stringify(pg),
                         loaded: has_loaded=true,
                     },
                     load:function(response)
                     {
-                        if(objectIsEmpty(response))
+                        if(response)
                         {
-                            dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " Already Exists.";
-                            return;
+                            if(response.code == 0)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " saved."
+                                if(response.item)
+                                {
+                                    ClearTextFields();
+                                    GroupMemStore.add(response.item);
+                                }
+                            }
+                            else if(response.code == 1)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " updated."
+                                init();
+                            }
+                            else if(response.code == 2)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " Already Exists.";
+                                if(response.msg)
+                                {
+                                    return alert(response.msg); 
+                                }
+                            }
+                            else
+                            {
+                                console.log(response);
+                                return alert("An unknown error occurred.");
+                            }
+                            
                         }
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully added.";
-                        ClearTextFields();
-                        GroupMemStore.add(pg);
                     },
                     error:function(error)
                     {
                         console.log("There was an error: \n"+error);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                        return alert("An error occurred when adding the new group.");
                     }
                 });
             }
@@ -371,17 +394,35 @@
                 {
                     xhr.get(
                     {
-                        url:"/group",
+                        url:"/global",
+                        handleAs: 'json',
                         content: 
                         {
-                            action: 'remove_pg',
-                            pg: JSON.stringify(selected[0]),
+                            action: 'remove',
+                            doc: JSON.stringify(selected[0]),
                             loaded: has_loaded=true,
                         },
                         load:function(response)
                         {
-                            dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-                            GroupMemStore.remove(selected[0].id);
+                            if(response)
+                            {
+                                if(response.code == 0)
+                                {
+                                    GroupMemStore.remove(selected[0].id);
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + response.msg;
+                                    selectionMemStore.setData(new Array());
+                                    selectionGrid._refresh();
+                                }
+                                else
+                                {
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + response.msg;
+                                    return alert(response.msg);
+                                }
+                            }
+                            else
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: unknown results. It's recommended that you refresh the data.";
+                            }  
                         },
                         error:function(error)
                         {
@@ -403,25 +444,49 @@
                 //send request to update an existing PG
                 xhr.get(
                 {
-                    url:"/group", 
+                    url:"/global", 
+                    handleAs: 'json',
                     content: 
                     {
-                        action: 'update_pg',
-                        pg: JSON.stringify(pg),
+                        action: 'update',
+                        doc: JSON.stringify(pg),
                         loaded: has_loaded=true,
                     },
                     load:function(response)
                     {
+                        console.log(response);
+                        if(response)
+                        {
+                            if(response.code!==null)
+                            {
+                                if(response.code == 0)
+                                {
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
+                                    GroupMemStore.remove(id); //remove the old group from the store
+                                    if(response.item)
+                                    {
+                                        GroupMemStore.add(response.item);
+                                    }
+                                    groupGrid.selection.clear(); //clear the selection
+                                    membersGrid.selection.clear();
+                                    selectionMemStore.setData(new Array());
+                                    selectionGrid._refresh();
+                                }
+                                else if(response.code == 1)
+                                {
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " could not be updated."
+                                    return alert(pg.name + " updated, but the item couldn't be returned.  Refreshing data.");
+                                    init();
+                                }
+                                else
+                                {
+                                    console.log(response);
+                                    return alert("An unknown error occurred.");
+                                }
+                            }
+                        }
                         //if an update is successful, we'll receive a message, notify the user.
-                        alert(response);
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + pg.name + " successfully upated.";
                         // ClearTextFields(); //clear text fields
-                        GroupMemStore.remove(id); //remove the old group from the store
-                        GroupMemStore.add(pg);
-                        groupGrid.selection.clear(); //clear the selection
-                        selectionMemStore.setData(new Array());
-                        membersGrid.selection.clear();
-                        selectionGrid._refresh();
                     },
                     error:function(error)
                     {
@@ -691,6 +756,8 @@
 
                     if(membersStore.data.length < 1)
                         return alert('You must add one or more parameters to the group.');
+
+                    group.type = 'pg';
 
                     group.members = [];
 

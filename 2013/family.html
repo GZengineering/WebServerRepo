@@ -491,7 +491,7 @@
                 function reportSelection(node)
                 {
                     //UPDATE SELECTED PROPERTY
-                    var families = this.selection.getSelected();
+                    var families = grid.selection.getSelected();
                     FamilyGrid.selected_families = families;
 
                     //IF FAMILIES IS EMPTY OR NULL, BAIL
@@ -502,7 +502,7 @@
                     var groups = families[0].members;
 
                     //REBUILD THE VIEWER STORE
-                    FamilyViewerGrid.rebuildStore(groups);
+                    FamilyViewerGrid.buildGrid(groups);
 
                     //IF NOTHING IS SELECTED, BAIL
                     if(families.length < 1)
@@ -536,38 +536,58 @@
 
                 xhr.get(
                 {
-                    url:"/family", 
+                    url:"/global", 
+                    handleAs: 'json',
                     content: 
                     {
-                        action: 'update_pgf',
-                        pgf: JSON.stringify(pgf),
+                        action: 'update',
+                        doc: JSON.stringify(pgf),
                         loaded: has_loaded=true,
                     },
                     load:function(response)
                     {
-                        //if an update is successful, we'll receive a message, notify the user.
-                        alert(response);
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + pgf.name + " successfully upated.";
-                        dom.byId("txtBox_familyName").value = '';
-                        FamilyMemStore.remove(id);
-                        try
+                        if(response)
                         {
-                            FamilyMemStore.add(pgf);
-                            FamilyViewerMemStore.setData(new Array());
-                            FamilyViewerGrid._refresh();
-                            familyGrid.selection.clear();
+                            if(response.code!==null)
+                            {
+                                if(response.code == 0)
+                                {
+                                    //UPDATE THE SERVER RESPONSE
+                                    dom.byId("serverResponse").innerHTML = "Response from server: "+response.msg;
+                                    dom.byId("txtBox_familyName").value = '';
+                                    FamilyMemStore.remove(id);
+                                    try
+                                    {
+                                        FamilyMemStore.add(response.item);
+                                        FamilyViewerMemStore.setData(new Array());
+                                        familyViewerGrid._refresh();
+                                        familyGrid.selection.clear();
+                                    }
+                                    catch(e){ /* Ignore the error */ }
+                                }
+                                else if(response.code == 1)
+                                {
+                                    dom.byId("serverResponse").innerHTML = "Response from server: " + pgf.name + " could not be updated."
+                                    return alert(pgf.name + " updated, but the item couldn't be returned.");
+                                }
+                                else
+                                {
+                                    console.log(response);
+                                    return alert("An unknown error occurred.");
+                                }
+                            }
                         }
-                        catch(e){ /*Ignore the error*/ }
-
+                        //if an update is successful, we'll receive a message, notify the user.
+                        // ClearTextFields(); //clear text fields
                     },
                     error:function(error)
                     {
                         //log and alert the user of any error
                         console.log("There was an error: \n"+error);
-                        alert("There was an error: \n"+error);
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                        alert("There was an error updating " + pgf.name);
+                        dom.byId("serverResponse").innerHTML = "Response from server: there was an error updating " + pgf.name;
                     }
-                });
+                });      
             }
 
             /*  BUILD THE PGF OBJECT TO SEND TO THE SERVER BY ANALYZING THE GROUPS AND EDITED VALUES  */
@@ -644,37 +664,52 @@
                 //TELL THE SERVER TO ADD NEW PGF AND SEND THE NEW PGF OBJECT                
                 xhr.get(
                 {
-                    url:"/family", 
+                    url:"/global", 
                     handleAs: 'json',
                     content: 
                     {
-                        action: 'new_pf',
-                        pf: JSON.stringify(pgf),
+                        action: 'new',
+                        doc: JSON.stringify(pgf),
                         loaded: has_loaded=true,
                     },
                     load:function(response)
                     {
-                        //IF THE RETURNED OBJECT IS EMPTY, THEN IT ALREADY EXISTS, NOTIFY THE USER
-                        if(objectIsEmpty(response))
+                        if(response)
                         {
-                            dom.byId("serverResponse").innerHTML = "Response from server: " + pgf.name + " Already Exists.";
-                            alert("'"+pgf.name+"' already exists in the database.");
-                            return;
+                            if(response.code == 0)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " +response.msg;
+                                if(response.item)
+                                {
+                                    dom.byId("txtBox_familyName").value = '';
+                                    PreviewGrid.buildGrid(new Array());
+                                    FamilyMemStore.add(response.item);
+                                }
+                            }
+                            else if(response.code == 1)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + pgf.name + " saved."
+                                init();
+                            }
+                            else if(response.code == 2)
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response.msg;
+                                return alert(response.msg);
+                            }
+                            else
+                            {
+                                console.log(response);
+                                return alert("An unknown error occurred.");
+                            }
+                            
                         }
-                        //UPDATE THE SERVER RESPONSE
-                        dom.byId("serverResponse").innerHTML = "Response from server: "+pgf.name+" successfully added.";
-                        dom.byId("txtBox_familyName").value = '';
-                        PreviewGrid.buildGrid(new Array());
-                        FamilyMemStore.add(pgf);
-                        //BECAUSE OF STRANGE ERRORS TRYING TO ADD TO THE STORE IN PREVIOUS VERSIONS
-                        //JUST GET THE ENTIRE DB AGAIN FROM THE SERVER.
-                        // init();
                     },
                     error:function(error)
                     {
                         //IF THERE WAS AN ERROR, REPORT IT IN THE CONSOLE AND TO THE USER
                         console.log("There was an error: \n"+error);
                         dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                        return alert("An error occurred when adding the new item.");
                     }
                 });
             }
@@ -739,29 +774,43 @@
                 //SEND THE SERVER A REQUEST TO REMOVE THE PF AND SEND THE PF OBJECT
                 xhr.get(
                 {
-                    url:"/family",
+                    url:"/global",
+                    handleAs: 'json',
                     content: 
                     {
-                        action: 'remove_pf',
-                        pf: JSON.stringify(pgf),
+                        action: 'remove',
+                        doc: JSON.stringify(pgf),
                         loaded: has_loaded=true,
                     },
                     load:function(response)
                     {
-                        //TELL THE USER AND LOG THE RESPONSE
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + response;
-
-                        //REMOVE THE ITEM FROM THE STORE
-                        FamilyMemStore.remove(pgf.id);
-                        FamilyViewerGrid.buildGrid(new Array());
-                        // remove_from_family_store();
+                        if(response)
+                        {
+                            if(response.code == 0)
+                            {
+                                 //REMOVE THE ITEM FROM THE STORE
+                                FamilyMemStore.remove(pgf.id);
+                                FamilyViewerGrid.buildGrid(new Array());
+                                // familyViewerGrid._refresh();
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response.msg;
+                            }
+                            else
+                            {
+                                dom.byId("serverResponse").innerHTML = "Response from server: " + response.msg;
+                                return alert(response.msg);
+                            }
+                        }
+                        else
+                        {
+                            dom.byId("serverResponse").innerHTML = "Response from server: unknown results. It's recommended that you refresh the data.";
+                        }  
                     },
                     error:function(error)
                     {
                         //NOTIFY THE USER AND LOG THE ERROR
                         console.log("There was an error: \n"+error);
                         alert("Failure to remove '"+pgf.name+"' from the Database");
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
+                        dom.byId("serverResponse").innerHTML = "Response from server: There was an error removing the item." ;
                     }
                 });
             }
@@ -800,19 +849,25 @@
                 for(var i = 0; i < pgs.length; i++)
                 {
                     var pg = pgs[i];
+                    var pg_id = JSON.stringify(pg._id);
+
                     var group = {};
 
                     for(var j = 0; j < GroupMemStore.data.length; j++)
                     {
                         var g = GroupMemStore.data[j];
-                        if(pg._id == g._id)
+                        var g_id = JSON.stringify(g._id);
+                        if(pg_id == g_id)
                         {
                             group = g;
                             break;
                         }
                     }
 
-
+                    if(!group.members)
+                    {
+                        continue;
+                    }
                     var pis = group.members;
                     var pgf_pis = pg.members;
 
@@ -833,7 +888,6 @@
                         row.p_value = pi.formula;
                         row.p_range = pi.range;
                         row.row_id = group.name+'.'+pi.name;
-                        
 
                         for(var k = 0; k < pgf_pis.length; k++)
                         {
@@ -854,7 +908,6 @@
 
                 //COMPUTE ALL THE VALUES
                 recompute_values(FamilyViewerMemStore);
-
 
                 registry.remove('FamilyViewerGrid');
 
@@ -884,12 +937,6 @@
                 window.familyViewerGrid = familyViewerGrid;
             }
 
-            /*  ON SELECTION CHANGE OF THE FAMILY GRID, THE FAMILY VIEW GRID STORE IS REPOPULATED  */
-            FamilyViewerGrid.rebuildStore = function(pgs)
-            {
-                // familyViewerGrid._refresh();
-                FamilyViewerGrid.buildGrid(pgs);
-            }
 
             FamilyViewerGrid.removeGroup = function(pgf)
             {
@@ -898,9 +945,6 @@
                 if(!selected || selected.length < 1)
                     return alert("Select a parameter that belongs to the group you want to remove from the selected family.");
                 var pg_ids = pgf.members;
-
-
-                var removals = [];
 
                 for(var i = 0, l = selected.length; i < l; i++)
                 {
@@ -931,8 +975,7 @@
                         }
                     }
                 }
-                FamilyViewerGrid.commitChanges(pgf);
-
+                FamilyGrid.update_pgf(pgf);
             }
 
             /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
@@ -991,54 +1034,7 @@
                 FamilyGrid.update_pgf(pgf);
             }
 
-            //SAVES ANY CHANGES MADE TO THE SELECTED FAMILY
-            FamilyViewerGrid.commitChanges = function(pgf)
-            {
-                var id = pgf.id;
-                //TELL THE SERVER TO ADD NEW PF AND SEND THE NEW PF OBJECT                
-                xhr.get(
-                {
-                    url:"/family", 
-                    handleAs: 'json',
-                    content: 
-                    {
-                        action: 'change_pf',
-                        pf: JSON.stringify(pgf),
-                        loaded: has_loaded=true,
-                    },
-                    load:function(response)
-                    {
-                        //UPDATE THE SERVER RESPONSE
-                        dom.byId("serverResponse").innerHTML = "Response from server: "+pgf.name+" successfully Changed.";
-                        alert("Changes to '"+pgf.name+"' were succesful");
-                        dom.byId("txtBox_familyName").value = '';
-                        FamilyMemStore.remove(id);
-                        try
-                        {
-                            FamilyMemStore.add(pgf);
-                            FamilyViewerMemStore.setData(new Array());
-                            FamilyViewerGrid._refresh();
-                            familyGrid.selection.clear();
-                        }
-                        catch(e){ /* Ignore the error */ }
-
-                        //THE SERVER WILL SEND BACK THE OBJECT IF THE ADD WAS SUCCESSFUL
-                        //ADD THE OBJECT TO THE STORE
-                        init();
-                    },
-                    error:function(error)
-                    {
-                        //IF THERE WAS AN ERROR, REPORT IT IN THE CONSOLE AND TO THE USER
-                        alert("Failure: Changes to '"+pgf.name+"' were unsuccesful");
-                        console.log("There was an error: \n"+error);
-                        dom.byId("serverResponse").innerHTML = "Response from server: " + error;
-                    }
-                });
-            }
-
-
             /****************************   TextBoxes / Button / Etc  *********************************/
-
 
             //Family Name Textbox
             var txtBox_familyName = new TextBox({style: 'width: 300px'},"txtBox_familyName");
@@ -1064,9 +1060,6 @@
             var help_txtBox_familyName = "A Name is required for every new family.  To Submit a new family click the 'Commit New Family' button and the name in this text field will be applied to the new family.";
 
             var help_button_newPGF = "This button commits a new family to be saved to the database.  It is required that there be a name in the text field below the button and that there be data in the Preview Grid.  You will see new families populate the Family grid.";
-
-
-
 
             /*  STILL NOT WORKING  */
             var button_add_to_existing_pgf = new Button(
@@ -1138,7 +1131,7 @@
                             var pg = pgs[j]; //current group
 
                             //if the current unique group id matches the current item's group id
-                            if(pg._id == item.pg._id)
+                            if(JSON.stringify(pg._id) == JSON.stringify(item.pg._id))
                             {
                                 //add the current parameter to this unique group with its id and value
                                 var p = {};
@@ -1160,9 +1153,11 @@
                         var pg = pgs[i];
                         for(var j = 0; j < selected_pgf.members.length; j++)
                         {
+                            var pg_match = false;
                             var selected_pg = selected_pgf.members[j];
                             if(pg._id == selected_pg._id)
                             {
+                                pg_match = true;
                                 /*****/
                                 //Check that the selected pgf's current group has the same parameters as that of the group it
                                 //references from the database.
@@ -1186,14 +1181,42 @@
                                     }
                                 }
                             }
+                            if(j == selected_pgf.members.length -1 && pg_match == false)
+                            {
+                                add_these.push(pgs[i]);
+                            }
                         }
                     }
 
-                    for(var i = 0; i < pgs.length; i++)
+                    // for(var i = 0; i < pgs.length; i++)
+                    // {
+                    //     var pg = pgs[i];
+                    //     if(pg)
+                    //     {
+                    //         selected_pgf.members.push(pg);
+                    //     }
+                    // }
+
+                    for(var i = 0; i < add_these.length; i++)
                     {
-                        var pg = pgs[i];
+                        var pg = add_these[i];
                         if(pg)
                         {
+                            for(var j = 0; j < selected_pgf.members.length; j++)
+                            {
+                                var mem = selected_pgf.members[j];
+                                if(pg._id == mem._id)
+                                {
+                                    selected_pgf.members.splice(j, 1, pg);
+                                }
+                            }
+                        }
+                    }
+                    if(add_these.length > 0)
+                    {
+                        for(var i = 0; i < add_these.length; i++)
+                        {
+                            var pg = add_these[i];
                             selected_pgf.members.push(pg);
                         }
                     }
@@ -1391,7 +1414,7 @@
                             {
                                 previewMemStore.add(element); 
                             }
-                            catch(e){console.log(element.p_name + ' is already in that set')};
+                            catch(e){/*ignore error*/};
                         }
                         // previewGrid._refresh();
                         groupGrid.selection.clear();
