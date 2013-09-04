@@ -83,7 +83,7 @@ function dump (date)
 
       //log any errors
     mongodump.stderr.on('data', function (data) {
-      console.log('stderr: ' + data);
+      console.log('stderr: ' + data.toString());
     });
 
     //move the files to the root of the dump folder and timestamp them
@@ -280,20 +280,20 @@ function check_rmfile(file)
 //removes the specified file
 function rmfile(file)
 {
-	console.log('\nAttempting to remove old backups...\n');
-	//if the bat file was found spawn it and send the filename
+	console.log('\nAttempting to remove old backups...\n'); 
+
 	if(file)
 	{
 		var _rmfile = spawn('rmfile.bat', [file]);
 
 		_rmfile.stderr.on('data', function (data)
 	    {
-	    	console.log(data);
+	    	console.log(data.toString());
 	    });
 
 	    _rmfile.stdout.on('data', function (data)
 	    {
-	    	console.log(data);
+	    	console.log(data.toString());
 	    });
 	}
 	else //if the bat file wasn't found, log a warning
