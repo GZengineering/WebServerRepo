@@ -97,5 +97,11 @@ if(!running)
 
 setInterval(function()
 {
-	restartServer();
-}, 60*60*1000*12);
+	//if it's 3am restart the server
+	var d = new Date();
+	if(d.getHours() == 3 && d.getMinutes() == 0)
+	{
+		restartServer();
+	}
+
+}, 60*1000);

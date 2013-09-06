@@ -49,10 +49,9 @@ function restore(response, request, collection, url)
 
   if(fieldquery.action == 'restoreToFile')
   {
-    console.log('Dump: ' + fieldquery.dump);
-    if(fieldquery.dump == true)
+    if(eval(fieldquery.dump) == true)
     {
-      console.log("-- SHOULDN'T GET HERE --");
+      console.log("DUMPING CURRENT DB");
       backup.clock(true);
       setTimeout(function()
       {
@@ -64,7 +63,6 @@ function restore(response, request, collection, url)
       collection.remove();
     }
     
-
     setTimeout(function(){
       var f = fieldquery.filename;
       f = './dump/' + f;
@@ -77,21 +75,21 @@ function restore(response, request, collection, url)
         
       mongoimport.stdout.on('data', function(data)
       {
-        console.log('stdout: ' + data);
+        console.log(data.toString());
       });
 
       mongoimport.stderr.on('data', function(data)
       {
-        console.log('stderr ' + data);
-        result = 'error: ' + data;
+        console.log(data.toString());
+        result = data.toString();
       });
 
       mongoimport.on('close', function(code)
       {
-        console.log('process exited with code: ' + code);
+        console.log('Process Complete.  Exit Code: ' + code);
         if(code !== 0)
         {
-          result = 'error: exited with code' + code;
+          result = 'Error: exited with code' + code;
         }
         else
         {
@@ -128,7 +126,6 @@ function restore(response, request, collection, url)
           {
             var item = array[i];
             var id = ''+item._id;
-            console.log(id);
             id = ObjectID(id);
             collection.remove(item);
             console.log(id + ' removed');
@@ -145,6 +142,7 @@ function restore(response, request, collection, url)
               else
               {
                 console.log('__isDirty tags removed');
+                console.log("Normalization completed.")
               }
               response.writeHead(200, {"Content-Type": "type/text"});
               response.write("completed normalization");
@@ -351,7 +349,6 @@ function global(response, request, collection, url)
                       if(array)
                       {
                         var o = array[0];
-                        console.log(JSON.stringify(o));
                         console.log('New doc: \'' + doc.name + '\' added');
                         response.writeHead(200, {"Content-Type": "text/plain"});
                         response.write(JSON.stringify({msg: doc.name+" saved", code: 0, item: o}));

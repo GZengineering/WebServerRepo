@@ -7,20 +7,20 @@ var http = require("http"),
 	port = 80;
 	mongo = require('mongodb'),
 	Server = mongo.Server,
-	MongoServer = new Server('localhost', 27017, 
-		{
-			safe: false,
-			auto_reconnect: true
-		}),
+	MongoServer = new Server('localhost', 27017, {}),
+		// {
+			// safe: true,
+			// auto_reconnect: true
+		// }),
 	Db = mongo.Db,
 	dbName = 'GZ',
 	backup = require('./backup');
 	collectionName = 'DataBase',
-	db = new Db(dbName, MongoServer);
+	db = new Db(dbName, MongoServer, {safe: false});
 var OpenDB, 
 	DBCollection;	
 var requestHelpers = require('./requestHelpers');
-var timer = setInterval(function(){backup.clock()}, 60*60*1000); //check to do backup every hour
+var timer = setInterval(function(){backup.clock()}, 60*1000); //check to do backup every minute
 
 /**
   * Request Handlers
@@ -58,9 +58,9 @@ db.open(function(error, db)
 			function(error, collection)
 			{
 				DBCollection = collection;
-				console.dir(MongoServer);
-				console.log('\n\n\n\t' + '\x1b[31;1m' + 'The server has started on' + '\x1b[32;1m Port: ' + port + '\n\n\n' + '\033[0m');
-				console.log('\n\nDatabase used : \x1b[33;1m\''+dbName+'\' \033[0m \t Collection used: \x1b[33;1m\''+collectionName+'\'\033[0m\n');
+				// console.dir(MongoServer);
+				console.log('\n\n' + '\x1b[31;1m' + 'The server has started on' + '\x1b[32;1m Port: ' + port + '\033[0m');
+				console.log('Database used : \x1b[33;1m\''+dbName+'\' \033[0m \t Collection used: \x1b[33;1m\''+collectionName+'\'\033[0m\n');
 				backup.clock();
 			})
 	});	

@@ -12,7 +12,6 @@ r.test(process.cwd());
 var root = RegExp.$1;
 var mongo_dir = root+'mongodb/'; //mac/linux/windows - crossplatform
 
-
 function clock(force)
 {
 	//store current date in JSON
@@ -34,30 +33,34 @@ function clock(force)
 	if(date.min < 10)
 		date.min = '0' + date.min;
 
-	if(date.hour % 4 == 0 || date.hour == 0 || force)
+	if(force)
 	{
 		dump(date);
 	}
-	if (date.hour == 5) 
+	else if(date.hour % 4 == 0 && date.min == 0)
+	{
+		dump(date);
+	}
+	else if (date.hour == 5 && date.min == 0) 
 	{
 		remove_old_backup(date);
 	}
-	else
+	else if (date.min % 10 == 0)
 	{
-		var dumpdate;
+		var dumpdate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), 0, 0, 0);
 		if (date.hour % 4 == 3)
 		{
-			dumpdate = new Date(d.getTime()+1*60*60*1000);
+			dumpdate = new Date(dumpdate.getTime()+1*60*60*1000);
 		}
 		else if (date.hour % 4 == 2)
 		{
-			dumpdate = new Date(d.getTime()+2*60*60*1000);
+			dumpdate = new Date(dumpdate.getTime()+2*60*60*1000);
 		}
 		else if (date.hour % 4 == 1)
 		{
-			dumpdate = new Date(d.getTime()+3*60*60*1000);
+			dumpdate = new Date(dumpdate.getTime()+3*60*60*1000);
 		}
-		console.log('Next Data Dump: ' + dumpdate.toLocaleString());
+		console.log("Next dump: " + dumpdate.toLocaleString());
 	}
 }
 
@@ -68,7 +71,6 @@ function dump (date)
   var _Date = new Date();
 
   var filename = 'DataBase_'+date.year+date.month+date.day+'_'+date.hour+date.min;
-  console.log("filename: " + filename);
 
   var mongodump_path = mongo_dir+'bin/mongodump';
 
@@ -77,7 +79,7 @@ function dump (date)
 
       //log any errors
     mongodump.stderr.on('data', function (data) {
-      console.log('stderr: ' + data.toString());
+      console.log(data.toString());
     });
 
     //move the files to the root of the dump folder and timestamp them
