@@ -6,8 +6,6 @@ var spawn = child_process.spawn;
 //check the operating system
 var isWindows = /^win/.test(process.platform); //true if win32 || win64
 
-console.log(isWindows);
-
 //global variable to store the server child process
 var server;
 

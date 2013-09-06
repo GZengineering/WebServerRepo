@@ -359,7 +359,7 @@
                             else
                             {
                                 console.log(response);
-                                return alert("An unknown error occurred.");
+                                return unk_error();
                             }
                             
                         }
@@ -422,6 +422,7 @@
                             else
                             {
                                 dom.byId("serverResponse").innerHTML = "Response from server: unknown results. It's recommended that you refresh the data.";
+                                return unk_error();
                             }  
                         },
                         error:function(error)
@@ -481,7 +482,7 @@
                                 else
                                 {
                                     console.log(response);
-                                    return alert("An unknown error occurred.");
+                                    return unk_error();
                                 }
                             }
                         }
@@ -675,6 +676,45 @@
 
             /********************************     Text Boxes, buttons, etc.      *********************************/
 
+            //tracks the number of unkown errors, if they keep occurring it recommends normalizing the data.
+            var unk_error = function()
+            {
+                unk_error_count++;
+                if(unk_error_count%2 == 0)
+                {
+                    if(confirm("Unknown errors keep occurring.  Would you like to normalize the data on the database?\nNormalizing the data ensures that the IDs of the data are syntactically the same."))
+                    {
+                        normalize();
+                    }
+                }
+                else
+                {
+                    return alert("An unknown error has occurred.");
+                }
+            }
+
+             /*  NORMALIZES THE DATA IN THE DB. ENSURES IDs ARE OBJECTIDs AND REMOVES '__isDirty' TAGS  */
+            var normalize = function()
+            {
+                xhr.get(
+                {
+                    url:'/restore',
+                    content:
+                    {
+                        action: 'normalize',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        return alert(response);
+                    },
+                    error: function(error)
+                    {
+                        return alert(error);
+                    }
+                });
+            }
+            window.normalize = normalize;
 
             //Group Name Textbox
             var txtBox_groupName = new TextBox({style: "width: 100%"}, "txtBox_groupName");

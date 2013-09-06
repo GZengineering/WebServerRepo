@@ -10,15 +10,8 @@
         
     <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/nihilo/nihilo.css"> -->
     <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/nihiloGrid.css";
-        #ProductSelect
-        {
-            min-width: 10em
-        }
-        #GradeSelect
-        {
-            min-width: 10em
-        }
     </style>
+
     <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
     </script>
 
@@ -57,7 +50,6 @@
                     },
                     load: function(response)
                     {
-                    	console.log(response);
                     	parseFilesToJSON(response, function(files)
                     	{
             				VersionGrid.buildGrid(files);
@@ -72,8 +64,8 @@
                 });
             }
 
-             /*  NORMALIZES THE DATA IN THE DB. ENSURES IDs ARE OBJECTIDs AND REMOVES '__isDirty' TAGS  */
-            var normalize = function()
+            /*  NORMALIZES THE DATA IN THE DB. ENSURES IDs ARE OBJECTIDs AND REMOVES '__isDirty' TAGS  */
+            var normalize = function(background)
             {
                 xhr.get(
                 {
@@ -85,7 +77,14 @@
                     },
                     load: function(response)
                     {
-                        return alert(response);
+                        if(background)
+                        {
+                            console.log(response);
+                        }
+                        else
+                        {
+                            return alert(response);
+                        }
                     },
                     error: function(error)
                     {
@@ -145,8 +144,6 @@
 
         	VersionGrid.buildGrid = function(items)
         	{
-        		console.log('building grid');
-
         		 //DEFINE THE LAYOUT
                 var layout = [[
                   {'name': 'Version', 'field': 'disName', 'width': '100%', editable: false},
@@ -211,15 +208,14 @@
                     }
                     if(confirm("Are you sure you wish to restore the database to " + f.disName))
                     {
-                        restore(f, true);
-                        // if(confirm("Would you like to dump the current version of the database?"))
-                        // {
-                        //     restore(f, true);
-                        // }
-                        // else
-                        // {
-                        //     restore(f, false);
-                        // }
+                        if(confirm("Would you like to dump the current version of the database?\n'OK' - Dump current version\n'Cancel' - Don't Dump current version"))
+                        {
+                            restore(f, true);
+                        }
+                        else
+                        {
+                            restore(f, false);
+                        }
                     }
                 },
         	}, "restore");
@@ -302,6 +298,7 @@
                     {
                         console.log(response);
                         serverResponse.innerHTML = 'Response: ' + response;
+                        normalize(true);
                         getVersions();
                         alert("The Database has been restored to: " + file.disName);
                     },
@@ -342,7 +339,7 @@
     </script>
 </head>
 <body class="nihilo">
-    <table width ='30%' border = "0">
+    <table width = "450px" border = "0">
         <col width = '100%'>
         <tr>
             <td>

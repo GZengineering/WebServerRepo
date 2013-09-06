@@ -49,14 +49,21 @@ function restore(response, request, collection, url)
 
   if(fieldquery.action == 'restoreToFile')
   {
-    if(fieldquery.dump)
+    console.log('Dump: ' + fieldquery.dump);
+    if(fieldquery.dump == true)
     {
+      console.log("-- SHOULDN'T GET HERE --");
       backup.clock(true);
+      setTimeout(function()
+      {
+        collection.remove();
+      }, 3000);
     }
-    setTimeout(function()
+    else
     {
       collection.remove();
-    }, 3000);
+    }
+    
 
     setTimeout(function(){
       var f = fieldquery.filename;
@@ -154,7 +161,6 @@ function restore(response, request, collection, url)
         }
       });
   }
-
 }
 
 function favicon(response, request, collection, url)

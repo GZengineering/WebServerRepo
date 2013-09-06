@@ -78,7 +78,7 @@
     </script>
 
     <!-- Dojo Execution -->
-    <script>
+    <script type = "text/javascript">
     require(['dojo/_base/lang', 
         'dojox/grid/DataGrid' , 
         'dojo/data/ItemFileWriteStore' ,
@@ -98,6 +98,7 @@
         {
             /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
             var has_loaded = false;
+            var unk_error_count = 0;
 
             /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
             var fullDbMemStore = new Memory({data: new Array()});
@@ -402,6 +403,7 @@
                 dojo.connect(grid, "onApplyCellEdit", function(inValue, inRowIndex, inFieldIndex)
                 {
                     recompute_values(previewMemStore);
+                    grid.sortInfo = 3;
                 });
 
                 /*  GLOBALIZE GRID PROPERTIES  */
@@ -573,7 +575,7 @@
                                 else
                                 {
                                     console.log(response);
-                                    return alert("An unknown error occurred.");
+                                    return unk_error();
                                 }
                             }
                         }
@@ -699,7 +701,7 @@
                             else
                             {
                                 console.log(response);
-                                return alert("An unknown error occurred.");
+                                return unk_error();
                             }
                             
                         }
@@ -803,6 +805,7 @@
                         else
                         {
                             dom.byId("serverResponse").innerHTML = "Response from server: unknown results. It's recommended that you refresh the data.";
+                            return unk_error();
                         }  
                     },
                     error:function(error)
@@ -937,7 +940,6 @@
                 window.familyViewerGrid = familyViewerGrid;
             }
 
-
             FamilyViewerGrid.removeGroup = function(pgf)
             {
                 var viewer_data = FamilyViewerMemStore.data;
@@ -975,7 +977,10 @@
                         }
                     }
                 }
-                FamilyGrid.update_pgf(pgf);
+                dumpDupProperties(pgf, function(item)
+                {
+                    FamilyGrid.update_pgf(item);
+                })
             }
 
             /*  BUILD PGF OBJECT TO CHANGE BY ANALYZING THE CHANGES  */
@@ -1061,7 +1066,8 @@
 
             var help_button_newPGF = "This button commits a new family to be saved to the database.  It is required that there be a name in the text field below the button and that there be data in the Preview Grid.  You will see new families populate the Family grid.";
 
-            /*  STILL NOT WORKING  */
+            // ADDS THE GROUPS FROM THE PREVIEW GRID TO THE SELECTED FAMILY
+            // ONLY ADDS GROUPS THAT DON'T ALREADY EXIST IN THE FAMILY
             var button_add_to_existing_pgf = new Button(
             {
                 label: "Add To Selected",
@@ -1188,31 +1194,7 @@
                         }
                     }
 
-                    // for(var i = 0; i < pgs.length; i++)
-                    // {
-                    //     var pg = pgs[i];
-                    //     if(pg)
-                    //     {
-                    //         selected_pgf.members.push(pg);
-                    //     }
-                    // }
-
-                    for(var i = 0; i < add_these.length; i++)
-                    {
-                        var pg = add_these[i];
-                        if(pg)
-                        {
-                            for(var j = 0; j < selected_pgf.members.length; j++)
-                            {
-                                var mem = selected_pgf.members[j];
-                                if(pg._id == mem._id)
-                                {
-                                    selected_pgf.members.splice(j, 1, pg);
-                                }
-                            }
-                        }
-                    }
-                    if(add_these.length > 0)
+                   
                     {
                         for(var i = 0; i < add_these.length; i++)
                         {
@@ -1221,15 +1203,47 @@
                         }
                     }
 
-                    FamilyGrid.update_pgf(selected_pgf);
+                    dumpDupProperties(selected_pgf, function(item)
+                        {
+                            FamilyGrid.update_pgf(item);
+                        });
+
                 }
             }, "button_add_to_existing_pgf");
+            
+            //CHECKS THE ITEM (PGF) TO ENSURE IT DOESN'T HAVE DUPLICATE PROPERTIES.
+            var dumpDupProperties = function(item, callback)
+            {
+              for(var i = 0; i < item.members.length; i++)
+              {
+                var j = item.members.length;
+                var main = item.members[i];
+                while(j > i+1)
+                {
+                  var sec = item.members[--j]
+                  if(main._id)
+                  {
+                    if(main._id == sec._id)
+                    {
+                      item.members.splice(j,1);
+                      i--;
+                      break;
+                    }
+                  }
+                  else if(main.id)
+                  {
+                    if(main.id == sec.id)
+                    {
+                      item.members.splice(j,1);
+                      i--;
+                      break;
+                    }
+                  }
+                }
+              }
+              callback(item);
+            }
 
-            // dojo.connect(target, 'onmousedown', function(e) {
-            //    if(e.button == dojo.mouseButtons.RIGHT) {
-            //            // your code
-            //    }
-            // });
 
             //CREATE NEW PF BUTTON
             //REQUIRES A NAME
@@ -1416,7 +1430,7 @@
                             }
                             catch(e){/*ignore error*/};
                         }
-                        // previewGrid._refresh();
+                        previewGrid._refresh();
                         groupGrid.selection.clear();
                     }
                 }, "button_add_member");
@@ -1875,6 +1889,45 @@
                }
                return true;
             }
+
+            var unk_error = function()
+            {
+                unk_error_count++;
+                if(unk_error_count%2 == 0)
+                {
+                    if(confirm("Unknown errors keep occurring.  Would you like to normalize the data on the database?\nNormalizing the data ensures that the IDs of the data are syntactically the same."))
+                    {
+                        normalize();
+                    }
+                }
+                else
+                {
+                    return alert("An unknown error has occurred.");
+                }
+            }
+
+            /*  NORMALIZES THE DATA IN THE DB. ENSURES IDs ARE OBJECTIDs AND REMOVES '__isDirty' TAGS  */
+            var normalize = function()
+            {
+                xhr.get(
+                {
+                    url:'/restore',
+                    content:
+                    {
+                        action: 'normalize',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        return alert(response);
+                    },
+                    error: function(error)
+                    {
+                        return alert(error);
+                    }
+                });
+            }
+            window.normalize = normalize;
 
             //ON LOAD, GET THE FULL DB AND PUT IT IN A GLOBAL STORE   
             init();
