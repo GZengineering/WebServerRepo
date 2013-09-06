@@ -28,13 +28,15 @@ var timer = setInterval(function(){backup.clock()}, 60*1000); //check to do back
 
 var requestHandlers = require("./requestHandlers");
 var handle = {};
-handle["/"] = requestHandlers.specReports;
+handle["/"] = requestHandlers.spex;
 // handle["/dump"] = requestHandlers.dump;
 // handle["/update_db"] = requestHandlers.update_db;
 // handle["/db_data"] = requestHandlers.db_data;
 // handle["/upload"] = requestHandlers.upload;
 // handle["/show"] = requestHandlers.show;
-handle["/Home"] = requestHandlers.specReports;
+handle["/Home"] = requestHandlers.spex;
+handle["/spex"] = requestHandlers.spex;
+handle["/bkgnd_img.jpg"] = requestHandlers.bkgnd_img;
 // handle["/ideaBacklogEntry"] = requestHandlers.ideaBacklogEntry;
 // handle["/individual"] = requestHandlers.individual;
 handle["/group"] = requestHandlers.group;

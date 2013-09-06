@@ -423,9 +423,35 @@ function specReports(response, request, collection, url)
     requestHelpers.return_html('./specReports.html', response);
   }
 }
+
+function spex(response, request, collection, url)
+{
+  console.log("\nHandler 'spex' requested");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_html('./spex.html', response);
+  }
+}
+
+function bkgnd_img(response, request, collection, url)
+{
+  console.log("\nHandler 'bkgnd.jpg' requested");
+  var FieldQuery = url.parse(request.url,true).query;
+
+  // Return the main page if the page hasn't loaded yet.
+  if(!FieldQuery.loaded)
+  {
+    requestHelpers.return_img('./bkgnd_img.jpg', response);
+  }
+}
 exports.dojo_css = dojo_css;
 exports.favicon = favicon;
 exports.specReports = specReports;
+exports.spex = spex;
+exports.bkgnd_img = bkgnd_img;
 exports.family = family;
 exports.global = global;
 exports.getVersions = getVersions;

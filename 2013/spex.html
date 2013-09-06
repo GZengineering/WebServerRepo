@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<!-- This code was written by Alex Stout for Goal Zero, LLC private use -->
+<html lang='en' style= 'padding: 20px 50px 50px'>
+<head>
+    <title>Specs: Product Spec Reports</title>
+
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/resources/dojo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/nihiloGrid.css">
+            
+    <!-- <link rel="stylesheet" href="../../_static/js/dojo/../dijit/themes/nihilo/nihilo.css"> -->
+    <style type="text/css">@import "http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojox/grid/resources/nihiloGrid.css";
+        #ProductSelect
+        {
+            min-width: 10em
+        }
+        #GradeSelect
+        {
+            min-width: 10em
+        }
+        body
+        {
+            background-image: url(/bkgnd_img.jpg);
+            background-color: #666666;
+            background-size: 100%;
+        }
+    </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.8.3/dojo/dojo.js" data-dojo-config="async: true, isDebug: true">
+    </script>
+
+    <!-- Dojo Execution -->
+    <script>
+    require(['dojo/_base/lang', 
+        'dojo/data/ItemFileWriteStore' ,
+        "dojo/_base/array",
+        'dijit/registry',
+        'dojo/_base/xhr', 
+        'dijit/form/RadioButton',
+        'dojox/grid/_CheckBoxSelector',
+        "dijit/form/Button",
+        'dijit/form/TextBox', 
+        'dijit/form/Select', 
+        'dojo/store/Observable',
+        'dojo/store/Memory',
+        'dojo/data/ObjectStore',
+        'dojo/dom' , 
+        'dojo/domReady!'],
+      function(lang, ItemFileWriteStore, baseArray, registry, xhr, RadioButton, _CheckBoxSelector, Button, TextBox, Select, Observable, Memory, ObjectStore, dom)
+        {
+            window.report_grade = 4;
+            window.selected_family = {};
+
+            /*  THIS FLAG NOTIFIES THE SERVER WHETHER THE HTML FOR THIS PAGE HAS ALREADY BEEN LOADED  */
+            var has_loaded = false;
+            var _init = false;
+
+            /*  CREATE A DATA STORE TO CONTAIN ALL THE CONTENT OF THE SERVER  */
+            var fullDbMemStore = new Memory({data: new Array()});
+                fullDbMemStore = Observable(fullDbMemStore);
+                var fullDataStore = new ObjectStore({
+                    objectStore: fullDbMemStore
+                });
+            window.fullDbMemStore = fullDbMemStore; //MAKE IT GLOBAL
+
+            /*  FUNCTION TO GET ALL THE DB DATA AND FILL THE DATA STORE  */
+            /*  SUBSEQUENT FUNCTIONS WILL BE CALLED TO COMPLETE THE PROCESS  */
+            init = function()
+            {
+                xhr.get(
+                {
+                    url:'/global',
+                    handleAs: 'json',
+                    content:
+                    {
+                        action: 'getAll',
+                        loaded: has_loaded = true,
+                    },
+                    load: function(response)
+                    {
+                        fullDbMemStore.setData(new Array());
+                        fullDbMemStore.setData(response);
+                        BuildGrids();
+                    },
+                    error: function(error)
+                    {
+                        var msg = 'There was an error getting the db. Error: ' + error;
+                        alert(msg);
+                    }
+                });
+            }
+
+            /*  BUILDS THE GRIDS USING THE COLLECTED AND ORGANIZED DATA  */
+            function BuildGrids()
+            {
+                //QUERY TO GET THE PARAMETERS FROM THE FULL STORE
+                var families = fullDbMemStore.query({type: "pgf"});
+                var familyStore = new Memory({data: families, idProperty: 'name'});
+                    familyStore = Observable(familyStore);
+                    var familyDataStore = new ObjectStore({
+                        objectStore: familyStore
+                    });
+
+                //GLOBALIZE THE PARAMETER STORE
+                window.familyStore = familyStore;
+                window.familyDataStore = familyDataStore;
+
+                //FILL THE DROP-DOWN OPTIONS
+
+                fillOptions(familyStore.data);
+            }
+
+            //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
+            var GradeSelect = new Select(
+            {
+                options: [],
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_GradeSelect);
+                    }
+                },
+            }, "GradeSelect");
+
+            var help_GradeSelect = "Lists the 4 different report types.  \n1-Light: The lightest report.  It displays the simplest end-user data.  Typically used in Marketing.  \n2-Medium: slightly more detail than the Light report.  Will display a few more complex parameters, but nothing non-user friendly. \n3-Heavy: Displays more detail than the Medium report.  This will be most of a family's data except a few low-level, highly comprehensive parameters.  \n4-Comprehensive: Displays all of a family's data.  Not recommended for end users.  This data is highly comprehensive and may be difficult for most to understand.";
+
+            //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
+            dojo.connect(GradeSelect, "onChange", function(value)
+            {
+                report_grade = value;
+                buildPGF(selected_family, report_grade);
+            });
+
+            //DECLARE THE DROP-DOWN WITH AN EMPTY OPTIONS SET
+            var ProductSelect = new Select(
+            {
+                options: [],
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_ProductSelect);
+                    }
+                },
+            }, "ProductSelect");
+
+            var help_ProductSelect = "Lists all the products stored in the database.  Select a family to view its report given the range from the report range selector.";
+
+            //BUTTON THAT WILL GET THE LATEST DATA FROM THE DATABASE AND REPOPULATE THE GRIDS
+            var button_refresh_data = new Button(
+            {
+                label: 'Refresh All Data',
+                onMouseDown: function(e)
+                {   
+                    if(e.altKey == true)
+                    {
+                        alert(help_refresh_data);
+                    }
+                },
+                onClick: function()
+                {
+                    init();
+                }
+            }, "button_refresh_data");
+
+            var help_refresh_data = "Gets all the latest data from the database.\nNote that you will lose any changes that have not been submitted to the database.\nIf you are experiencing errors, try refreshing the data first.\nIf this doesn't help, refresh the web page.\nIf there is still no success correcting the errors, contact the administrator.";
+
+
+            //REGISTER THE SELECTION CHANGE EVENT OF THE DROP-DOWN TO BUILD THE NEW TABLE FOR THE SELECTED FAMILY
+            dojo.connect(ProductSelect, "onChange", function(value)
+            {
+                selected_family = familyStore.get(value);
+                buildPGF(selected_family, report_grade);
+            });
+
+            //FILL THE DROP-DOWN WITH THE FAMILIES FROM THE DB
+            var fillOptions = function(families)
+            {
+                ProductSelect.set('options', new Array());
+                for(var i = 0;i < families.length; i++)
+                {
+                    var p = families[i];
+                    ProductSelect.options.push({label: p.name, value: p.name});
+                }
+                if(!(GradeSelect.options.length > 0))
+                {
+                    GradeSelect.options.push({label: "Light", value: 1});
+                    GradeSelect.options.push({label: "Medium", value: 2});
+                    GradeSelect.options.push({label: "Heavy", value: 3});
+                    GradeSelect.options.push({label: "Comprehensive", value: 4});
+                }
+                if(!families || families.length < 1)
+                {
+                    ProductSelect.options.push({label: "(Empty)", value: "(Empty)"});
+                    ProductSelect.set('value', ProductSelect.options[0]);
+                    buildTable("", report_grade);
+                    return;
+                }
+                ProductSelect.set('value', ProductSelect.options[0]);
+                GradeSelect.set('value', GradeSelect.options[0]);
+                var selected_family = familyStore.get(ProductSelect.value);
+                buildPGF(selected_family, GradeSelect.value);
+            }
+
+            //CONSTRUCTS A PGF OBJECT WITH THE GIVEN FAMILY DB REFERENCE AND A REPORT GRADE.
+            //THE GRADE DETERMINES WHAT PARAMETERS ARE PUT INTO THE OBJECT FOR DISPLAY.
+            buildPGF = function(family, grade)
+            {
+                var groups = fullDbMemStore.query({type: "pg"});
+
+                var rows = [];
+
+                var pgf = {};
+                pgf.name = family.name;
+                pgf.type = family.type;
+                pgf.members = [];
+
+                pgs = family.members;
+
+                if(!pgs)
+                {
+                    buildTable(family, grade);
+                    return;
+                }
+
+                /* POPULATE THE STORE */
+                for(var i = 0; i < pgs.length; i++)
+                {
+                    var pg = pgs[i];
+                    var pg_id = JSON.stringify(pg._id);
+                    var group = {};
+
+                    for(var j = 0; j < groups.length; j++)
+                    {
+                        var g = groups[j];
+                        var g_id = JSON.stringify(g._id);
+                        if(pg_id == g_id)
+                        {
+                            group = g;
+                            break;
+                        }
+                    }
+
+                    if(!group.members)
+                    {
+                        continue;
+                    }
+
+                    var pis = group.members;
+                    var pgf_pis = pg.members;
+
+                    var params = [];
+
+                    //DEFINE EACH VIEWER ROW OF THE CURRENT GROUP OF THE SELECTED FAMILY
+                    for(var j = 0; j < pis.length; j++)
+                    {
+                        var matched = false;
+                        var pi = pis[j];
+                        if(!pi)
+                            continue;
+
+                        for(var k = 0; k < pgf_pis.length; k++)
+                        {
+                            if(matched)
+                                break;
+
+                            var pgf_pi = pgf_pis[k];
+
+                            var pi_range = pi.range.split("-");
+
+                            if(pi_range[0] > grade || pi_range[1] < grade)
+                                continue;
+
+                            if(pgf_pi.id == pi.id)
+                            {
+                                var param = {};
+                                var row = {};
+                                row.pg = group;
+                                row.pi = pi;
+                                row.pg_name = group.name;
+                                row.p_name = pi.name;
+                                row.p_formula = pi.formula;
+
+                                param.name = pi.name;
+                                param.value = pgf_pi.value;
+                                param.type = pi.type;
+
+                                param.value = param.value.replace(/(^\s+|\s+$)/, '');
+                                param.value = param.value.replace(/[,]$/, '');    
+
+                                if(param.value.match(/[$]+|[\/\*]+/) || param.value.match("NaN") || param.value.length == 0)
+                                {
+                                    continue;
+                                }
+
+                                row.p_value = pgf_pi.value;
+                                row.p_range = pi.range;
+                                row.row_id = group.name+'.'+pi.name;
+
+                                param.param_id = group.name+'.'+pi.name;
+                                params.push(param);
+                                matched = true;
+                            }
+                        }
+                    }
+                    var temp = {};
+                    temp.name = group.name;
+                    temp.type = group.type;
+                    temp.members = params;
+                    pgf.members.push(temp);
+                }
+
+
+                buildTable(pgf, grade);
+            }
+
+            //BUILD THE HTML TABLE GIVEN THE PRE-CONSTRUCTED FAMILY OBJECT AND THE REPORT GRADE
+            buildTable = function(family, grade)
+            {
+                //CLEAR THE HTML 
+                dom.byId("ReportGrid").innerHTML = '';
+
+                var html_table = '';
+
+                var table_properties = "\"cellspacing='0' cellpadding='0' border='0' style= \"border-collapse: collapse;table-layout:fixed;width:500pt\"";
+
+                var header_style = "style=\"height:14.0pt;width:136pt; font-size:11.0pt;color:white;font-weight:700;text-decoration:none;text-underline-style: none;text-line-through:none;font-family:Cambria;border-top:1.0pt solid black; border-right:.5pt solid black;border-bottom:.1em solid black;border-left: .1em solid black;background:#404040;mso-pattern:black none; padding: 2px\"";
+
+                var report_grade_desc = "Light";
+                if(grade == 2)
+                    report_grade_desc = "Medium";
+                else if(grade == 3)
+                    report_grade_desc = "Heavy";
+                else if(grade == 4)
+                    report_grade_desc = "Comprehensive";
+
+                var rowCount = 0;
+
+                //TABLE HEADER
+                html_table += "<table "+table_properties+">";
+                html_table += "<tr><td "+header_style+"><b>Technical Specifications</b>";
+                html_table += "<td align=right "+header_style+"><b>Report Level: "+report_grade_desc+"</b></tr>";
+
+                if(!family.members)
+                {
+                    html_table += "<tr>";
+                    html_table += "<td colspan = '2' "+get_row_style('pgf',rowCount)+">";
+                    html_table += "NO PRODUCTS WERE RETRIEVED";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
+                    html_table += "</table>";
+                    dom.byId("ReportGrid").innerHTML = html_table;
+                    return;
+                }
+                var empty_count = 0;
+                for(var i = 0; i < family.members.length; i++)
+                {
+                    if(family.members[i].members.length < 1)
+                    {
+                        empty_count++;
+                    }
+                }
+                if(empty_count == family.members.length)
+                {
+                    html_table += "<tr>";
+                    html_table += "<td colspan = '2' "+get_row_style('pgf',rowCount)+">";
+                    html_table += "NO DATA TO DISPALY FOR THE SELECTED PRODUCT";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
+                    html_table += "</table>";
+                    dom.byId("ReportGrid").innerHTML = html_table;
+                    return;
+                }
+
+                //FAMILY NAME ROW
+                html_table += "<tr>"; 
+                html_table += "<td "+get_row_style('pgf',rowCount)+">";
+                html_table += "Product:";
+                html_table += "</td>";
+                html_table += "<td align=right "+get_row_style('pgf',rowCount)+">";
+                html_table += family.name;
+                html_table += "</td>";
+                html_table += "</tr>";
+                rowCount++;
+
+
+                //ENTER EACH GROUP AS A ROW AND EACH GROUPS PARAMETERS AS A ROW
+                for(var i = 0; i < family.members.length; i++)
+                {
+                    //IF THE MEMBER IS NULL, BAIL
+                    if(!family.members[i])
+                        continue;
+
+                    group = family.members[i];
+
+                    if(group.members.length < 1)
+                        continue;
+
+                    //ADD ROW FOR CURRENT GROUP
+                    if(rowCount > 1)
+                    {
+                        html_table += "<tr>";
+                        html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
+                        html_table += "<td "+ get_row_style('pg',rowCount)+">&nbsp</td>";
+                        html_table += "</tr>";
+                        rowCount++;
+                    }
+                    html_table += "<tr>"; 
+                    html_table += "<td "+get_row_style('pg',rowCount)+">";
+                    html_table += group.name;
+                    html_table += "</td>";
+                    html_table += "<td align=right "+get_row_style('pg',rowCount)+"> ";
+                    html_table += "</td>";
+                    html_table += "</tr>";
+                    rowCount++; //INCREMENT ROW COUNT
+
+                    //FOR EACH PARAMETER OF THE GROUP, ADD A ROW
+                    for(var j = 0; j<group.members.length; j++)
+                    {
+                        //IF THE MEMBER IS NULL, BAIL
+                        if(!group.members)
+                            continue;
+
+                        var parameter = group.members[j];
+
+
+                        //ADD ROW FOR CURRENT PARAMETER
+                        html_table += "<tr>"; 
+                        html_table += "<td "+get_row_style('p',rowCount)+">";
+                        html_table += parameter.name;
+                        html_table += "</td>";
+                        html_table += "<td align=right "+get_row_style('p',rowCount)+"> ";
+                        html_table += parameter.value;
+                        html_table += "</td>";
+                        html_table += "</tr>";
+                        rowCount++; //INCREMENT ROW COUNT
+                    }
+
+                }
+
+                //CLOSE THE TABLE AND SET THE DOM HTML TO THE HTML STRING
+                html_table += "</table>";
+                dom.byId("ReportGrid").innerHTML = html_table;
+            }
+
+            //DETERMINES THE STYLE OF A ROW FOR THE TABLE GIVEN THE NUMBER OF THE ROW AND THE TYPE OF DATA IT CONTAINS
+            function get_row_style(type, rowCount)
+            {
+                //STYLE FOR A GROUP (OR FAMILY) ON ODD ROWS
+                var odd_style_group = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+
+                //STYLE FOR A GROUP (OR FAMILY) ON EVEN ROWS
+                var even_style_group = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:700;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+
+                //STYLE FOR A PARAMETER ON ODD ROWS
+                var odd_style_parameter = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black;background:#FFFFFF;mso-pattern:white none; padding: 2px\"";
+
+                //STYLE FOR A PARAMETER ON EVEN ROWS
+                var even_style_parameter = "style=\"height:14.0pt;font-size:11.0pt; color:black;font-weight:200;text-decoration:none;text-underline-style:none; text-line-through:none;font-family:Calibri;border:.1em solid black; background:#D9D9D9;mso-pattern:#D9D9D9 none; padding: 2px\"";
+
+                //IF THE COUNT IS EVEN AND IT'S A GROUP OR A FAMILY, DO EVEN_STYLE_GROUP
+                if(rowCount%2 == 0 && (type == 'pg' || type == 'pgf'))
+                    return even_style_group;
+                //IF THE COUNT IS EVEN AND IT'S A PARAMETER, DO EVEN_STYLE_PARAMETER
+                else if(rowCount%2 == 0 && type == 'p')
+                    return even_style_parameter;
+                //IF THE COUNT IS ODD AND THE DATA IS GROUP OR FAMILY, DO ODD_STYLE_GROUP
+                else if(rowCount%2 == 1 && (type == 'pg' || type == 'pgf'))
+                    return odd_style_group;
+                //IF THE COUNT IS ODD AND THE DATA IS A PARAMETER, DO ODD_STYLE_PARAMETER
+                else if(rowCount%2 == 1 && type == 'p')
+                    return odd_style_parameter;
+            }
+
+            init();
+            
+        });
+    </script>
+</head>
+
+
+<body class="nihilo">
+    <button id="button_refresh_data"></button><br>
+
+    <table border = "0" align='center'>
+        <col width = '100%'>
+        <tr>
+            <td>
+                <table width="100%" style="padding-top: 10px">
+                    <col width = "40%">
+                    <col width = "60%">
+                    <tr>
+                        <!-- <td align="left" valign="bottom">
+                            <button id="button_refresh_data"></button>
+                        </td> -->
+                        <td valign="top" align='center'>
+                            <h1 align = 'Center'><u> Spec Reports  </u></h1>
+                        </td>   
+                    </tr>
+                    <tr>
+                        <td style = "padding: 5px" align="right" valign="bottom">
+                            <label for="ProductSelect" style ="padding: 2px"><font size= "2px"><b>Select Product</b>  </font></label>
+                            <div id="ProductSelect"></div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td valign = "top" style = "padding: 5px; text-align:left">
+                <!-- <div id="GradeSelect"></div> -->
+                <div id = "ReportGrid"></div>
+            </td>
+        </tr>
+            <td colspan = "100%" style = "padding: 10px">
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

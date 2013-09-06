@@ -80,8 +80,28 @@ function return_css(file, response)
     });
 }
 
+function return_img(file, response) 
+{
+  fs.readFile(file, function (err, img) 
+    {
+      if(err)
+      {
+       response.writeHead(404, {"Content-Type": "text/html"});
+       response.write(err);
+       response.end();
+      }
+      else 
+      {
+        response.writeHead(200, {"Content-Type": "image/jpeg"});       
+        response.write(img);
+        response.end();
+      }
+    });
+}
+
 
 exports.return_html = return_html;
+exports.return_img = return_img;
 exports.return_bson = return_bson;
 exports.return_js = return_js;    
 exports.return_css = return_css;    
